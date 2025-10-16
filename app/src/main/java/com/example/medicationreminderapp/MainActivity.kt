@@ -8,7 +8,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.TimePickerDialog
-import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
@@ -51,7 +50,10 @@ import java.text.SimpleDateFormat
 import java.time.DayOfWeek
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
-import java.util.*
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+import java.util.Random
 
 class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, BluetoothLeManager.BleListener {
 
@@ -93,7 +95,10 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
     private val selectedTimes = mutableMapOf<Int, Calendar>()
 
     private val requestNotificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-        if (!isGranted) { Toast.makeText(this, "通知權限被拒絕，提醒功能可能無法正常運作", Toast.LENGTH_LONG).show() }
+        if (!isGranted) {
+            Toast.makeText(this, "通知權限被拒絕，提醒功能可能無法正常運作", Toast.LENGTH_LONG).show()
+            showPermissionDeniedDialog()
+        }
     }
     private val multiplePermissionsLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
         if (permissions.values.all { it }) {
@@ -104,7 +109,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        sharedPreferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
         applySelectedTheme()
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -161,7 +166,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
 
     private fun initializeDataAndLoad() {
         gson = Gson()
-        alarmManager = getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+        alarmManager = getSystemService(ALARM_SERVICE) as? AlarmManager
         bluetoothLeManager = BluetoothLeManager(this, this)
         loadAllData()
     }
@@ -178,9 +183,9 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
             notesEditText.setText(notesMap[it.toString()] ?: "")
         }
         dosageSlider.addOnChangeListener { _, value, _ ->
-            dosageValueTextView.text = String.format("%.1f", value)
+            dosageValueTextView.text = String.format(Locale.getDefault(), "%.1f", value)
         }
-        dosageValueTextView.text = String.format("%.1f", dosageSlider.value)
+        dosageValueTextView.text = String.format(Locale.getDefault(), "%.1f", dosageSlider.value)
         settingsButton.setOnClickListener { showThemeChooserDialog() }
         addMedicationButton.setOnClickListener { addMedication() }
         startDateButton.setOnClickListener { showDatePickerDialog(true) }
@@ -223,23 +228,23 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
     private fun setupCalendar() {
         calendarView.dayBinder = object : MonthDayBinder<DayViewContainer> {
             override fun create(view: View) = DayViewContainer(view)
-            override fun bind(container: DayViewContainer, day: CalendarDay) {
-                container.textView.text = day.date.dayOfMonth.toString()
-                if (day.position == DayPosition.MonthDate) {
+            override fun bind(container: DayViewContainer, data: CalendarDay) {
+                container.textView.text = data.date.dayOfMonth.toString()
+                if (data.position == DayPosition.MonthDate) {
                     container.textView.alpha = 1.0f
                 } else {
                     container.textView.alpha = 0.3f
                 }
-                val dateStr = day.date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                val dateStr = data.date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
                 container.dotView.isVisible = (dailyStatusMap[dateStr] == STATUS_ALL_TAKEN)
             }
         }
         calendarView.monthHeaderBinder = object : MonthHeaderFooterBinder<ViewContainer> {
             override fun create(view: View) = ViewContainer(view)
-            override fun bind(container: ViewContainer, month: CalendarMonth) {
+            override fun bind(container: ViewContainer, data: CalendarMonth) {
                 val textView = container.view.findViewById<TextView>(R.id.calendarMonthText)
                 val formatter = DateTimeFormatter.ofPattern("yyyy MMMM")
-                textView.text = formatter.format(month.yearMonth)
+                textView.text = formatter.format(data.yearMonth)
             }
         }
         val currentMonth = YearMonth.now()
@@ -365,7 +370,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
                     val calendar = Calendar.getInstance().apply { this.timeInMillis = timeMillis }
                     val hour = calendar.get(Calendar.HOUR_OF_DAY)
                     val minute = calendar.get(Calendar.MINUTE)
-                    val slotMask = determineSlotMaskFor(medication)
+                    val slotMask = determineSlotMaskFor()
                     bluetoothLeManager.setReminder(slotMask, hour, minute)
                 }
             }
@@ -376,7 +381,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
         }, 800)
     }
 
-    private fun determineSlotMaskFor(medication: Medication): Byte {
+    private fun determineSlotMaskFor(): Byte {
         return 0b00000001.toByte()
     }
 
@@ -412,7 +417,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
     }
 
     private fun setAlarmForMedication(medication: Medication) {
-        val am = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val am = getSystemService(ALARM_SERVICE) as AlarmManager
         medication.times.forEach { (timeType, timeMillis) ->
             val intent = Intent(this, AlarmReceiver::class.java).apply {
                 putExtra("medicationName", medication.name); putExtra("dosage", medication.dosage)
@@ -452,7 +457,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
         startDate = null; endDate = null
         startDateButton.text = "選擇開始日期"; endDateButton.text = "選擇結束日期"
         selectedTimes.clear(); updateSelectedTimesDisplay()
-        dosageSlider.value = 1.0f; dosageValueTextView.text = String.format("%.1f", dosageSlider.value)
+        dosageSlider.value = 1.0f; dosageValueTextView.text = String.format(Locale.getDefault(), "%.1f", dosageSlider.value)
     }
 
     private fun showAllMedicationsInTextView() {
