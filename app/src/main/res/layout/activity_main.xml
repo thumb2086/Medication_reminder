@@ -12,6 +12,15 @@
         android:orientation="vertical"
         android:padding="16dp">
 
+        <ImageButton
+            android:id="@+id/settingsButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Settings"
+            android:src="@android:drawable/ic_menu_preferences" />
+
         <Button
             android:id="@+id/connectBoxButton"
             android:layout_width="match_parent"
@@ -86,7 +95,7 @@
         <LinearLayout
             android:id="@+id/timeSettingsLayout"
             android:layout_width="match_parent"
-            android.layout_height="wrap_content"
+            android:layout_height="wrap_content"
             android:orientation="vertical">
 
             <Button

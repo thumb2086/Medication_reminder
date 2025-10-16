@@ -12,7 +12,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
-import android.graphics.Color
 import android.media.AudioAttributes
 import android.media.RingtoneManager
 import android.os.Build
@@ -27,7 +26,6 @@ import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
@@ -57,7 +55,6 @@ import java.util.*
 
 class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, BluetoothLeManager.BleListener {
 
-    // --- UI 元件宣告 ---
     private lateinit var connectBoxButton: Button
     private lateinit var settingsButton: ImageButton
     private lateinit var addMedicationButton: Button
@@ -67,7 +64,6 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
     private lateinit var medicationNameEditText: EditText
     private lateinit var dosageSlider: Slider
     private lateinit var dosageValueTextView: TextView
-    private lateinit var dosageUnitSpinner: Spinner
     private lateinit var frequencySpinner: Spinner
     private lateinit var startDateButton: Button
     private lateinit var endDateButton: Button
@@ -83,9 +79,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
     private lateinit var notesEditText: EditText
     private lateinit var displayNotesTextView: TextView
     private lateinit var calendarView: com.kizitonwose.calendar.view.CalendarView
-    private lateinit var slotStatusContainer: LinearLayout
 
-    // --- 數據 & 邏輯相關屬性 ---
     private lateinit var sharedPreferences: SharedPreferences
     private lateinit var gson: Gson
     private lateinit var bluetoothLeManager: BluetoothLeManager
@@ -94,13 +88,10 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
     private var notesMap: MutableMap<String, String> = mutableMapOf()
     private var dailyStatusMap: MutableMap<String, Int> = mutableMapOf()
     private var isBleConnected = false
-    private var editingMedication: Medication? = null
-
     private var startDate: Calendar? = null
     private var endDate: Calendar? = null
     private val selectedTimes = mutableMapOf<Int, Calendar>()
 
-    // --- 權限請求啟動器 ---
     private val requestNotificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         if (!isGranted) { Toast.makeText(this, "通知權限被拒絕，提醒功能可能無法正常運作", Toast.LENGTH_LONG).show() }
     }
@@ -135,7 +126,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
         super.onPause()
         saveAllData()
     }
-    
+
     override fun onDestroy() {
         super.onDestroy()
         bluetoothLeManager.disconnect()
@@ -151,7 +142,6 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
         medicationNameEditText = findViewById(R.id.medicationNameEditText)
         dosageSlider = findViewById(R.id.dosageSlider)
         dosageValueTextView = findViewById(R.id.dosageValueTextView)
-        dosageUnitSpinner = findViewById(R.id.dosageUnitSpinner)
         frequencySpinner = findViewById(R.id.frequencySpinner)
         startDateButton = findViewById(R.id.startDateButton)
         endDateButton = findViewById(R.id.endDateButton)
@@ -167,8 +157,6 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
         notesEditText = findViewById(R.id.notesEditText)
         displayNotesTextView = findViewById(R.id.displayNotesTextView)
         calendarView = findViewById(R.id.calendarView)
-        slotStatusContainer = findViewById(R.id.slotStatusContainer)
-        setupSlotViews()
     }
 
     private fun initializeDataAndLoad() {
@@ -179,23 +167,22 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
     }
 
     private fun setupListeners() {
-        ArrayAdapter.createFromResource(this, R.array.medication_frequency_options, android.R.layout.simple_spinner_item).also {
-            it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-            frequencySpinner.adapter = it
+        ArrayAdapter.createFromResource(
+            this, R.array.medication_frequency_options, android.R.layout.simple_spinner_item
+        ).also { adapter ->
+            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            frequencySpinner.adapter = adapter
         }
         frequencySpinner.onItemSelectedListener = this
-
-        ArrayAdapter.createFromResource(this, R.array.dosage_unit_options, android.R.layout.simple_spinner_item).also {
-            it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-            dosageUnitSpinner.adapter = it
+        medicationNameEditText.addTextChangedListener {
+            notesEditText.setText(notesMap[it.toString()] ?: "")
         }
-
-        medicationNameEditText.addTextChangedListener { notesEditText.setText(notesMap[it.toString()] ?: "") }
-        dosageSlider.addOnChangeListener { _, value, _ -> dosageValueTextView.text = String.format("%.1f", value) }
+        dosageSlider.addOnChangeListener { _, value, _ ->
+            dosageValueTextView.text = String.format("%.1f", value)
+        }
         dosageValueTextView.text = String.format("%.1f", dosageSlider.value)
-
         settingsButton.setOnClickListener { showThemeChooserDialog() }
-        addMedicationButton.setOnClickListener { addOrUpdateMedication() }
+        addMedicationButton.setOnClickListener { addMedication() }
         startDateButton.setOnClickListener { showDatePickerDialog(true) }
         endDateButton.setOnClickListener { showDatePickerDialog(false) }
         morningTimeButton.setOnClickListener { showTimePickerDialog(0) }
@@ -203,15 +190,19 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
         eveningTimeButton.setOnClickListener { showTimePickerDialog(2) }
         bedtimeTimeButton.setOnClickListener { showTimePickerDialog(3) }
         connectBoxButton.setOnClickListener {
-            if (isBleConnected) bluetoothLeManager.disconnect()
-            else {
+            if (isBleConnected) {
+                bluetoothLeManager.disconnect()
+            } else {
                 connectBoxButton.isEnabled = false
                 requestBluetoothPermissionsAndScan()
             }
         }
         testCommandButton.setOnClickListener {
-            if (isBleConnected) bluetoothLeManager.syncTime()
-            else Toast.makeText(this, "請先連接藥盒", Toast.LENGTH_SHORT).show()
+            if (isBleConnected) {
+                bluetoothLeManager.syncTime()
+            } else {
+                Toast.makeText(this, "請先連接藥盒", Toast.LENGTH_SHORT).show()
+            }
         }
         showAllMedicationsButton.setOnClickListener {
             if (displayNotesTextView.isVisible) {
@@ -223,22 +214,9 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
                 showAllMedicationsButton.text = "隱藏藥物列表"
             }
         }
-         showAllMedicationsButton.setOnLongClickListener {
-            showMedicationListForActions()
+        showAllMedicationsButton.setOnLongClickListener {
+            showMedicationListForDeletion()
             true
-        }
-    }
-    
-    private fun setupSlotViews() {
-        slotStatusContainer.removeAllViews()
-        for (i in 1..7) {
-            val imageView = ImageView(this).apply {
-                id = View.generateViewId()
-                setImageResource(R.drawable.ic_slot_empty)
-                tag = i 
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            }
-            slotStatusContainer.addView(imageView)
         }
     }
 
@@ -307,7 +285,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
             }
             .setNegativeButton("取消", null).show()
     }
-    
+
     private fun requestBluetoothPermissionsAndScan() {
         val requiredPermissions = mutableListOf<String>()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -325,7 +303,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
             multiplePermissionsLauncher.launch(permissionsToRequest)
         }
     }
-    
+
     override fun onStatusUpdate(message: String) {
         runOnUiThread {
             bleStatusTextView.text = "狀態：$message"
@@ -367,18 +345,11 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
     }
     override fun onBoxStatusUpdate(slotMask: Byte) {
         runOnUiThread {
-             Log.d("BLE_STATUS", "藥倉狀態更新，掩碼: $slotMask")
+            Log.d("BLE_STATUS", "藥倉狀態更新，掩碼: $slotMask")
             bleStatusTextView.text = "狀態：收到藥倉狀態更新 ($slotMask)"
-            for (i in 0..6) {
-                val imageView = slotStatusContainer.findViewWithTag<ImageView>(i + 1)
-                val hasMedication = (slotMask.toInt() shr i) and 1 == 1
-                imageView?.setImageResource(
-                    if (hasMedication) R.drawable.ic_slot_filled else R.drawable.ic_slot_empty
-                )
-            }
         }
     }
-    
+
     private fun syncAllRemindersToBox() {
         if (!isBleConnected) return
         runOnUiThread {
@@ -395,9 +366,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
                     val hour = calendar.get(Calendar.HOUR_OF_DAY)
                     val minute = calendar.get(Calendar.MINUTE)
                     val slotMask = determineSlotMaskFor(medication)
-                    if (slotMask > 0) {
-                        bluetoothLeManager.setReminder(slotMask, hour, minute)
-                    }
+                    bluetoothLeManager.setReminder(slotMask, hour, minute)
                 }
             }
             runOnUiThread {
@@ -406,12 +375,9 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
             }
         }, 800)
     }
-    
+
     private fun determineSlotMaskFor(medication: Medication): Byte {
-        if (medication.slotNumber in 1..7) {
-            return (1 shl (medication.slotNumber - 1)).toByte()
-        }
-        return 0
+        return 0b00000001.toByte()
     }
 
     override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
@@ -419,12 +385,9 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
     }
     override fun onNothingSelected(parent: AdapterView<*>?) {}
 
-    private fun addOrUpdateMedication() {
+    private fun addMedication() {
         val name = medicationNameEditText.text.toString()
-        val dosageValue = dosageSlider.value
-        val dosageUnit = dosageUnitSpinner.selectedItem.toString()
-        val dosageString = String.format("%.1f %s", dosageValue, dosageUnit)
-
+        val dosageString = "${dosageValueTextView.text} 顆"
         if (name.isBlank() || startDate == null || endDate == null) {
             Toast.makeText(this, "請填寫藥物名稱及日期範圍", Toast.LENGTH_SHORT).show()
             return
@@ -438,92 +401,37 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
             Toast.makeText(this, "請設定所有必要的服藥時間", Toast.LENGTH_SHORT).show()
             return
         }
-
-        showSlotChooserDialog { selectedSlot ->
-            val medicationToSave = editingMedication?.copy(
-                name = name,
-                dosage = dosageString,
-                frequency = frequencySpinner.selectedItem.toString(),
-                startDate = startDate!!.timeInMillis,
-                endDate = endDate!!.timeInMillis,
-                times = selectedTimes.mapValues { it.value.timeInMillis },
-                slotNumber = selectedSlot
-            ) ?: Medication(
-                name = name,
-                dosage = dosageString,
-                frequency = frequencySpinner.selectedItem.toString(),
-                startDate = startDate!!.timeInMillis,
-                endDate = endDate!!.timeInMillis,
-                times = selectedTimes.mapValues { it.value.timeInMillis },
-                id = generateNotificationId(),
-                slotNumber = selectedSlot
-            )
-
-            if (editingMedication != null) {
-                val index = medicationList.indexOfFirst { it.id == editingMedication!!.id }
-                if (index != -1) medicationList[index] = medicationToSave
-                Toast.makeText(this, "藥物 '${name}' 已更新", Toast.LENGTH_SHORT).show()
-            } else {
-                medicationList.add(medicationToSave)
-                Toast.makeText(this, "藥物 '${name}' 已新增", Toast.LENGTH_SHORT).show()
-            }
-            
-            notesMap[name] = notesEditText.text.toString()
-            saveMedicationData(); saveNotesData()
-            setAlarmForMedication(medicationToSave)
-            clearAndExitEditMode()
-            if (displayNotesTextView.isVisible) showAllMedicationsInTextView()
-             if (isBleConnected) syncAllRemindersToBox()
-        }
+        notesMap[name] = notesEditText.text.toString()
+        val newMedication = Medication(name, dosageString, frequencySpinner.selectedItem.toString(), startDate!!.timeInMillis, endDate!!.timeInMillis, selectedTimes.mapValues { it.value.timeInMillis }, generateNotificationId())
+        medicationList.add(newMedication)
+        saveMedicationData(); saveNotesData()
+        setAlarmForMedication(newMedication)
+        Toast.makeText(this, "藥物 '${name}' 已新增", Toast.LENGTH_SHORT).show()
+        clearInputFields()
+        if (displayNotesTextView.isVisible) { showAllMedicationsInTextView() }
     }
-    
-    private fun showSlotChooserDialog(onSlotSelected: (Int) -> Unit) {
-        val slots = (1..7).map { "第 $it 號藥倉" }.toTypedArray()
-        var selectedSlot = editingMedication?.slotNumber?.minus(1) ?: 0
-        AlertDialog.Builder(this)
-            .setTitle("請為藥物選擇藥倉")
-            .setSingleChoiceItems(slots, selectedSlot) { _, which ->
-                selectedSlot = which
-            }
-            .setPositiveButton("確定") { _, _ ->
-                onSlotSelected(selectedSlot + 1)
-            }
-            .setNegativeButton("取消", null)
-            .setCancelable(false)
-            .show()
-    }
-    
+
     private fun setAlarmForMedication(medication: Medication) {
         val am = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        // Cancel old alarms for this medication first
-         medication.times.keys.forEach { timeType ->
-            val intent = Intent(this, AlarmReceiver::class.java)
-            val pIntent = PendingIntent.getBroadcast(this, medication.id + timeType, intent, PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE)
-            if (pIntent != null) am.cancel(pIntent)
-        }
-
         medication.times.forEach { (timeType, timeMillis) ->
             val intent = Intent(this, AlarmReceiver::class.java).apply {
                 putExtra("medicationName", medication.name); putExtra("dosage", medication.dosage)
-                putExtra("notificationId", medication.id + timeType); putExtra("medicationEndDate", medication.endDate)
+                putExtra("medicationId", medication.id + timeType); putExtra("medicationEndDate", medication.endDate)
                 putExtra("originalAlarmTimeOfDay", timeMillis)
             }
             val pendingIntent = PendingIntent.getBroadcast(this, medication.id + timeType, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-            
             val alarmTime = Calendar.getInstance().apply { this.timeInMillis = timeMillis }
             var nextAlarmTime = Calendar.getInstance().apply {
                 set(Calendar.HOUR_OF_DAY, alarmTime.get(Calendar.HOUR_OF_DAY)); set(Calendar.MINUTE, alarmTime.get(Calendar.MINUTE)); set(Calendar.SECOND, 0)
                 if (before(Calendar.getInstance())) { add(Calendar.DATE, 1) }
             }
-            
             val startCalendar = Calendar.getInstance().apply { timeInMillis = medication.startDate }
             if (nextAlarmTime.before(startCalendar)) {
                 nextAlarmTime = startCalendar.apply {
                     set(Calendar.HOUR_OF_DAY, alarmTime.get(Calendar.HOUR_OF_DAY)); set(Calendar.MINUTE, alarmTime.get(Calendar.MINUTE))
                 }
-                 if (nextAlarmTime.before(Calendar.getInstance())) { nextAlarmTime.add(Calendar.DATE, 1) }
+                if (nextAlarmTime.before(Calendar.getInstance())) { nextAlarmTime.add(Calendar.DATE, 1) }
             }
-
             val endCalendar = Calendar.getInstance().apply { timeInMillis = medication.endDate; set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59) }
             if (nextAlarmTime.before(endCalendar)) {
                 try {
@@ -536,20 +444,15 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
                 } catch (e: SecurityException) { Log.e("AlarmScheduler", "無法設定精確鬧鐘", e) }
             }
         }
+        if (isBleConnected) { syncAllRemindersToBox() }
     }
 
-    private fun clearAndExitEditMode() {
-        medicationNameEditText.text.clear()
-        frequencySpinner.setSelection(0)
-        notesEditText.text.clear()
+    private fun clearInputFields() {
+        medicationNameEditText.text.clear(); frequencySpinner.setSelection(0); notesEditText.text.clear()
         startDate = null; endDate = null
         startDateButton.text = "選擇開始日期"; endDateButton.text = "選擇結束日期"
         selectedTimes.clear(); updateSelectedTimesDisplay()
-        dosageSlider.value = 1.0f
-        dosageUnitSpinner.setSelection(0)
-        
-        editingMedication = null
-        addMedicationButton.text = "新增藥物提醒"
+        dosageSlider.value = 1.0f; dosageValueTextView.text = String.format("%.1f", dosageSlider.value)
     }
 
     private fun showAllMedicationsInTextView() {
@@ -559,80 +462,28 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
         val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
         val timeLabels = mapOf(0 to "早上", 1 to "中午", 2 to "晚上", 3 to "睡前")
         medicationList.forEachIndexed { index, med ->
-            builder.append("--- 藥物 ${index + 1} (藥倉 #${med.slotNumber}) ---
-")
-                .append("名稱: ${med.name}
-").append("劑量: ${med.dosage}
-")
-                .append("頻率: ${med.frequency}
-")
-                .append("日期區間: ${dateFormat.format(Date(med.startDate))} 至 ${dateFormat.format(Date(med.endDate))}
-")
+            builder.append("--- 藥物 ${index + 1} ---\n")
+                .append("名稱: ${med.name}\n").append("劑量: ${med.dosage}\n")
+                .append("頻率: ${med.frequency}\n")
+                .append("日期區間: ${dateFormat.format(Date(med.startDate))} 至 ${dateFormat.format(Date(med.endDate))}\n")
             if (med.times.isNotEmpty()) {
-                builder.append("服藥時間:
-")
+                builder.append("服藥時間:\n")
                 med.times.toSortedMap().forEach { (type, timeMillis) ->
-                    builder.append("  - ${timeLabels[type] ?: "時間"}: ${timeFormat.format(Date(timeMillis))}
-")
+                    builder.append("  - ${timeLabels[type] ?: "時間"}: ${timeFormat.format(Date(timeMillis))}\n")
                 }
             }
-            notesMap[med.name]?.takeIf { it.isNotBlank() }?.let { builder.append("備註: $it
-") }
-            builder.append("
-")
+            notesMap[med.name]?.takeIf { it.isNotBlank() }?.let { builder.append("備註: $it\n") }
+            builder.append("\n")
         }
         displayNotesTextView.text = builder.toString()
     }
 
-    private fun showMedicationListForActions() {
-        if (medicationList.isEmpty()) { Toast.makeText(this, "沒有藥物", Toast.LENGTH_SHORT).show(); return }
+    private fun showMedicationListForDeletion() {
+        if (medicationList.isEmpty()) { Toast.makeText(this, "沒有可刪除的藥物", Toast.LENGTH_SHORT).show(); return }
         val medNames = medicationList.map { it.name }.toTypedArray()
-        AlertDialog.Builder(this).setTitle("選擇藥物進行操作").setItems(medNames) { _, which ->
-            showActionDialogFor(medicationList[which])
+        AlertDialog.Builder(this).setTitle("選擇要刪除的藥物").setItems(medNames) { _, which ->
+            confirmAndDeleteMedication(medicationList[which])
         }.setNegativeButton("取消", null).show()
-    }
-
-    private fun showActionDialogFor(medication: Medication) {
-        val options = arrayOf("編輯提醒", "刪除此藥物")
-        AlertDialog.Builder(this)
-            .setTitle(medication.name)
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> startEditMode(medication)
-                    1 -> confirmAndDeleteMedication(medication)
-                }
-            }
-            .show()
-    }
-    
-    private fun startEditMode(medication: Medication) {
-        editingMedication = medication
-        addMedicationButton.text = "更新提醒"
-
-        medicationNameEditText.setText(medication.name)
-        notesEditText.setText(notesMap[medication.name])
-        
-        val dosageParts = medication.dosage.split(" ")
-        if (dosageParts.size == 2) {
-            dosageSlider.value = dosageParts[0].toFloatOrNull() ?: 1.0f
-            val unitIndex = (dosageUnitSpinner.adapter as ArrayAdapter<String>).getPosition(dosageParts[1])
-            if (unitIndex >= 0) dosageUnitSpinner.setSelection(unitIndex)
-        }
-        
-        val freqIndex = (frequencySpinner.adapter as ArrayAdapter<String>).getPosition(medication.frequency)
-        if (freqIndex >= 0) frequencySpinner.setSelection(freqIndex)
-        
-        startDate = Calendar.getInstance().apply { timeInMillis = medication.startDate }
-        endDate = Calendar.getInstance().apply { timeInMillis = medication.endDate }
-        val dateFormat = SimpleDateFormat("yyyy/MM/dd", Locale.getDefault())
-        startDateButton.text = dateFormat.format(startDate!!.time)
-        endDateButton.text = dateFormat.format(endDate!!.time)
-        
-        selectedTimes.clear()
-        selectedTimes.putAll(medication.times.mapValues { Calendar.getInstance().apply { timeInMillis = it.value } })
-        updateSelectedTimesDisplay()
-
-        Toast.makeText(this, "編輯模式：修改後請點擊更新", Toast.LENGTH_SHORT).show()
     }
 
     private fun confirmAndDeleteMedication(medication: Medication) {
@@ -640,15 +491,12 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
             .setPositiveButton("確定") { _, _ -> deleteMedication(medication) }
             .setNegativeButton("取消", null).show()
     }
-    
+
     private fun deleteMedication(medication: Medication) {
         medication.times.forEach { (timeType, _) ->
             val intent = Intent(this, AlarmReceiver::class.java)
             val pIntent = PendingIntent.getBroadcast(this, medication.id + timeType, intent, PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE)
-            if (pIntent != null) {
-                alarmManager?.cancel(pIntent)
-                pIntent.cancel()
-            }
+            if (pIntent != null) alarmManager?.cancel(pIntent)
         }
         medicationList.remove(medication); notesMap.remove(medication.name)
         saveMedicationData(); saveNotesData()
@@ -666,7 +514,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
             else { endDate = sel; endDateButton.text = fmt }
         }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
     }
-    
+
     private fun showTimePickerDialog(type: Int) {
         val cal = Calendar.getInstance()
         TimePickerDialog(this, { _, h, m ->
@@ -683,7 +531,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
         eveningTimeDisplay.text = selectedTimes[2]?.let { fmt.format(it.time) } ?: def
         bedtimeTimeDisplay.text = selectedTimes[3]?.let { fmt.format(it.time) } ?: def
     }
-    
+
     private fun updateTimeSettingsVisibility(pos: Int) {
         val map = mapOf(0 to listOf(true, false, false, false), 1 to listOf(true, true, false, false), 2 to listOf(true, true, true, false), 3 to listOf(true, true, true, true))
         val vis = map[pos]
@@ -716,10 +564,10 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
                 startActivity(i)
             }.setNegativeButton("取消", null).show()
     }
-    
+
     private fun loadAllData() { loadMedicationData(); loadNotesData(); loadDailyStatusData() }
     private fun saveAllData() { saveMedicationData(); saveNotesData(); saveDailyStatusData() }
-    
+
     private fun saveMedicationData() { sharedPreferences.edit { putString(KEY_MEDICATION_DATA, gson.toJson(medicationList)) } }
     private fun loadMedicationData() {
         sharedPreferences.getString(KEY_MEDICATION_DATA, null)?.let {
@@ -742,17 +590,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
         }
     }
 
-    data class Medication(
-        val id: Int,
-        var name: String, 
-        var dosage: String,
-        var frequency: String, 
-        var startDate: Long, 
-        var endDate: Long, 
-        var times: Map<Int, Long>,
-        var slotNumber: Int
-    )
-
+    data class Medication(val name: String, val dosage: String, val frequency: String, val startDate: Long, val endDate: Long, val times: Map<Int, Long>, val id: Int)
     class DayViewContainer(view: View) : ViewContainer(view) {
         val textView: TextView = view.findViewById(R.id.calendarDayText)
         val dotView: View = view.findViewById(R.id.calendarDayDot)
