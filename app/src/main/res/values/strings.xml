@@ -1,3 +1,14 @@
 <resources>
-    <string name="app_name">Medication reminder</string>
+    <string name="app_name">藥物提醒</string>
+    <string-array name="medication_frequency_options">
+        <item>每日一次</item>
+        <item>每日兩次</item>
+        <item>每日三次</item>
+        <item>每日四次</item>
+    </string-array>
+    <string-array name="dosage_unit_options">
+        <item>顆</item>
+        <item>毫升</item>
+        <item>毫克</item>
+    </string-array>
 </resources>

@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <Button
+            android:id="@+id/connectBoxButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="連接智慧藥盒" />
+
+        <TextView
+            android:id="@+id/bleStatusTextView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="藍牙狀態：未連接" />
+
+        <LinearLayout
+            android:id="@+id/slotStatusContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal" />
+
+        <EditText
+            android:id="@+id/medicationNameEditText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="藥物名稱 (例如：維他命C)" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="劑量：" />
+
+        <com.google.android.material.slider.Slider
+            android:id="@+id/dosageSlider"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:value="1.0"
+            android:valueFrom="0.5"
+            android:valueTo="5.0"
+            android:stepSize="0.5" />
+
+        <TextView
+            android:id="@+id/dosageValueTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="1.0" />
+
+        <Spinner
+            android:id="@+id/dosageUnitSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="頻率：" />
+
+        <Spinner
+            android:id="@+id/frequencySpinner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <Button
+            android:id="@+id/startDateButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="選擇開始日期" />
+
+        <Button
+            android:id="@+id/endDateButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="選擇結束日期" />
+
+        <LinearLayout
+            android:id="@+id/timeSettingsLayout"
+            android:layout_width="match_parent"
+            android.layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <Button
+                android:id="@+id/morningTimeButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="早上時間" />
+
+            <TextView
+                android:id="@+id/morningTimeDisplay"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="未設定" />
+
+            <Button
+                android:id="@+id/noonTimeButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="中午時間" />
+
+            <TextView
+                android:id="@+id/noonTimeDisplay"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="未設定" />
+
+            <Button
+                android:id="@+id/eveningTimeButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="晚上時間" />
+
+            <TextView
+                android:id="@+id/eveningTimeDisplay"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="未設定" />
+
+            <Button
+                android:id="@+id/bedtimeTimeButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="睡前時間" />
+
+            <TextView
+                android:id="@+id/bedtimeTimeDisplay"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="未設定" />
+        </LinearLayout>
+
+        <EditText
+            android:id="@+id/notesEditText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="備註 (例如：飯後服用)" />
+
+        <Button
+            android:id="@+id/addMedicationButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="新增藥物提醒" />
+
+        <Button
+            android:id="@+id/showAllMedicationsButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="顯示/操作所有藥物" />
+
+        <TextView
+            android:id="@+id/displayNotesTextView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <com.kizitonwose.calendar.view.CalendarView
+            android:id="@+id/calendarView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cv_dayViewResource="@layout/calendar_day_layout"
+            app:cv_monthHeaderResource="@layout/calendar_month_header_layout" />
+
+        <Button
+            android:id="@+id/testCommandButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Test" />
+
+    </LinearLayout>
+</ScrollView>
