@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<!-- **activity_main.xml (V8 完整版)** -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -31,48 +31,88 @@
             android:id="@+id/bleStatusTextView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
             android:text="藍牙狀態：未連接" />
 
+        <!-- 新增：溫濕度顯示區 -->
         <LinearLayout
-            android:id="@+id/slotStatusContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal" />
+            android:orientation="horizontal"
+            android:layout_marginBottom="16dp">
 
-        <EditText
-            android:id="@+id/medicationNameEditText"
+            <TextView
+                android:id="@+id/tempTextView"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="溫度: -- °C" />
+
+            <TextView
+                android:id="@+id/humidityTextView"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="濕度: -- %" />
+        </LinearLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="藥物名稱 (例如：維他命C)" />
+             android:hint="藥物名稱 (例如：維他命C)">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/medicationNameEditText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+        </com.google.android.material.textfield.TextInputLayout>
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="劑量：" />
+            android:layout_marginTop="8dp"
+            android:text="單次劑量：" />
 
-        <com.google.android.material.slider.Slider
-            android:id="@+id/dosageSlider"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:value="1.0"
-            android:valueFrom="0.5"
-            android:valueTo="5.0"
-            android:stepSize="0.5" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-        <TextView
-            android:id="@+id/dosageValueTextView"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="1.0" />
+            <com.google.android.material.slider.Slider
+                android:id="@+id/dosageSlider"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:stepSize="0.5"
+                android:value="1.0"
+                android:valueFrom="0.5"
+                android:valueTo="5.0" />
 
-        <Spinner
-            android:id="@+id/dosageUnitSpinner"
+            <TextView
+                android:id="@+id/dosageValueTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="50dp"
+                android:text="1.0 顆" />
+        </LinearLayout>
+
+        <!-- 新增：總藥量輸入框 -->
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+            android:hint="總藥量 (顆)">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/totalPillsEditText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number" />
+        </com.google.android.material.textfield.TextInputLayout>
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
             android:text="頻率：" />
 
         <Spinner
@@ -96,84 +136,136 @@
             android:id="@+id/timeSettingsLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:visibility="gone"
+            tools:visibility="visible">
 
-            <Button
-                android:id="@+id/morningTimeButton"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="早上時間" />
-
-            <TextView
-                android:id="@+id/morningTimeDisplay"
+                android:orientation="horizontal">
+                <Button
+                    android:id="@+id/morningTimeButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="早上時間" />
+                <TextView
+                    android:id="@+id/morningTimeDisplay"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="未設定" />
+            </LinearLayout>
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="未設定" />
-
-            <Button
-                android:id="@+id/noonTimeButton"
+                android:orientation="horizontal">
+                <Button
+                    android:id="@+id/noonTimeButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="中午時間" />
+                <TextView
+                    android:id="@+id/noonTimeDisplay"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                     android:layout_marginStart="8dp"
+                    android:text="未設定" />
+            </LinearLayout>
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="中午時間" />
-
-            <TextView
-                android:id="@+id/noonTimeDisplay"
+                android:orientation="horizontal">
+                <Button
+                    android:id="@+id/eveningTimeButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="晚上時間" />
+                <TextView
+                    android:id="@+id/eveningTimeDisplay"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                     android:layout_marginStart="8dp"
+                    android:text="未設定" />
+            </LinearLayout>
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="未設定" />
-
-            <Button
-                android:id="@+id/eveningTimeButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="晚上時間" />
-
-            <TextView
-                android:id="@+id/eveningTimeDisplay"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="未設定" />
-
-            <Button
-                android:id="@+id/bedtimeTimeButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="睡前時間" />
-
-            <TextView
-                android:id="@+id/bedtimeTimeDisplay"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="未設定" />
+                android:orientation="horizontal">
+                <Button
+                    android:id="@+id/bedtimeTimeButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="睡前時間" />
+                <TextView
+                    android:id="@+id/bedtimeTimeDisplay"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                     android:layout_marginStart="8dp"
+                    android:text="未設定" />
+            </LinearLayout>
         </LinearLayout>
 
-        <EditText
-            android:id="@+id/notesEditText"
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="備註 (例如：飯後服用)" />
+            android:hint="備註 (例如：飯後服用)">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/notesEditText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"/>
+        </com.google.android.material.textfield.TextInputLayout>
 
         <Button
             android:id="@+id/addMedicationButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
             android:text="新增藥物提醒" />
 
         <Button
             android:id="@+id/showAllMedicationsButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="顯示/操作所有藥物" />
+            android:text="顯示所有藥物" />
 
         <TextView
             android:id="@+id/displayNotesTextView"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+            android:background="#f0f0f0"
+            android:padding="8dp"
+            android:visibility="gone"
+            tools:text="- 藥物資訊預覽 -"
+            tools:visibility="visible" />
+            
+        <!-- 新增：依從率分析區 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="服藥依從率" />
+
+        <ProgressBar
+            android:id="@+id/complianceProgressBar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="100"
+            tools:progress="75" />
+
+        <TextView
+            android:id="@+id/complianceRateTextView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            tools:text="過去30天服藥依從率: 75%" />
 
         <com.kizitonwose.calendar.view.CalendarView
             android:id="@+id/calendarView"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="300dp"
+            android:layout_marginTop="16dp"
             app:cv_dayViewResource="@layout/calendar_day_layout"
             app:cv_monthHeaderResource="@layout/calendar_month_header_layout" />
 
@@ -181,7 +273,9 @@
             android:id="@+id/testCommandButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Test" />
+            android:text="請求狀態"
+            android:visibility="gone"
+            tools:visibility="visible" />
 
     </LinearLayout>
 </ScrollView>
