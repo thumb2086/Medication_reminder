@@ -34,6 +34,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.core.view.isGone
@@ -273,19 +274,17 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
 
     private fun applySelectedTheme() {
         when (sharedPreferences.getInt(KEY_SELECTED_THEME, THEME_DEFAULT)) {
-            THEME_DEFAULT -> setTheme(R.style.Theme_MedicationReminderApp)
-            THEME_PURPLE -> setTheme(R.style.Theme_MedicationReminderApp_Purple)
-            THEME_BLUE -> setTheme(R.style.Theme_MedicationReminderApp_Blue)
-            THEME_GREEN -> setTheme(R.style.Theme_MedicationReminderApp_Green)
+            THEME_LIGHT -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
+            THEME_DARK -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
+            else -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
         }
     }
 
     private fun showThemeChooserDialog() {
         val themes = arrayOf(
             getString(R.string.themes_default),
-            getString(R.string.themes_purple),
-            getString(R.string.themes_blue),
-            getString(R.string.themes_green)
+            getString(R.string.themes_light),
+            getString(R.string.themes_dark)
         )
         val currentThemeIndex = sharedPreferences.getInt(KEY_SELECTED_THEME, THEME_DEFAULT)
         AlertDialog.Builder(this)
@@ -315,7 +314,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
     @SuppressLint("SetTextI18n")
     override fun onStatusUpdate(message: String) {
         runOnUiThread {
-            bleStatusTextView.text = getString(R.string.ble_status_message, message)
+            bleStatusTextView.text = getString(R.string.ble_status, message)
             if (message.contains("失敗") || message.contains("超時")) {
                 connectBoxButton.isEnabled = true
                 connectBoxButton.text = getString(R.string.connect_to_box)
@@ -752,9 +751,8 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
         const val KEY_DAILY_STATUS = "daily_status"
         const val STATUS_ALL_TAKEN = 2
         const val THEME_DEFAULT = 0
-        const val THEME_PURPLE = 1
-        const val THEME_BLUE = 2
-        const val THEME_GREEN = 3
+        const val THEME_LIGHT = 1
+        const val THEME_DARK = 2
         private val random = Random()
         fun generateNotificationId(): Int = random.nextInt(1_000_000)
     }

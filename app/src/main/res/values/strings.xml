@@ -32,15 +32,15 @@
     <string name="fill_all_fields">請填寫所有必填欄位</string>
     <string name="start_date_after_end_date">開始日期不能晚於結束日期</string>
     <string name="set_all_medication_times">請設定所有必要的服藥時間</string>
-    <string name="medication_added_to_slot">藥物 '%s' 已新增至第 %d 倉</string>
+    <string name="medication_added_to_slot">藥物 \'%s\' 已新增至第 %d 倉</string>
     <string name="low_stock_warning_title">低庫存警告</string>
-    <string name="low_stock_warning_message">藥物 '%s' 即將用完，僅剩 %d 顆，請記得補充！</string>
+    <string name="low_stock_warning_message">藥物 \'%s\' 即將用完，僅剩 %d 顆，請記得補充！</string>
     <string name="reminders_synced_to_box">提醒已同步至藥盒</string>
     <string name="no_medication_reminders">目前沒有藥物提醒。</string>
     <string name="no_medication_to_delete">沒有可刪除的藥物</string>
     <string name="confirm_delete_title">確認刪除</string>
-    <string name="confirm_delete_message">您確定要刪除藥物提醒 '%s' 嗎？</string>
-    <string name="medication_deleted">'%s' 已刪除</string>
+    <string name="confirm_delete_message">您確定要刪除藥物提醒 \'%s\' 嗎？</string>
+    <string name="medication_deleted">\'%s\' 已刪除</string>
     <string name="not_set">未設定</string>
     <string name="notification_channel_name">藥物提醒</string>
     <string name="notification_channel_description">用於藥物提醒的通知</string>
@@ -54,9 +54,8 @@
     <string name="slot_n">藥倉 %d</string>
     <string name="choose_theme_title">選擇應用程式主題</string>
     <string name="themes_default">跟隨系統 (預設)</string>
-    <string name="themes_purple">夢幻紫</string>
-    <string name="themes_blue">天空藍</string>
-    <string name="themes_green">活力綠</string>
+    <string name="themes_light">亮色模式</string>
+    <string name="themes_dark">暗色模式</string>
     <string name="medication_info_header">--- 藥物 %d ---</string>
     <string name="medication_info_name">名稱: %s (藥倉: #%d)\n</string>
     <string name="medication_info_dosage">劑量: %s\n</string>
@@ -77,6 +76,4 @@
     <string name="bt_permission_denied">需要藍牙和定位權限才能連接藥盒</string>
     <string name="connect_box_first">請先連接藥盒</string>
     <string name="box_anomaly_title">藥盒異常</string>
-    <string name="status_update_message">狀態：收到藥倉狀態更新 (%s)</string>
-    <string name="ble_status_message">狀態：%s</string>
 </resources>

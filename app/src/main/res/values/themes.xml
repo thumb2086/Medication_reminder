@@ -12,22 +12,4 @@
         <!-- Status bar color. -->
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
     </style>
-
-    <style name="Theme.MedicationReminderApp.Purple" parent="Theme.MedicationReminderApp">
-        <item name="colorPrimary">@color/purple_200</item>
-        <item name="colorPrimaryVariant">@color/purple_700</item>
-        <item name="colorOnPrimary">@color/black</item>
-    </style>
-
-    <style name="Theme.MedicationReminderApp.Blue" parent="Theme.MedicationReminderApp">
-        <item name="colorPrimary">@color/blue_200</item>
-        <item name="colorPrimaryVariant">@color/blue_700</item>
-        <item name="colorOnPrimary">@color/black</item>
-    </style>
-
-    <style name="Theme.MedicationReminderApp.Green" parent="Theme.MedicationReminderApp">
-        <item name="colorPrimary">@color/green_200</item>
-        <item name="colorPrimaryVariant">@color/green_700</item>
-        <item name="colorOnPrimary">@color/black</item>
-    </style>
 </resources>
