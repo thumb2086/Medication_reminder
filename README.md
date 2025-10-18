@@ -21,7 +21,7 @@
     *   在指定的服藥時間發送本地通知。
     *   當藥物庫存過低時，發出警告提醒。
 *   **個人化設定:**
-    *   提供多種主題顏色 (預設、紫色、藍色、綠色) 供使用者選擇。
+    *   提供亮色、暗色及跟隨系統設定的主題模式，讓使用者可以依據偏好調整介面。
 
 ## 如何開始
 
@@ -55,7 +55,7 @@
 ## 專案結構
 
 *   `app/src/main/java/com/example/medicationreminderapp/`:
-    *   `MainActivity.kt`: App 的主要活動，包含大部分的 UI 邏輯與使用者互動。
+    *   `MainActivity.kt`: App 的主要活動，包含大部分的 UI 邏輯、使用者互動及主題設定。
     *   `BluetoothLeManager.kt`: 處理所有藍牙低功耗相關的操作，包括掃描、連接、通訊等。
     *   `AlarmReceiver.kt`: 接收系統鬧鐘事件，並觸發藥物提醒通知。
     *   `Medication.kt`: 定義藥物資料結構的 data class。
