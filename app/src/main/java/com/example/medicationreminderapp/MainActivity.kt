@@ -1,4 +1,4 @@
-// **MainActivity.kt (V8 完整版，無省略)**
+// **MainActivity.kt (V9 - Slot Spinner Implemented)**
 package com.example.medicationreminderapp
 
 import android.Manifest
@@ -69,6 +69,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
     private lateinit var dosageSlider: Slider
     private lateinit var dosageValueTextView: TextView
     private lateinit var frequencySpinner: Spinner
+    private lateinit var slotSpinner: Spinner
     private lateinit var startDateButton: Button
     private lateinit var endDateButton: Button
     private lateinit var timeSettingsLayout: LinearLayout
@@ -83,10 +84,10 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
     private lateinit var notesEditText: EditText
     private lateinit var displayNotesTextView: TextView
     private lateinit var calendarView: com.kizitonwose.calendar.view.CalendarView
-    private lateinit var complianceRateTextView: TextView // 依從率顯示
-    private lateinit var complianceProgressBar: ProgressBar // 依從率進度條
-    private lateinit var tempTextView: TextView // 溫度顯示
-    private lateinit var humidityTextView: TextView // 濕度顯示
+    private lateinit var complianceRateTextView: TextView
+    private lateinit var complianceProgressBar: ProgressBar
+    private lateinit var tempTextView: TextView
+    private lateinit var humidityTextView: TextView
 
     // --- 數據 & 邏輯相關屬性 ---
     private lateinit var sharedPreferences: SharedPreferences
@@ -125,7 +126,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
         setupListeners()
         setupCalendar()
         requestAppPermissions()
-        updateComplianceRate() // 首次啟動時計算一次依從率
+        updateComplianceRate()
     }
 
     override fun onResume() {
@@ -155,6 +156,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
         dosageSlider = findViewById(R.id.dosageSlider)
         dosageValueTextView = findViewById(R.id.dosageValueTextView)
         frequencySpinner = findViewById(R.id.frequencySpinner)
+        slotSpinner = findViewById(R.id.slotSpinner)
         startDateButton = findViewById(R.id.startDateButton)
         endDateButton = findViewById(R.id.endDateButton)
         timeSettingsLayout = findViewById(R.id.timeSettingsLayout)
@@ -189,6 +191,13 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
             frequencySpinner.adapter = it
         }
         frequencySpinner.onItemSelectedListener = this
+
+        val slotOptions = (1..8).map { "藥倉 $it" }.toTypedArray()
+        val slotAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, slotOptions).apply {
+            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        }
+        slotSpinner.adapter = slotAdapter
+
         medicationNameEditText.addTextChangedListener { notesEditText.setText(notesMap[it.toString()] ?: "") }
         dosageSlider.addOnChangeListener { _, value, _ -> dosageValueTextView.text = String.format(Locale.getDefault(), getString(R.string.dosage_format), value) }
         dosageValueTextView.text = String.format(Locale.getDefault(), getString(R.string.dosage_format), dosageSlider.value)
@@ -212,7 +221,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
         }
         testCommandButton.setOnClickListener {
             if (isBleConnected) {
-                bluetoothLeManager.requestStatus() // Changed from syncTime to requestStatus for testing
+                bluetoothLeManager.requestStatus()
             } else {
                 Toast.makeText(this, getString(R.string.connect_box_first), Toast.LENGTH_SHORT).show()
             }
@@ -308,7 +317,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
     }
 
     // =================================================================================
-    // 藍牙監聽器回呼 (V8 版本)
+    // 藍牙監聽器回呼
     // =================================================================================
 
     @SuppressLint("SetTextI18n")
@@ -329,11 +338,9 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
             connectBoxButton.text = getString(R.string.disconnect_from_box)
             bleStatusTextView.text = getString(R.string.ble_status_connected_syncing)
             testCommandButton.isVisible = true
-            // 連接成功後，延遲一下再請求狀態，確保 ESP32 準備好
             Handler(Looper.getMainLooper()).postDelayed({
                 bluetoothLeManager.requestStatus()
             }, 500)
-            // Start the sync process after a delay
             Handler(Looper.getMainLooper()).postDelayed({
                  bluetoothLeManager.syncTime()
             }, 1000)
@@ -355,20 +362,14 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
     override fun onMedicationTaken(slotNumber: Int) {
         runOnUiThread {
             Toast.makeText(this, getString(R.string.medication_taken_report, slotNumber), Toast.LENGTH_LONG).show()
-
-            // 根據 slotNumber 找到對應的藥物並更新庫存
             val medication = medicationList.find { it.slotNumber == slotNumber }
             medication?.let {
                 if (it.remainingPills > 0) {
                     it.remainingPills--
                 }
-                saveMedicationData() // 保存藥物列表的更新
-
-                // 檢查低庫存
+                saveMedicationData()
                 checkLowStock(it)
             }
-
-            // 更新日曆和依從率
             val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
             dailyStatusMap[todayStr] = STATUS_ALL_TAKEN
             saveDailyStatusData()
@@ -396,7 +397,6 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
         runOnUiThread {
             tempTextView.text = getString(R.string.temperature_format, temperature)
             humidityTextView.text = getString(R.string.humidity_format, humidity)
-            // 可以在這裡加入溫濕度超標的警告邏輯
         }
     }
 
@@ -407,21 +407,26 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
                 2 -> getString(R.string.error_sensor)
                 else -> getString(R.string.error_unknown, errorCode)
             }
-            AlertDialog.Builder(this).setTitle(getString(R.string.box_anomaly_title)).setMessage(message).setPositiveButton(getString(R.string.cancel), null).show()
+            AlertDialog.Builder(this).setTitle(getString(R.string.box_anomaly_title)).setMessage(message).setPositiveButton(getString(R.string.ok), null).show()
         }
     }
 
-    override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) { updateTimeSettingsVisibility(position) }
+    override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+        if (parent?.id == R.id.frequencySpinner) {
+            updateTimeSettingsVisibility(position)
+        }
+    }
+
     override fun onNothingSelected(parent: AdapterView<*>?) {}
 
     // =================================================================================
-    // V8 新功能函式
+    // Medication Management
     // =================================================================================
 
     private fun addMedication() {
         val name = medicationNameEditText.text.toString()
         val dosageString = dosageValueTextView.text.toString()
-        val totalPillsString = findViewById<EditText>(R.id.totalPillsEditText).text.toString() // 假設 UI 上有這個輸入框
+        val totalPillsString = findViewById<EditText>(R.id.totalPillsEditText).text.toString()
 
         if (name.isBlank() || startDate == null || endDate == null || totalPillsString.isBlank()) {
             Toast.makeText(this, getString(R.string.fill_all_fields), Toast.LENGTH_SHORT).show()
@@ -439,48 +444,44 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
         }
         notesMap[name] = notesEditText.text.toString()
 
-        // *** 顯示藥倉選擇對話框 ***
-        showSlotChooserDialog { selectedSlot ->
-            // --- 在用戶選擇藥倉後，執行後續邏輯 ---
-            val newMedication = Medication(
-                name = name,
-                dosage = dosageString,
-                frequency = frequencySpinner.selectedItem.toString(),
-                startDate = startDate!!.timeInMillis,
-                endDate = endDate!!.timeInMillis,
-                times = selectedTimes.mapValues { it.value.timeInMillis },
-                id = generateNotificationId(),
-                slotNumber = selectedSlot,
-                totalPills = totalPills,
-                remainingPills = totalPills
-            )
-            medicationList.add(newMedication)
-            saveAllData()
-            setAlarmForMedication(newMedication) // 這會觸發藍牙同步
-            Toast.makeText(this, getString(R.string.medication_added_to_slot, name, selectedSlot), Toast.LENGTH_SHORT).show()
-            clearInputFields()
-            if (displayNotesTextView.isVisible) { showAllMedicationsInTextView() }
+        val selectedSlot = slotSpinner.selectedItemPosition + 1
+        val isSlotOccupied = medicationList.any { it.slotNumber == selectedSlot }
+        if (isSlotOccupied) {
+            AlertDialog.Builder(this)
+                .setTitle(getString(R.string.slot_occupied_title))
+                .setMessage(getString(R.string.slot_occupied_message, selectedSlot))
+                .setPositiveButton(getString(R.string.ok), null)
+                .show()
+            return
         }
-    }
 
-    private fun showSlotChooserDialog(onSlotSelected: (Int) -> Unit) {
-        val slots = Array(8) { getString(R.string.slot_n, it + 1) } // Changed to 8 slots
-        AlertDialog.Builder(this)
-            .setTitle(getString(R.string.select_slot_title))
-            .setItems(slots) { _, which ->
-                onSlotSelected(which + 1) // 回傳 1-8
-            }
-            .setNegativeButton(getString(R.string.cancel), null)
-            .show()
+        val newMedication = Medication(
+            name = name,
+            dosage = dosageString,
+            frequency = frequencySpinner.selectedItem.toString(),
+            startDate = startDate!!.timeInMillis,
+            endDate = endDate!!.timeInMillis,
+            times = selectedTimes.mapValues { it.value.timeInMillis },
+            id = generateNotificationId(),
+            slotNumber = selectedSlot,
+            totalPills = totalPills,
+            remainingPills = totalPills
+        )
+        medicationList.add(newMedication)
+        saveAllData()
+        setAlarmForMedication(newMedication)
+        Toast.makeText(this, getString(R.string.medication_added_to_slot, name, selectedSlot), Toast.LENGTH_SHORT).show()
+        clearInputFields()
+        if (displayNotesTextView.isVisible) { showAllMedicationsInTextView() }
     }
 
     private fun checkLowStock(medication: Medication) {
-        val threshold = (medication.totalPills * 0.1).toInt().coerceAtLeast(1) // 低於 10% 或至少 1 顆時警告
+        val threshold = (medication.totalPills * 0.1).toInt().coerceAtLeast(1)
         if (medication.remainingPills > 0 && medication.remainingPills <= threshold) {
             AlertDialog.Builder(this)
                 .setTitle(getString(R.string.low_stock_warning_title))
                 .setMessage(getString(R.string.low_stock_warning_message, medication.name, medication.remainingPills))
-                .setPositiveButton(getString(R.string.cancel), null)
+                .setPositiveButton(getString(R.string.ok), null)
                 .show()
         }
     }
@@ -492,7 +493,6 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
         var totalExpected = 0
         var totalTaken = 0
 
-        // 遍歷過去 30 天
         for (i in 0..29) {
             val day = (thirtyDaysAgo.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, i) }
             val dayStr = formatter.format(day.time)
@@ -505,7 +505,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
             }
 
             if (dailyExpectedCount > 0) {
-                totalExpected += 1 // 每天算作一個單位
+                totalExpected += 1 
                 if (dailyStatusMap[dayStr] == STATUS_ALL_TAKEN) {
                     totalTaken += 1
                 }
@@ -524,7 +524,6 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
             medicationList.forEach { medication ->
                 medication.times.forEach { (_, timeMillis) ->
                     val calendar = Calendar.getInstance().apply { this.timeInMillis = timeMillis }
-                    // 使用新的 setReminder 格式
                     bluetoothLeManager.setReminder(medication.slotNumber, calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE))
                 }
             }
@@ -589,6 +588,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
         dosageSlider.value = 1.0f
         dosageValueTextView.text = String.format(Locale.getDefault(), getString(R.string.dosage_format), dosageSlider.value)
         findViewById<EditText>(R.id.totalPillsEditText).text.clear()
+        slotSpinner.setSelection(0)
     }
 
     private fun showAllMedicationsInTextView() {
@@ -619,7 +619,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
                 }
             }
             notesMap[med.name]?.takeIf { it.isNotBlank() }?.let { builder.append(getString(R.string.medication_info_notes, it)) }
-            builder.append("")
+            builder.append("\n\n")
         }
         displayNotesTextView.text = builder.toString()
     }
@@ -637,7 +637,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
 
     private fun confirmAndDeleteMedication(medication: Medication) {
         AlertDialog.Builder(this).setTitle(getString(R.string.confirm_delete_title)).setMessage(getString(R.string.confirm_delete_message, medication.name))
-            .setPositiveButton(getString(R.string.cancel)) { _, _ -> deleteMedication(medication) }
+            .setPositiveButton(getString(R.string.delete)) { _, _ -> deleteMedication(medication) }
             .setNegativeButton(getString(R.string.cancel), null).show()
     }
 
@@ -740,10 +740,9 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
         val endDate: Long,
         val times: Map<Int, Long>,
         val id: Int,
-        // *** V8 新增 ***
-        val slotNumber: Int,    // 藥倉編號 (1-8)
-        var totalPills: Int,    // 藥物總數 (可變)
-        var remainingPills: Int // 剩餘藥量 (可變)
+        val slotNumber: Int,
+        var totalPills: Int,
+        var remainingPills: Int
     )
 
     companion object {
