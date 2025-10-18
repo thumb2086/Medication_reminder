@@ -352,14 +352,16 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
         }
     }
 
-    override fun onMedicationTaken(slotNumber: Int, remainingPills: Int) {
+    override fun onMedicationTaken(slotNumber: Int) {
         runOnUiThread {
             Toast.makeText(this, getString(R.string.medication_taken_report, slotNumber), Toast.LENGTH_LONG).show()
 
             // 根據 slotNumber 找到對應的藥物並更新庫存
             val medication = medicationList.find { it.slotNumber == slotNumber }
             medication?.let {
-                it.remainingPills = remainingPills
+                if (it.remainingPills > 0) {
+                    it.remainingPills--
+                }
                 saveMedicationData() // 保存藥物列表的更新
 
                 // 檢查低庫存
@@ -462,11 +464,11 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
     }
 
     private fun showSlotChooserDialog(onSlotSelected: (Int) -> Unit) {
-        val slots = Array(7) { getString(R.string.slot_n, it + 1) }
+        val slots = Array(8) { getString(R.string.slot_n, it + 1) } // Changed to 8 slots
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.select_slot_title))
             .setItems(slots) { _, which ->
-                onSlotSelected(which + 1) // 回傳 1-7
+                onSlotSelected(which + 1) // 回傳 1-8
             }
             .setNegativeButton(getString(R.string.cancel), null)
             .show()
@@ -523,7 +525,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
                 medication.times.forEach { (_, timeMillis) ->
                     val calendar = Calendar.getInstance().apply { this.timeInMillis = timeMillis }
                     // 使用新的 setReminder 格式
-                    bluetoothLeManager.setReminder(medication.slotNumber, calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE), medication.totalPills)
+                    bluetoothLeManager.setReminder(medication.slotNumber, calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE))
                 }
             }
             runOnUiThread { Toast.makeText(this, getString(R.string.reminders_synced_to_box), Toast.LENGTH_SHORT).show() }
@@ -647,10 +649,12 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
             if (pIntent != null) alarmManager?.cancel(pIntent)
         }
         medicationList.remove(medication); notesMap.remove(medication.name)
+        if (isBleConnected) {
+            bluetoothLeManager.cancelReminder(medication.slotNumber)
+        }
         saveMedicationData(); saveNotesData()
         Toast.makeText(this, getString(R.string.medication_deleted, medication.name), Toast.LENGTH_SHORT).show()
         if (displayNotesTextView.isVisible) showAllMedicationsInTextView()
-        if (isBleConnected) syncAllRemindersToBox()
     }
 
     private fun showDatePickerDialog(isStart: Boolean) {
@@ -737,7 +741,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
         val times: Map<Int, Long>,
         val id: Int,
         // *** V8 新增 ***
-        val slotNumber: Int,    // 藥倉編號 (1-7)
+        val slotNumber: Int,    // 藥倉編號 (1-8)
         var totalPills: Int,    // 藥物總數 (可變)
         var remainingPills: Int // 剩餘藥量 (可變)
     )

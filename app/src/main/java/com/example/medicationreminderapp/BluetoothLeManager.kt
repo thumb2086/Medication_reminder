@@ -26,11 +26,11 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
         fun onStatusUpdate(message: String)
         fun onDeviceConnected()
         fun onDeviceDisconnected()
-        fun onMedicationTaken(slotNumber: Int, remainingPills: Int) // <-- 修改
+        fun onMedicationTaken(slotNumber: Int)
         fun onBoxStatusUpdate(slotMask: Byte)
         fun onTimeSyncAcknowledged()
-        fun onSensorData(temperature: Float, humidity: Float) // <-- 新增
-        fun onError(errorCode: Int) // <-- 新增
+        fun onSensorData(temperature: Float, humidity: Float)
+        fun onError(errorCode: Int)
     }
 
     private val bluetoothAdapter: BluetoothAdapter? by lazy(LazyThreadSafetyMode.NONE) {
@@ -141,8 +141,8 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
             if (data.isEmpty()) return
             when (data[0].toInt() and 0xFF) {
                 0x80 -> { if (data.size > 1) listener.onBoxStatusUpdate(data[1]) }
-                0x81 -> { // 藥物被取出，帶有剩餘藥量
-                    if (data.size > 2) listener.onMedicationTaken(data[1].toInt(), data[2].toInt())
+                0x81 -> {
+                    if (data.size > 1) listener.onMedicationTaken(data[1].toInt())
                 }
                 0x82 -> { listener.onTimeSyncAcknowledged() }
                 0x90 -> { // 溫濕度數據
@@ -239,24 +239,29 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
         sendCommand(command)
     }
 
-    // *** 修改 setReminder ***
-    fun setReminder(slotNumber: Int, hour: Int, minute: Int, totalPills: Int) {
+    fun setReminder(slotNumber: Int, hour: Int, minute: Int) {
         val command = byteArrayOf(
             0x10.toByte(),
             slotNumber.toByte(),
             hour.toByte(),
-            minute.toByte(),
-            totalPills.toByte()
+            minute.toByte()
         )
         sendCommand(command)
     }
     
-    // *** 新增 requestStatus ***
     fun requestStatus() {
         sendCommand(byteArrayOf(0x20.toByte()))
     }
     
     fun cancelAllReminders() {
         sendCommand(byteArrayOf(0x12.toByte()))
+    }
+
+    fun cancelReminder(slotNumber: Int) {
+        val command = byteArrayOf(
+            0x13.toByte(),
+            slotNumber.toByte()
+        )
+        sendCommand(command)
     }
 }
