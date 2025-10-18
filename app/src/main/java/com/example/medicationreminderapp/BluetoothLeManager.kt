@@ -1,4 +1,4 @@
-// **BluetoothLeManager.kt (V8 完整版)**
+// **BluetoothLeManager.kt (V8.5 - Inline suppression)**
 package com.example.medicationreminderapp
 
 import android.annotation.SuppressLint
@@ -14,6 +14,7 @@ import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Context
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import java.util.UUID
@@ -52,9 +53,11 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
         private val SERVICE_UUID = UUID.fromString("4fafc201-1fb5-459e-8fcc-c5c9c331914b")
         private val WRITE_CHARACTERISTIC_UUID = UUID.fromString("beb5483e-36e1-4688-b7f5-ea07361b26a8")
         private val NOTIFY_CHARACTERISTIC_UUID = UUID.fromString("c8c7c599-809c-43a5-b825-1038aa349e5d")
+        @Suppress("SpellCheckingInspection")
         private val CCCD_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
     }
-     private val gattCallback = object : BluetoothGattCallback() {
+
+    private val gattCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             val deviceAddress = gatt.device.address
             if (status == BluetoothGatt.GATT_SUCCESS) {
@@ -106,8 +109,17 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
                 notifyCharacteristic?.let { char ->
                     g.setCharacteristicNotification(char, true)
                     val descriptor = char.getDescriptor(CCCD_UUID)
-                    descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-                    g.writeDescriptor(descriptor)
+                    descriptor?.let {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            g.writeDescriptor(it, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
+                        } else {
+                            @Suppress("DEPRECATION")
+                            run {
+                                it.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                                g.writeDescriptor(it)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -134,9 +146,16 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
             }, 150) // 增加延遲以等待 ESP32 處理
         }
 
+        @Deprecated("Used for Android versions prior to 13 (TIRAMISU)")
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
+            @Suppress("DEPRECATION")
             handleIncomingData(characteristic.value)
         }
+
+        override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, value: ByteArray) {
+            handleIncomingData(value)
+        }
+
          private fun handleIncomingData(data: ByteArray) {
             if (data.isEmpty()) return
             when (data[0].toInt() and 0xFF) {
@@ -218,13 +237,21 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
         val command = commandQueue.poll()
         if (command != null) {
             isCommandInProgress = true
-            writeCharacteristic?.value = command
-            writeCharacteristic?.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-            gatt?.writeCharacteristic(writeCharacteristic!!)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                gatt?.writeCharacteristic(writeCharacteristic!!, command, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT)
+            } else {
+                @Suppress("DEPRECATION")
+                run {
+                    writeCharacteristic?.value = command
+                    writeCharacteristic?.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+                    gatt?.writeCharacteristic(writeCharacteristic!!)
+                }
+            }
         } else {
              isCommandInProgress = false
         }
     }
+
     fun syncTime() {
         val now = java.util.Calendar.getInstance()
         val command = byteArrayOf(
