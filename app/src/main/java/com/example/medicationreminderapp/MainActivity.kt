@@ -736,7 +736,6 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
     companion object {
         const val CHANNEL_ID = "medication_reminder_channel"
         const val PREFS_NAME = "MedicationReminderAppPrefs"
-        const val KEY_SELECTED_THEME = "selected_theme"
         const val KEY_MEDICATION_DATA = "medication_data"
         const val KEY_NOTES_DATA = "notes_data"
         const val KEY_DAILY_STATUS = "daily_status"
