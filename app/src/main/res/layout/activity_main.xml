@@ -19,12 +19,16 @@
             android:layout_gravity="end"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/settings"
-            android:src="@android:drawable/ic_menu_preferences" />
+            android:minWidth="48dp"
+            android:minHeight="48dp"
+            android:src="@android:drawable/ic_menu_preferences"
+            app:tint="?attr/colorOnSurface" />
 
         <Button
             android:id="@+id/connectBoxButton"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
             android:text="@string/connect_to_box" />
 
         <TextView
@@ -37,8 +41,8 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="16dp">
+            android:layout_marginBottom="16dp"
+            android:orientation="horizontal">
 
             <TextView
                 android:id="@+id/tempTextView"
@@ -58,7 +62,7 @@
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-             android:hint="@string/medication_name_hint">
+            android:hint="@string/medication_name_hint">
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/medicationNameEditText"
                 android:layout_width="match_parent"
@@ -82,6 +86,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:contentDescription="@string/dosage_label"
                 android:stepSize="0.5"
                 android:value="1.0"
                 android:valueFrom="0.5"
@@ -116,7 +121,8 @@
         <Spinner
             android:id="@+id/frequencySpinner"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+            android:minHeight="48dp" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -127,18 +133,21 @@
         <Spinner
             android:id="@+id/slotSpinner"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+            android:minHeight="48dp" />
 
         <Button
             android:id="@+id/startDateButton"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
             android:text="@string/select_start_date" />
 
         <Button
             android:id="@+id/endDateButton"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
             android:text="@string/select_end_date" />
 
         <LinearLayout
@@ -193,7 +202,7 @@
                 <TextView
                     android:id="@+id/eveningTimeDisplay"
                     android:layout_width="wrap_content"
-                    android_layout_height="wrap_content"
+                    android:layout_height="wrap_content"
                      android:layout_marginStart="8dp"
                     android:text="@string/not_set" />
             </LinearLayout>
@@ -227,15 +236,17 @@
 
         <Button
             android:id="@+id/addMedicationButton"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
             android:layout_marginTop="16dp"
             android:text="@string/add_medication_reminder" />
 
         <Button
             android:id="@+id/showAllMedicationsButton"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
             android:text="@string/show_all_medications" />
 
         <TextView
