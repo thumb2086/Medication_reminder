@@ -9,7 +9,7 @@
 *   **核心思想轉變：** App 不再告訴 ESP32「請為『維他命C』設定提醒」，而是告訴它：「請為第 3 號藥倉設定一個早上 8:30 的提醒。」
 *   **職責分離：**
     *   **ESP32 (智能藥盒):** 作為一個忠實的「時間執行者」，只負責在正確的時間，為指定的藥倉（共 8 個）觸發提醒（如亮燈或發出聲音）。它完全不需要知道藥倉裡裝的是什麼藥。
-    *   **Android App:** 作為「大腦」，負責管理哪個藥倉對應哪種藥、藥物庫存、提醒時間等所有複雜邏輯。
+    *   **Android App:** 作為「大腦」，負責管理哪個藥倉對應哪種藥、藥物庫存、提醒時間等所有複雜 lógica。
 
 這個轉變極大地簡化了 ESP32 的韌體邏輯，使其更穩定、更省電，並將複雜的管理任務交由功能更強大的手機 App 處理。
 
@@ -71,21 +71,22 @@ App 與 ESP32 之間的通訊協定也進行了相應的簡化。
     *   選擇您剛剛複製的專案目錄。
 3.  **建置專案:**
     *   Android Studio 會自動執行 Gradle 同步。等待同步完成後，即可建置並執行 App。
+    *   **注意:** 本專案已將 Java 和 Kotlin 的編譯版本升級至 11。
 
 ## 使用說明
 
 1.  **新增藥物:**
-    *   在主畫面的表單中，填寫藥物名稱、劑量、總藥量、服用頻率、起訖日期與提醒時間。
+    *   在「提醒」分頁的表單中，填寫藥物名稱、劑量、總藥量、服用頻率、起訖日期與提醒時間。
     *   **【重要】** 從「藥倉編號」的下拉式選單中，為此藥物選擇一個尚未被佔用的藥倉。
 2.  **連接藥盒:**
-    *   點擊主畫面的「連接藥盒」按鈕。
+    *   點擊「提醒」分頁的「連接藥盒」按鈕。
     *   App 會開始掃描附近的藍牙裝置。
     *   從裝置列表中選擇您的智能藥盒進行配對。連接成功後，App 會自動同步所有提醒。
 3.  **查看排程與記錄:**
-    *   主畫面的列表會顯示所有已設定的藥物提醒，包含其所在的藥倉編號。
-    *   月曆會以圓點標示出當天是否已完成所有服藥。
+    *   「提醒」分頁的列表會顯示所有已設定的藥物提醒，包含其所在的藥倉編號。
+    *   「日曆」分頁會以圓點標示出當天是否已完成所有服藥。
 4.  **刪除藥物:**
-    *   長按「顯示所有藥物」按鈕，會出現藥物列表。
+    *   長按「提醒」分頁的「顯示所有藥物」按鈕，會出現藥物列表。
     *   點擊您想刪除的藥物，並在確認對話框中進行確認。刪除後，對應藥倉的提醒也會被取消。
 5.  **主題設定:**
     *   點擊右上角的齒輪圖示，可以開啟主題選擇對話框。
@@ -93,16 +94,31 @@ App 與 ESP32 之間的通訊協定也進行了相應的簡化。
 
 ## 專案結構
 
+本專案採用單一 `Activity` 和多 `Fragment` 的現代 Android App 架構。
+
 *   `app/src/main/java/com/example/medicationreminderapp/`:
-    *   `MainActivity.kt`: App 的主要活動，包含大部分的 UI 邏輯、使用者互動及主題設定。
-    *   `BluetoothLeManager.kt`: 處理所有藍牙低功耗相關的操作，包括掃描、連接、通訊等。
-    *   `AlarmReceiver.kt`: 接收系統鬧鐘事件，並觸發藥物提醒通知。
+    *   `MainActivity.kt`: App 的主要 `Activity`，負責管理 `Fragment` 的切換和藍牙連線。
+    *   `ui/`:
+        *   `ReminderFragment.kt`: 提醒設定頁面的 `Fragment`，包含新增、刪除、顯示藥物提醒的 UI 邏輯。
+        *   `CalendarFragment.kt`: 日曆頁面的 `Fragment`，用於顯示服藥紀錄。
+        *   `EnvironmentFragment.kt`: 環境監測頁面的 `Fragment`，顯示來自藥盒的溫濕度數據。
+        *   `MainViewModel.kt`: `ViewModel`，用於在 `Fragment` 之間共享數據。
+    *   `ble/`:
+        *   `BluetoothLeManager.kt`: 處理所有藍牙低功耗相關的操作。
+    *   `notification/`:
+        *   `AlarmReceiver.kt`: 接收系統鬧鐘事件，並觸發藥物提醒通知。
 *   `app/src/main/res/`:
-    *   `layout/activity_main.xml`: 主畫面的 UI 佈局。
-    *   `values/colors.xml`: 定義亮色主題的顏色。
-    *   `values-night/colors.xml`: 定義暗色主題的顏色。
-    *   `values/themes.xml`: 定義 App 的主題與樣式。
-    *   `values-night/themes.xml`: 定義暗色模式下的 App 主題與樣式。
+    *   `layout/`:
+        *   `activity_main.xml`: 主 `Activity` 的 UI 佈局，包含 `BottomNavigationView`。
+        *   `fragment_reminder.xml`: 提醒設定頁面的 UI 佈局。
+        *   `fragment_calendar.xml`: 日曆頁面的 UI 佈局。
+        *   `fragment_environment.xml`: 環境監測頁面的 UI 佈局。
+    *   `values/`:
+        *   `colors.xml`: 定義亮色主題的顏色。
+        *   `themes.xml`: 定義 App 的主題與樣式。
+    *   `values-night/`:
+        *   `colors.xml`: 定義暗色主題的顏色。
+        *   `themes.xml`: 定義暗色模式下的 App 主題與樣式。
     *   `values/strings.xml`: App 中使用的所有字串資源。
 
 ## 外部相依套件
@@ -113,6 +129,8 @@ App 與 ESP32 之間的通訊協定也進行了相應的簡化。
     *   `appcompat`: 提供對舊版 Android 的 UI 元件支援。
     *   `core-ktx`: 提供 Kotlin 的擴充功能。
     *   `constraintlayout`: 用於建立複雜的 UI 佈局。
+    *   `fragment-ktx`: 提供 `Fragment` 的 Kotlin 擴充功能。
+    *   `lifecycle-viewmodel-ktx`: 提供 `ViewModel` 的 Kotlin 擴充功能。
 *   **Material Components for Android:** 提供 Material Design 風格的 UI 元件。
 
 ## 權限需求

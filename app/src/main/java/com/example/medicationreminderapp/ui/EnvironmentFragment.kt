@@ -70,8 +70,19 @@ class EnvironmentFragment : Fragment() {
         binding.lineChart.data = lineData
         binding.lineChart.invalidate()
 
-        binding.tempTextView.text = getString(R.string.temperature_format, viewModel.temperature.value ?: "--")
-        binding.humidityTextView.text = getString(R.string.humidity_format, viewModel.humidity.value ?: "--")
+        val tempValue = viewModel.temperature.value
+        binding.tempTextView.text = if (tempValue != null) {
+            getString(R.string.temperature_format, tempValue)
+        } else {
+            getString(R.string.temperature_empty)
+        }
+
+        val humidityValue = viewModel.humidity.value
+        binding.humidityTextView.text = if (humidityValue != null) {
+            getString(R.string.humidity_format, humidityValue)
+        } else {
+            getString(R.string.humidity_empty)
+        }
     }
 
     override fun onDestroyView() {

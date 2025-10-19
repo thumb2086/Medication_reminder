@@ -12,6 +12,7 @@ constraintlayout = "2.1.4"
 gson = "2.10.1"
 calendarView = "2.9.0"
 desugarJdkLibs = "2.1.5"
+mpandroidchart = "v3.1.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -25,6 +26,7 @@ androidx-constraintlayout = { group = "androidx.constraintlayout", name = "const
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 calendar-view = { group = "com.kizitonwose.calendar", name = "view", version.ref = "calendarView" }
 desugar-jdk-libs = { group = "com.android.tools", name = "desugar_jdk_libs", version.ref = "desugarJdkLibs" }
+mpandroidchart = { group = "com.github.PhilJay", name = "MPAndroidChart", version.ref = "mpandroidchart" }
 
 
 [plugins]
