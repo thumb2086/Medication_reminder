@@ -12,27 +12,60 @@
         <item>毫克</item>
     </string-array>
 
+    <!-- Generic -->
+    <string name="ok">確定</string>
+    <string name="cancel">取消</string>
+    <string name="delete">刪除</string>
+    <string name="settings">設定</string>
+    <string name="not_set">未設定</string>
+
+    <!-- Main Screen UI -->
+    <string name="connect_to_box">連接智慧藥盒</string>
+    <string name="disconnect_from_box">斷開與藥盒的連接</string>
     <string name="ble_status">狀態：%s</string>
-    <string name="temperature_format">溫度: %.1f °C</string>
-    <string name="humidity_format">濕度: %.1f %%</string>
-    <string name="compliance_rate_format">過去30天服藥依從率: %d%%</string>
-    <string name="dosage_format">%.1f 顆</string>
+    <string name="ble_status_initial">藍牙狀態：未連接</string>
     <string name="temperature_empty">溫度: -- °C</string>
     <string name="humidity_empty">濕度: -- %%</string>
+    <string name="medication_name_hint">藥物名稱 (例如：維他命C)</string>
+    <string name="dosage_label">單次劑量：</string>
+    <string name="total_pills_hint">總藥量 (顆)</string>
+    <string name="frequency_label">頻率：</string>
+    <string name="slot_number_label">藥倉編號：</string>
+    <string name="select_start_date">選擇開始日期</string>
+    <string name="select_end_date">選擇結束日期</string>
+    <string name="morning_time">早上時間</string>
+    <string name="noon_time">中午時間</string>
+    <string name="evening_time">晚上時間</string>
+    <string name="bedtime_time">睡前時間</string>
+    <string name="notes_hint">備註 (例如：飯後服用)</string>
+    <string name="add_medication_reminder">新增藥物提醒</string>
+    <string name="show_all_medications">顯示所有藥物</string>
+    <string name="hide_medication_list">隱藏藥物列表</string>
+    <string name="compliance_rate_label">服藥依從率</string>
+    <string name="request_status">請求狀態</string>
+    <string name="dosage_default">1.0 顆</string>
+
+    <!-- BLE Status & Errors -->
     <string name="ble_status_disconnected">藍牙狀態：未連接</string>
     <string name="ble_status_connected_syncing">藍牙狀態：已連接，正在同步...</string>
-    <string name="disconnect_from_box">斷開與藥盒的連接</string>
-    <string name="connect_to_box">連接智慧藥盒</string>
     <string name="medication_taken_report">藥盒回報：第 %d 號藥倉已取藥</string>
     <string name="status_slot_update">狀態：收到藥倉狀態更新 (%s)</string>
     <string name="time_sync_success">時間同步成功！(%s)</string>
+    <string name="box_anomaly_title">藥盒異常</string>
     <string name="error_jammed">錯誤：藥盒卡藥，請檢查！</string>
     <string name="error_sensor">錯誤：溫濕度感測器異常！</string>
     <string name="error_unknown">藥盒回報未知錯誤，代碼: %d</string>
+    <string name="connect_box_first">請先連接藥盒</string>
+
+    <!-- User Input & Validation -->
     <string name="fill_all_fields">請填寫所有必填欄位</string>
     <string name="start_date_after_end_date">開始日期不能晚於結束日期</string>
     <string name="set_all_medication_times">請設定所有必要的服藥時間</string>
+    <string name="slot_occupied_title">藥倉已被佔用</string>
+    <string name="slot_occupied_message">藥倉 #%d 已被其他藥物佔用，請選擇其他藥倉。</string>
     <string name="medication_added_to_slot">藥物 \'%s\' 已新增至第 %d 倉</string>
+
+    <!-- Medication Info & Management -->
     <string name="low_stock_warning_title">低庫存警告</string>
     <string name="low_stock_warning_message">藥物 \'%s\' 即將用完，僅剩 %d 顆，請記得補充！</string>
     <string name="reminders_synced_to_box">提醒已同步至藥盒</string>
@@ -41,21 +74,6 @@
     <string name="confirm_delete_title">確認刪除</string>
     <string name="confirm_delete_message">您確定要刪除藥物提醒 \'%s\' 嗎？</string>
     <string name="medication_deleted">\'%s\' 已刪除</string>
-    <string name="not_set">未設定</string>
-    <string name="notification_channel_name">藥物提醒</string>
-    <string name="notification_channel_description">用於藥物提醒的通知</string>
-    <string name="permission_denied_dialog_title">權限被拒絕</string>
-    <string name="permission_denied_dialog_message">應用程式需要通知權限才能運作，請至設定開啟。</string>
-    <string name="go_to_settings">前往設定</string>
-    <string name="cancel">取消</string>
-    <string name="show_all_medications">顯示所有藥物</string>
-    <string name="hide_medication_list">隱藏藥物列表</string>
-    <string name="select_slot_title">請選擇放置的藥倉</string>
-    <string name="slot_n">藥倉 %d</string>
-    <string name="choose_theme_title">選擇應用程式主題</string>
-    <string name="themes_default">跟隨系統 (預設)</string>
-    <string name="themes_light">亮色模式</string>
-    <string name="themes_dark">暗色模式</string>
     <string name="medication_info_header">--- 藥物 %d ---</string>
     <string name="medication_info_name">名稱: %s (藥倉: #%d)\n</string>
     <string name="medication_info_dosage">劑量: %s\n</string>
@@ -70,10 +88,25 @@
     <string name="time_label_evening">晚上</string>
     <string name="time_label_bedtime">睡前</string>
     <string name="time_label_default">時間</string>
-    <string name="select_start_date">選擇開始日期</string>
-    <string name="select_end_date">選擇結束日期</string>
+
+    <!-- Permissions -->
     <string name="notification_permission_denied">通知權限被拒絕</string>
     <string name="bt_permission_denied">需要藍牙和定位權限才能連接藥盒</string>
-    <string name="connect_box_first">請先連接藥盒</string>
-    <string name="box_anomaly_title">藥盒異常</string>
+
+    <!-- Notifications -->
+    <string name="notification_channel_name">藥物提醒</string>
+    <string name="notification_channel_description">用於藥物提醒的通知</string>
+
+    <!-- Theme Chooser -->
+    <string name="choose_theme_title">選擇應用程式主題</string>
+    <string name="themes_default">跟隨系統 (預設)</string>
+    <string name="themes_light">亮色模式</string>
+    <string name="themes_dark">暗色模式</string>
+
+    <!-- Formatting Strings -->
+    <string name="temperature_format">溫度: %.1f °C</string>
+    <string name="humidity_format">濕度: %.1f %%</string>
+    <string name="compliance_rate_format">過去30天服藥依從率: %d%%</string>
+    <string name="dosage_format">%.1f 顆</string>
+    <string name="slot_n">藥倉 %d</string>
 </resources>

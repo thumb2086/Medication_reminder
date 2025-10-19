@@ -1,4 +1,4 @@
-<!-- **activity_main.xml (V8 完整版)** -->
+<!-- **activity_main.xml (V9 - String resources)** -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -18,23 +18,22 @@
             android:layout_height="wrap_content"
             android:layout_gravity="end"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Settings"
+            android:contentDescription="@string/settings"
             android:src="@android:drawable/ic_menu_preferences" />
 
         <Button
             android:id="@+id/connectBoxButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="連接智慧藥盒" />
+            android:text="@string/connect_to_box" />
 
         <TextView
             android:id="@+id/bleStatusTextView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"
-            android:text="藍牙狀態：未連接" />
+            android:text="@string/ble_status_initial" />
 
-        <!-- 新增：溫濕度顯示區 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -46,20 +45,20 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="溫度: -- °C" />
+                android:text="@string/temperature_empty" />
 
             <TextView
                 android:id="@+id/humidityTextView"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="濕度: -- %" />
+                android:text="@string/humidity_empty" />
         </LinearLayout>
 
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-             android:hint="藥物名稱 (例如：維他命C)">
+             android:hint="@string/medication_name_hint">
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/medicationNameEditText"
                 android:layout_width="match_parent"
@@ -70,7 +69,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="單次劑量：" />
+            android:text="@string/dosage_label" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -93,14 +92,13 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:minWidth="50dp"
-                android:text="1.0 顆" />
+                tools:text="@string/dosage_default" />
         </LinearLayout>
 
-        <!-- 新增：總藥量輸入框 -->
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="總藥量 (顆)">
+            android:hint="@string/total_pills_hint">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/totalPillsEditText"
@@ -113,7 +111,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="頻率：" />
+            android:text="@string/frequency_label" />
 
         <Spinner
             android:id="@+id/frequencySpinner"
@@ -124,7 +122,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="藥倉編號：" />
+            android:text="@string/slot_number_label" />
 
         <Spinner
             android:id="@+id/slotSpinner"
@@ -135,13 +133,13 @@
             android:id="@+id/startDateButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="選擇開始日期" />
+            android:text="@string/select_start_date" />
 
         <Button
             android:id="@+id/endDateButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="選擇結束日期" />
+            android:text="@string/select_end_date" />
 
         <LinearLayout
             android:id="@+id/timeSettingsLayout"
@@ -159,13 +157,13 @@
                     android:id="@+id/morningTimeButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="早上時間" />
+                    android:text="@string/morning_time" />
                 <TextView
                     android:id="@+id/morningTimeDisplay"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
-                    android:text="未設定" />
+                    android:text="@string/not_set" />
             </LinearLayout>
             <LinearLayout
                 android:layout_width="match_parent"
@@ -175,13 +173,13 @@
                     android:id="@+id/noonTimeButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="中午時間" />
+                    android:text="@string/noon_time" />
                 <TextView
                     android:id="@+id/noonTimeDisplay"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                      android:layout_marginStart="8dp"
-                    android:text="未設定" />
+                    android:text="@string/not_set" />
             </LinearLayout>
             <LinearLayout
                 android:layout_width="match_parent"
@@ -191,13 +189,13 @@
                     android:id="@+id/eveningTimeButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="晚上時間" />
+                    android:text="@string/evening_time" />
                 <TextView
                     android:id="@+id/eveningTimeDisplay"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android_layout_height="wrap_content"
                      android:layout_marginStart="8dp"
-                    android:text="未設定" />
+                    android:text="@string/not_set" />
             </LinearLayout>
             <LinearLayout
                 android:layout_width="match_parent"
@@ -207,20 +205,20 @@
                     android:id="@+id/bedtimeTimeButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="睡前時間" />
+                    android:text="@string/bedtime_time" />
                 <TextView
                     android:id="@+id/bedtimeTimeDisplay"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                      android:layout_marginStart="8dp"
-                    android:text="未設定" />
+                    android:text="@string/not_set" />
             </LinearLayout>
         </LinearLayout>
 
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="備註 (例如：飯後服用)">
+            android:hint="@string/notes_hint">
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/notesEditText"
                 android:layout_width="match_parent"
@@ -232,13 +230,13 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="新增藥物提醒" />
+            android:text="@string/add_medication_reminder" />
 
         <Button
             android:id="@+id/showAllMedicationsButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="顯示所有藥物" />
+            android:text="@string/show_all_medications" />
 
         <TextView
             android:id="@+id/displayNotesTextView"
@@ -250,12 +248,11 @@
             tools:text="- 藥物資訊預覽 -"
             tools:visibility="visible" />
             
-        <!-- 新增：依從率分析區 -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="服藥依從率" />
+            android:text="@string/compliance_rate_label" />
 
         <ProgressBar
             android:id="@+id/complianceProgressBar"
@@ -284,7 +281,7 @@
             android:id="@+id/testCommandButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="請求狀態"
+            android:text="@string/request_status"
             android:visibility="gone"
             tools:visibility="visible" />
 

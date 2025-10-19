@@ -1,4 +1,4 @@
-// **MainActivity.kt (V9 - Slot Spinner Implemented)**
+// **MainActivity.kt (V9 - String resources)**
 package com.example.medicationreminderapp
 
 import android.Manifest
@@ -192,15 +192,15 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
         }
         frequencySpinner.onItemSelectedListener = this
 
-        val slotOptions = (1..8).map { "藥倉 $it" }.toTypedArray()
+        val slotOptions = (1..8).map { getString(R.string.slot_n, it) }.toTypedArray()
         val slotAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, slotOptions).apply {
             setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         }
         slotSpinner.adapter = slotAdapter
 
         medicationNameEditText.addTextChangedListener { notesEditText.setText(notesMap[it.toString()] ?: "") }
-        dosageSlider.addOnChangeListener { _, value, _ -> dosageValueTextView.text = String.format(Locale.getDefault(), getString(R.string.dosage_format), value) }
-        dosageValueTextView.text = String.format(Locale.getDefault(), getString(R.string.dosage_format), dosageSlider.value)
+        dosageSlider.addOnChangeListener { _, value, _ -> dosageValueTextView.text = getString(R.string.dosage_format, value) }
+        dosageValueTextView.text = getString(R.string.dosage_format, dosageSlider.value)
 
         settingsButton.setOnClickListener { showThemeChooserDialog() }
         addMedicationButton.setOnClickListener { addMedication() }
@@ -304,7 +304,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
                     dialog.dismiss()
                     recreate()
                 }
-            }.setNegativeButton(getString(R.string.cancel), null).show()
+            }.setNegativeButton(R.string.cancel, null).show()
     }
 
     private fun requestBluetoothPermissionsAndScan() {
@@ -407,12 +407,12 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
                 2 -> getString(R.string.error_sensor)
                 else -> getString(R.string.error_unknown, errorCode)
             }
-            AlertDialog.Builder(this).setTitle(getString(R.string.box_anomaly_title)).setMessage(message).setPositiveButton(getString(R.string.ok), null).show()
+            AlertDialog.Builder(this).setTitle(getString(R.string.box_anomaly_title)).setMessage(message).setPositiveButton(R.string.ok, null).show()
         }
     }
 
     override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-        if (parent?.id == R.id.frequencySpinner) {
+        if (parent?.id == R.id.frequencySpinner) { 
             updateTimeSettingsVisibility(position)
         }
     }
@@ -450,7 +450,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
             AlertDialog.Builder(this)
                 .setTitle(getString(R.string.slot_occupied_title))
                 .setMessage(getString(R.string.slot_occupied_message, selectedSlot))
-                .setPositiveButton(getString(R.string.ok), null)
+                .setPositiveButton(R.string.ok, null)
                 .show()
             return
         }
@@ -481,7 +481,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
             AlertDialog.Builder(this)
                 .setTitle(getString(R.string.low_stock_warning_title))
                 .setMessage(getString(R.string.low_stock_warning_message, medication.name, medication.remainingPills))
-                .setPositiveButton(getString(R.string.ok), null)
+                .setPositiveButton(R.string.ok, null)
                 .show()
         }
     }
@@ -586,7 +586,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
         startDateButton.text = getString(R.string.select_start_date); endDateButton.text = getString(R.string.select_end_date)
         selectedTimes.clear(); updateSelectedTimesDisplay()
         dosageSlider.value = 1.0f
-        dosageValueTextView.text = String.format(Locale.getDefault(), getString(R.string.dosage_format), dosageSlider.value)
+        dosageValueTextView.text = getString(R.string.dosage_format, dosageSlider.value)
         findViewById<EditText>(R.id.totalPillsEditText).text.clear()
         slotSpinner.setSelection(0)
     }
@@ -632,13 +632,13 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
         val medNames = medicationList.map { "${it.name} (#${it.slotNumber})" }.toTypedArray()
         AlertDialog.Builder(this).setTitle(getString(R.string.confirm_delete_title)).setItems(medNames) { _, which ->
             confirmAndDeleteMedication(medicationList[which])
-        }.setNegativeButton(getString(R.string.cancel), null).show()
+        }.setNegativeButton(R.string.cancel, null).show()
     }
 
     private fun confirmAndDeleteMedication(medication: Medication) {
         AlertDialog.Builder(this).setTitle(getString(R.string.confirm_delete_title)).setMessage(getString(R.string.confirm_delete_message, medication.name))
-            .setPositiveButton(getString(R.string.delete)) { _, _ -> deleteMedication(medication) }
-            .setNegativeButton(getString(R.string.cancel), null).show()
+            .setPositiveButton(R.string.delete) { _, _ -> deleteMedication(medication) }
+            .setNegativeButton(R.string.cancel, null).show()
     }
 
     private fun deleteMedication(medication: Medication) {
