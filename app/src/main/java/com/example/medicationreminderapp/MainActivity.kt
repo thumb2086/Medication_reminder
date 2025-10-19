@@ -117,7 +117,6 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
 
     override fun onCreate(savedInstanceState: Bundle?) {
         sharedPreferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-        applySelectedTheme()
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         initializeUI()
@@ -202,7 +201,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
         dosageSlider.addOnChangeListener { _, value, _ -> dosageValueTextView.text = getString(R.string.dosage_format, value) }
         dosageValueTextView.text = getString(R.string.dosage_format, dosageSlider.value)
 
-        settingsButton.setOnClickListener { showThemeChooserDialog() }
+        settingsButton.setOnClickListener { showThemeDialog() }
         addMedicationButton.setOnClickListener { addMedication() }
         startDateButton.setOnClickListener { showDatePickerDialog(true) }
         endDateButton.setOnClickListener { showDatePickerDialog(false) }
@@ -281,30 +280,19 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
         }
     }
 
-    private fun applySelectedTheme() {
-        when (sharedPreferences.getInt(KEY_SELECTED_THEME, THEME_DEFAULT)) {
-            THEME_LIGHT -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
-            THEME_DARK -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
-            else -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
-        }
-    }
-
-    private fun showThemeChooserDialog() {
-        val themes = arrayOf(
-            getString(R.string.themes_default),
-            getString(R.string.themes_light),
-            getString(R.string.themes_dark)
-        )
-        val currentThemeIndex = sharedPreferences.getInt(KEY_SELECTED_THEME, THEME_DEFAULT)
+    private fun showThemeDialog() {
+        val themes = arrayOf(getString(R.string.themes_light), getString(R.string.themes_dark), getString(R.string.themes_default))
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.choose_theme_title))
-            .setSingleChoiceItems(themes, currentThemeIndex) { dialog, which ->
-                if (which != currentThemeIndex) {
-                    sharedPreferences.edit { putInt(KEY_SELECTED_THEME, which).apply() }
-                    dialog.dismiss()
-                    recreate()
+            .setItems(themes) { _, which ->
+                val mode = when (which) {
+                    0 -> AppCompatDelegate.MODE_NIGHT_NO
+                    1 -> AppCompatDelegate.MODE_NIGHT_YES
+                    else -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
                 }
-            }.setNegativeButton(R.string.cancel, null).show()
+                AppCompatDelegate.setDefaultNightMode(mode)
+            }
+            .show()
     }
 
     private fun requestBluetoothPermissionsAndScan() {
@@ -479,7 +467,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
         val threshold = (medication.totalPills * 0.1).toInt().coerceAtLeast(1)
         if (medication.remainingPills > 0 && medication.remainingPills <= threshold) {
             AlertDialog.Builder(this)
-                .setTitle(getString(R.string.low_stock_warning_title))
+                .setTitle(R.string.low_stock_warning_title)
                 .setMessage(getString(R.string.low_stock_warning_message, medication.name, medication.remainingPills))
                 .setPositiveButton(R.string.ok, null)
                 .show()
@@ -753,9 +741,6 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener, Bl
         const val KEY_NOTES_DATA = "notes_data"
         const val KEY_DAILY_STATUS = "daily_status"
         const val STATUS_ALL_TAKEN = 2
-        const val THEME_DEFAULT = 0
-        const val THEME_LIGHT = 1
-        const val THEME_DARK = 2
         private val random = Random()
         fun generateNotificationId(): Int = random.nextInt(1_000_000)
     }

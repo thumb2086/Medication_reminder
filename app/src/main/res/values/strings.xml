@@ -99,9 +99,9 @@
 
     <!-- Theme Chooser -->
     <string name="choose_theme_title">選擇應用程式主題</string>
-    <string name="themes_default">跟隨系統 (預設)</string>
-    <string name="themes_light">亮色模式</string>
-    <string name="themes_dark">暗色模式</string>
+    <string name="themes_default">跟隨系統</string>
+    <string name="themes_light">亮色</string>
+    <string name="themes_dark">暗色</string>
 
     <!-- Formatting Strings -->
     <string name="temperature_format">溫度: %.1f °C</string>

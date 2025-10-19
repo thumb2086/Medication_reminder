@@ -87,6 +87,9 @@ App 與 ESP32 之間的通訊協定也進行了相應的簡化。
 4.  **刪除藥物:**
     *   長按「顯示所有藥物」按鈕，會出現藥物列表。
     *   點擊您想刪除的藥物，並在確認對話框中進行確認。刪除後，對應藥倉的提醒也會被取消。
+5.  **主題設定:**
+    *   點擊右上角的齒輪圖示，可以開啟主題選擇對話框。
+    *   您可以選擇亮色、暗色或跟隨系統設定。
 
 ## 專案結構
 
@@ -96,8 +99,11 @@ App 與 ESP32 之間的通訊協定也進行了相應的簡化。
     *   `AlarmReceiver.kt`: 接收系統鬧鐘事件，並觸發藥物提醒通知。
 *   `app/src/main/res/`:
     *   `layout/activity_main.xml`: 主畫面的 UI 佈局。
+    *   `values/colors.xml`: 定義亮色主題的顏色。
+    *   `values-night/colors.xml`: 定義暗色主題的顏色。
+    *   `values/themes.xml`: 定義 App 的主題與樣式。
+    *   `values-night/themes.xml`: 定義暗色模式下的 App 主題與樣式。
     *   `values/strings.xml`: App 中使用的所有字串資源。
-    *   `style/Themes.xml`: 定義 App 的主題與樣式。
 
 ## 外部相依套件
 
