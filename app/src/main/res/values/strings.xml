@@ -17,6 +17,7 @@
     <string name="ok">確定</string>
     <string name="cancel">取消</string>
     <string name="delete">刪除</string>
+    <string name="edit">編輯</string>
     <string name="settings">設定</string>
     <string name="not_set">未設定</string>
 
@@ -40,6 +41,7 @@
     <string name="bedtime_time">睡前時間</string>
     <string name="notes_hint">備註 (例如：飯後服用)</string>
     <string name="add_medication_reminder">新增藥物提醒</string>
+    <string name="update_medication">更新藥物</string>
     <string name="show_all_medications">顯示所有藥物</string>
     <string name="hide_medication_list">隱藏藥物列表</string>
     <string name="compliance_rate_label">藥物正確服藥率</string>
@@ -71,10 +73,14 @@
     <string name="low_stock_warning_message">藥物 \'%s\' 即將用完，僅剩 %d 顆，請記得補充！</string>
     <string name="reminders_synced_to_box">提醒已同步至藥盒</string>
     <string name="no_medication_reminders">目前沒有藥物提醒。</string>
-    <string name="no_medication_to_delete">沒有可刪除的藥物</string>
+    <string name="no_medication_to_modify">沒有可修改或刪除的藥物</string>
+    <string name="select_medication_to_edit">選擇要編輯的藥物</string>
+    <string name="select_medication_to_delete">選擇要刪除的藥物</string>
+    <string name="editing_medication">正在編輯 \'%s\'，請修改後重新儲存</string>
     <string name="confirm_delete_title">確認刪除</string>
     <string name="confirm_delete_message">您確定要刪除藥物提醒 \'%s\' 嗎？</string>
     <string name="medication_deleted">\'%s\' 已刪除</string>
+    <string name="medication_updated">藥物 \'%s\' 已更新</string>
     <string name="medication_info_header">— 藥物 %d —</string>
     <string name="medication_info_name">名稱: %s (藥倉: #%d)\n</string>
     <string name="medication_info_dosage">劑量: %s\n</string>
@@ -126,4 +132,5 @@
     <string name="compliance_rate_format">過去30天藥物正確服藥率: %d%%</string>
     <string name="dosage_format">%.1f 顆</string>
     <string name="slot_n">藥倉 %d</string>
+    <string name="how_many_medications">輸入幾種藥物？</string>
 </resources>

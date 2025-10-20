@@ -60,6 +60,7 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        setSupportActionBar(binding.toolbar)
 
         viewModel = ViewModelProvider(this)[MainViewModel::class.java]
         gson = Gson()
@@ -310,7 +311,7 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         if (viewModel.isBleConnected.value == true) { syncAllRemindersToBox() }
     }
 
-    fun deleteMedication(medication: Medication) {
+    fun deleteMedication(medication: Medication, showToast: Boolean = true) {
         medication.times.forEach { (timeType, _) ->
             val intent = Intent(this, AlarmReceiver::class.java)
             val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -334,7 +335,9 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
             bluetoothLeManager.cancelReminder(medication.slotNumber)
         }
         saveAllData()
-        Toast.makeText(this, getString(R.string.medication_deleted, medication.name), Toast.LENGTH_SHORT).show()
+        if (showToast) {
+            Toast.makeText(this, getString(R.string.medication_deleted, medication.name), Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun createNotificationChannel() {

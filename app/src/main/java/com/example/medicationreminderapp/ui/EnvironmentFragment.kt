@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import com.example.medicationreminderapp.R
@@ -42,47 +43,59 @@ class EnvironmentFragment : Fragment() {
             isDragEnabled = true
             setScaleEnabled(true)
             setPinchZoom(true)
-            legend.textColor = Color.WHITE
-            xAxis.textColor = Color.WHITE
-            axisLeft.textColor = Color.WHITE
-            axisRight.textColor = Color.WHITE
+            legend.textColor = ContextCompat.getColor(requireContext(), R.color.onSurface)
+            xAxis.textColor = ContextCompat.getColor(requireContext(), R.color.onSurface)
+            axisLeft.textColor = ContextCompat.getColor(requireContext(), R.color.onSurface)
+            axisRight.textColor = ContextCompat.getColor(requireContext(), R.color.onSurface)
         }
     }
 
     private fun observeViewModel() {
-        viewModel.temperature.observe(viewLifecycleOwner) { updateChart() }
-        viewModel.humidity.observe(viewLifecycleOwner) { updateChart() }
+        viewModel.temperature.observe(viewLifecycleOwner) { temp ->
+            val text = if (temp != null) getString(R.string.temperature_format, temp) else getString(R.string.temperature_empty)
+            binding.tempTextView.text = text
+            temp?.let {
+                val history = viewModel.tempHistory.value ?: mutableListOf()
+                history.add(Entry(history.size.toFloat(), it))
+                viewModel.tempHistory.value = history
+            }
+        }
+        viewModel.humidity.observe(viewLifecycleOwner) { humidity ->
+            val text = if (humidity != null) getString(R.string.humidity_format, humidity) else getString(R.string.humidity_empty)
+            binding.humidityTextView.text = text
+            humidity?.let {
+                val history = viewModel.humidityHistory.value ?: mutableListOf()
+                history.add(Entry(history.size.toFloat(), it))
+                viewModel.humidityHistory.value = history
+            }
+        }
+
+        viewModel.tempHistory.observe(viewLifecycleOwner) { updateChart() }
+        viewModel.humidityHistory.observe(viewLifecycleOwner) { updateChart() }
     }
 
     private fun updateChart() {
-        val tempData = viewModel.temperature.value?.let { Entry(1f, it) } ?: Entry(1f, 0f)
-        val humidityData = viewModel.humidity.value?.let { Entry(1f, it) } ?: Entry(1f, 0f)
+        val tempHistory = viewModel.tempHistory.value ?: emptyList()
+        val humidityHistory = viewModel.humidityHistory.value ?: emptyList()
 
-        val tempDataSet = LineDataSet(listOf(tempData), getString(R.string.temperature_label))
-        tempDataSet.color = Color.RED
-        tempDataSet.valueTextColor = Color.WHITE
+        val tempDataSet = LineDataSet(tempHistory, getString(R.string.temperature_label)).apply {
+            color = Color.RED
+            valueTextColor = ContextCompat.getColor(requireContext(), R.color.onSurface)
+            setCircleColor(Color.RED)
+            lineWidth = 2f
+            circleRadius = 4f
+        }
 
-        val humidityDataSet = LineDataSet(listOf(humidityData), getString(R.string.humidity_label))
-        humidityDataSet.color = Color.BLUE
-        humidityDataSet.valueTextColor = Color.WHITE
+        val humidityDataSet = LineDataSet(humidityHistory, getString(R.string.humidity_label)).apply {
+            color = Color.BLUE
+            valueTextColor = ContextCompat.getColor(requireContext(), R.color.onSurface)
+            setCircleColor(Color.BLUE)
+            lineWidth = 2f
+            circleRadius = 4f
+        }
 
-        val lineData = LineData(tempDataSet, humidityDataSet)
-        binding.lineChart.data = lineData
+        binding.lineChart.data = LineData(tempDataSet, humidityDataSet)
         binding.lineChart.invalidate()
-
-        val tempValue = viewModel.temperature.value
-        binding.tempTextView.text = if (tempValue != null) {
-            getString(R.string.temperature_format, tempValue)
-        } else {
-            getString(R.string.temperature_empty)
-        }
-
-        val humidityValue = viewModel.humidity.value
-        binding.humidityTextView.text = if (humidityValue != null) {
-            getString(R.string.humidity_format, humidityValue)
-        } else {
-            getString(R.string.humidity_empty)
-        }
     }
 
     override fun onDestroyView() {

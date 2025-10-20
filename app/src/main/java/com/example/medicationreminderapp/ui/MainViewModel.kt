@@ -3,6 +3,7 @@ package com.example.medicationreminderapp.ui
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.example.medicationreminderapp.Medication
+import com.github.mikephil.charting.data.Entry
 import java.util.*
 
 class MainViewModel : ViewModel() {
@@ -14,6 +15,9 @@ class MainViewModel : ViewModel() {
     val temperature = MutableLiveData<Float>()
     val humidity = MutableLiveData<Float>()
     val complianceRate = MutableLiveData<Int>()
+
+    val tempHistory = MutableLiveData<MutableList<Entry>>(mutableListOf())
+    val humidityHistory = MutableLiveData<MutableList<Entry>>(mutableListOf())
 
     val startDate = MutableLiveData<Calendar?>()
     val endDate = MutableLiveData<Calendar?>()
