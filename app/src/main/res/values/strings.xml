@@ -1,10 +1,14 @@
 <resources>
-    <string name="app_name">藥物提醒</string>
+    <string name="app_name">藥到叮嚀</string>
     <string-array name="medication_frequency_options">
         <item>每日一次</item>
         <item>每日兩次</item>
         <item>每日三次</item>
         <item>每日四次</item>
+        <item>每隔一天</item>
+        <item>每週一次</item>
+        <item>每週兩次</item>
+        <item>每月一次</item>
     </string-array>
     <string-array name="dosage_unit_options">
         <item>顆</item>
@@ -63,26 +67,34 @@
     <string name="set_all_medication_times">請設定所有必要的服藥時間</string>
     <string name="slot_occupied_title">藥倉已被佔用</string>
     <string name="slot_occupied_message">藥倉 #%d 已被其他藥物佔用，請選擇其他藥倉。</string>
-    <string name="medication_added_to_slot">藥物 \'%s\' 已新增至第 %d 倉</string>
+    <string name="medication_added_to_slot">藥物 '%s' 已新增至第 %d 倉</string>
 
     <!-- Medication Info & Management -->
     <string name="low_stock_warning_title">低庫存警告</string>
-    <string name="low_stock_warning_message">藥物 \'%s\' 即將用完，僅剩 %d 顆，請記得補充！</string>
+    <string name="low_stock_warning_message">藥物 '%s' 即將用完，僅剩 %d 顆，請記得補充！</string>
     <string name="reminders_synced_to_box">提醒已同步至藥盒</string>
     <string name="no_medication_reminders">目前沒有藥物提醒。</string>
     <string name="no_medication_to_delete">沒有可刪除的藥物</string>
     <string name="confirm_delete_title">確認刪除</string>
-    <string name="confirm_delete_message">您確定要刪除藥物提醒 \'%s\' 嗎？</string>
-    <string name="medication_deleted">\'%s\' 已刪除</string>
+    <string name="confirm_delete_message">您確定要刪除藥物提醒 '%s' 嗎？</string>
+    <string name="medication_deleted">'%s' 已刪除</string>
     <string name="medication_info_header">--- 藥物 %d ---</string>
-    <string name="medication_info_name">名稱: %s (藥倉: #%d)\n</string>
-    <string name="medication_info_dosage">劑量: %s\n</string>
-    <string name="medication_info_stock">庫存: %d / %d 顆\n</string>
-    <string name="medication_info_frequency">頻率: %s\n</string>
-    <string name="medication_info_date_range">日期區間: %s 至 %s\n</string>
-    <string name="medication_info_times">服藥時間:\n</string>
-    <string name="medication_info_time_entry">  - %s: %s\n</string>
-    <string name="medication_info_notes">備註: %s\n</string>
+    <string name="medication_info_name">名稱: %s (藥倉: #%d)
+</string>
+    <string name="medication_info_dosage">劑量: %s
+</string>
+    <string name="medication_info_stock">庫存: %d / %d 顆
+</string>
+    <string name="medication_info_frequency">頻率: %s
+</string>
+    <string name="medication_info_date_range">日期區間: %s 至 %s
+</string>
+    <string name="medication_info_times">服藥時間:
+</string>
+    <string name="medication_info_time_entry">  - %s: %s
+</string>
+    <string name="medication_info_notes">備註: %s
+</string>
     <string name="time_label_morning">早上</string>
     <string name="time_label_noon">中午</string>
     <string name="time_label_evening">晚上</string>
