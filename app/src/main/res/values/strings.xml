@@ -28,8 +28,8 @@
     <string name="disconnect_from_box">斷開與藥盒的連接</string>
     <string name="ble_status">狀態：%s</string>
     <string name="ble_status_initial">藍牙狀態：未連接</string>
-    <string name="temperature_empty">溫度: -- °C</string>
-    <string name="humidity_empty">濕度: -- %%</string>
+    <string name="temperature_empty">溫度: — °C</string>
+    <string name="humidity_empty">濕度: — %%</string>
     <string name="medication_name_hint">藥物名稱 (例如：維他命C)</string>
     <string name="dosage_label">單次劑量：</string>
     <string name="total_pills_hint">總藥量 (顆)</string>
@@ -51,7 +51,7 @@
 
     <!-- BLE Status & Errors -->
     <string name="ble_status_disconnected">藍牙狀態：未連接</string>
-    <string name="ble_status_connected_syncing">藍牙狀態：已連接，正在同步...</string>
+    <string name="ble_status_connected_syncing">藍牙狀態：已連接，正在同步…</string>
     <string name="medication_taken_report">藥盒回報：第 %d 號藥倉已取藥</string>
     <string name="status_slot_update">狀態：收到藥倉狀態更新 (%s)</string>
     <string name="time_sync_success">時間同步成功！(%s)</string>
@@ -67,18 +67,18 @@
     <string name="set_all_medication_times">請設定所有必要的服藥時間</string>
     <string name="slot_occupied_title">藥倉已被佔用</string>
     <string name="slot_occupied_message">藥倉 #%d 已被其他藥物佔用，請選擇其他藥倉。</string>
-    <string name="medication_added_to_slot">藥物 '%s' 已新增至第 %d 倉</string>
+    <string name="medication_added_to_slot">藥物 \\%s\\ 已新增至第 %d 倉</string>
 
     <!-- Medication Info & Management -->
     <string name="low_stock_warning_title">低庫存警告</string>
-    <string name="low_stock_warning_message">藥物 '%s' 即將用完，僅剩 %d 顆，請記得補充！</string>
+    <string name="low_stock_warning_message">藥物 \\%s\\ 即將用完，僅剩 %d 顆，請記得補充！</string>
     <string name="reminders_synced_to_box">提醒已同步至藥盒</string>
     <string name="no_medication_reminders">目前沒有藥物提醒。</string>
     <string name="no_medication_to_delete">沒有可刪除的藥物</string>
     <string name="confirm_delete_title">確認刪除</string>
-    <string name="confirm_delete_message">您確定要刪除藥物提醒 '%s' 嗎？</string>
-    <string name="medication_deleted">'%s' 已刪除</string>
-    <string name="medication_info_header">--- 藥物 %d ---</string>
+    <string name="confirm_delete_message">您確定要刪除藥物提醒 \\%s\\ 嗎？</string>
+    <string name="medication_deleted">\\%s\\ 已刪除</string>
+    <string name="medication_info_header">— 藥物 %d —</string>
     <string name="medication_info_name">名稱: %s (藥倉: #%d)
 </string>
     <string name="medication_info_dosage">劑量: %s
