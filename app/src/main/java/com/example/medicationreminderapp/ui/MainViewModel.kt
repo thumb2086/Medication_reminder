@@ -1,5 +1,6 @@
 package com.example.medicationreminderapp.ui
 
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.example.medicationreminderapp.Medication
@@ -22,6 +23,19 @@ class MainViewModel : ViewModel() {
     val startDate = MutableLiveData<Calendar?>()
     val endDate = MutableLiveData<Calendar?>()
     val selectedTimes = MutableLiveData<MutableMap<Int, Calendar>>(mutableMapOf())
+
+    // For Guided Pill Filling
+    private val _guidedFillConfirmation = MutableLiveData<Boolean>()
+    val guidedFillConfirmation: LiveData<Boolean> = _guidedFillConfirmation
+
+    fun onGuidedFillConfirmed() {
+        _guidedFillConfirmation.value = true
+    }
+
+    fun onGuidedFillConfirmationConsumed() {
+        _guidedFillConfirmation.value = false
+    }
+
 
     fun updateComplianceRate(medications: List<Medication>, dailyStatus: Map<String, Int>) {
         val thirtyDaysAgo = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -30) }

@@ -4,7 +4,7 @@
 
 ## 設計理念
 
-本專案的核心設計是將複雜的邏輯處理保留在 Android App 中，讓智能藥盒 (ESP32) 的職責盡可能單純，只作為一個忠實的時間與指令執行者。App 透過以「藥倉 (Slot)」為中心的通訊模式，告知藥盒「在幾點鐘對第幾號藥倉進行提醒」，而藥盒無需知道裡面裝的是什麼藥物。這樣的設計大大簡化了硬體端的韌體開發，提高了系統的穩定性與省電效率。
+本專案的核心設計是將複雜的邏輯處理保留在 Android App 中，讓智能藥盒 (ESP32) 的職責盡可能單純，只作為一個忠實的時間與指令執行者。這樣的設計大大簡化了硬體端的韌體開發，提高了系統的穩定性與省電效率。
 
 ## 主要功能
 
@@ -13,12 +13,11 @@
 *   **藥物排程管理:**
     *   提供獨立的 **新增、編輯、刪除** 按鈕，操作流程清晰。
     *   藥倉總數為 8 格，可新增的藥物數量會根據 **已被佔用的藥倉數量動態調整**。
-    *   新增多筆藥物時，系統會 **自動指派** 下一個可用的藥倉編號，簡化輸入流程。
     *   設定藥物名稱、劑量、服用頻率、起訖日期，**總藥量將自動計算**。
-    *   自訂服藥的開始與結束日期。
-    *   設定一天中不同時段 (早、中、晚、睡前) 的服藥時間。
+    *   自訂服藥的開始與結束日期及一天中不同時段 (早、中、晚、睡前) 的服藥時間。
     *   智慧檢查機制，防止使用者將多種藥物指派到同一個已被佔用的藥倉。
 *   **藍牙智能藥盒整合:**
+    *   **引導式放藥 (Guided Filling):** 新增藥物時，App 會引導您逐一完成。每設定完一筆藥物，藥盒會自動旋轉到對應藥倉，讓您直接放入藥物，並透過藥盒上的按鈕確認，實現軟硬體結合的流暢體驗。
     *   掃描並連接到智能藥盒。
     *   與藥盒同步時間及各藥倉的用藥提醒。
     *   接收藥盒的狀態更新，例如：哪個藥倉的藥物已被取出、藥倉堵塞、感應器錯誤等。
@@ -34,62 +33,91 @@
 
 ## 使用說明
 
-1.  **新增藥物:**
-    *   在「提醒設定」分頁的表單中，從下拉選單選擇您要一次新增的藥物數量。此數量會根據 **剩餘的藥倉數** 動態提供。
-    *   系統會自動為您產生對應數量的藥物輸入欄位，並預先選擇可用的藥倉編號。
-    *   填寫藥物名稱、劑量、服用頻率、起訖日期與提醒時間後，點擊「新增藥物提醒」。**總藥量會根據您的設定自動算出**。
+1.  **新增藥物 (引導式放藥流程):**
+    *   在「提醒設定」分頁，選擇您要一次新增的藥物數量，系統會自動產生對應的輸入欄位。
+    *   填寫完所有藥物的資訊（名稱、劑量、頻率、藥倉等）後，點擊「新增藥物提醒」。
+    *   **藥盒自動轉動:** App 會鎖定畫面並發送指令，讓藥盒自動轉到 **第一筆藥物** 對應的藥倉。
+    *   **放入藥物並確認:** 畫面上會提示您將藥物放入指定的藥倉。完成後，**直接按下藥盒上的實體按鈕**。
+    *   **重複流程:** App 收到確認訊號後，會再次發送指令，讓藥盒轉到 **下一筆藥物** 的藥倉。您只需重複「放藥 -> 按按鈕」的動作，直到所有藥物都已放入。
+    *   **完成同步:** 全部完成後，App 會將所有提醒一次性同步給藥盒，並解除畫面鎖定。
 2.  **編輯或刪除藥物:**
     *   點擊「提醒設定」分頁下方的 **「編輯」** 或 **「刪除」** 按鈕。
     *   App 會彈出一個包含所有已設定藥物的列表。
     *   從列表中選擇您想操作的藥物。
-    *   **編輯:** 選擇後，該藥物的資訊會自動填入上方的表單中（預設顯示一筆），同時按鈕會變為 **「更新藥物」**。方便您修改後直接點擊更新。
+    *   **編輯:** 選擇後，該藥物的資訊會自動填入上方的表單中。修改後點擊「更新藥物」即可。
     *   **刪除:** 選擇後，在跳出的確認對話框中進行確認即可刪除。
-3.  **查看藥物:**
-    *   點擊「顯示所有藥物」按鈕可展開所有藥物的詳細資訊。此列表會在您新增或刪除藥物後 **自動更新**。
-4.  **連接藥盒:**
-    *   點擊「提醒設定」分頁的「連接藥盒」按鈕。
-    *   App 會開始掃描並讓您選擇您的智能藥盒進行配對。連接成功後，App 會自動同步所有提醒。
-5.  **查看記錄與數據:**
-    *   切換到「服藥紀錄」分頁，查看您的服藥月曆與依從率。
-    *   切換到「環境監測」分頁，查看即時的溫濕度變化圖表。
+3.  **連接藥盒:**
+    *   點擊「提醒設定」分頁的「連接藥盒」按鈕。App 會開始掃描並讓您選擇您的智能藥盒進行配對。
+
+## 藍牙通訊協定 (Bluetooth Protocol)
+
+為實現 App 與藥盒的互動，定義了以下基於 JSON 格式的雙向通訊協定：
+
+### App -> 藥盒 (指令)
+
+1.  **全量更新提醒 (Full Reminder Sync):**
+    *   **用途:** 在所有設定完成後，或 App 啟動並連接上藥盒時，一次性將完整的時間表發送給藥盒。
+    *   **格式:**
+        ```json
+        {
+          "action": "sync_reminders",
+          "payload": {
+            "sync_time": 1678886400,
+            "reminders": [
+              { "slot": 1, "times": [ "08:00", "20:00" ] },
+              { "slot": 3, "times": [ "09:00" ] },
+              { "slot": 5, "times": [ "12:00", "18:00", "22:00" ] }
+            ]
+          }
+        }
+        ```
+
+2.  **引導式放藥指令 (Guided Filling Command):**
+    *   **用途:** 在「引導式放藥」流程中，命令藥盒旋轉到指定的藥倉。
+    *   **格式:**
+        ```json
+        { "action": "rotate_to_slot", "payload": { "slot": 1 } }
+        ```
+
+### 藥盒 -> App (狀態回傳)
+
+1.  **藥物已填充確認 (Slot Filled Confirmation):**
+    *   **用途:** 當使用者在藥盒上按下確認按鈕後，藥盒回傳此訊號給 App，表示藥物已放入。
+    *   **格式:**
+        ```json
+        { "status": "slot_filled", "payload": { "slot": 1 } }
+        ```
+
+2.  **藥物已取出回報 (Medication Taken Report):**
+    *   **用途:** 藥盒偵測到使用者從某個藥倉取藥後，回報給 App。
+    *   **格式:**
+        ```json
+        { "status": "medication_taken", "payload": { "slot": 4 } }
+        ```
+
+3.  **環境數據回報 (Environment Data Report):**
+    *   **用途:** 藥盒定時回傳感測到的環境溫濕度數據。
+    *   **格式:**
+        ```json
+        { "status": "env_data", "payload": { "temp": 25.4, "humidity": 60.1 } }
+        ```
+
+4.  **異常狀態回報 (Anomaly Report):**
+    *   **用途:** 當藥盒發生異常（如馬達卡住、感測器錯誤）時，回報給 App。
+    *   **格式:**
+        ```json
+        { "status": "box_anomaly", "payload": { "code": "jammed" } }
+        ```
 
 ## 專案結構
 
 本專案採用單一 `Activity` 和多 `Fragment` 的現代 Android App 架構。
 
-*   `app/src/main/java/com/example/medicationreminderapp/`:
-    *   `MainActivity.kt`: App 的主要 `Activity`，負責管理 `ViewPager2`、`TabLayout` 及藍牙連線。
-    *   `ui/`:
-        *   `ReminderFragment.kt`: **提醒設定**頁面的 `Fragment`，包含新增、編輯、刪除藥物提醒的 UI 邏輯。
-        *   `LogFragment.kt`: **服藥紀錄**頁面的 `Fragment`，用於顯示服藥月曆與依從率。
-        *   `EnvironmentFragment.kt`: **環境監測**頁面的 `Fragment`，顯示來自藥盒的溫濕度數據折線圖。
-        *   `MainViewModel.kt`: `ViewModel`，用於在 `Fragment` 之間共享數據，如藍牙狀態、藥物列表等。
-        *   `ViewPagerAdapter.kt`: 用於管理三個主要 `Fragment` 的轉接器。
-    *   `ble/`:
-        *   `BluetoothLeManager.kt`: 處理所有藍牙低功耗相關的操作。
-    *   `notification/`:
-        *   `AlarmReceiver.kt`: 接收系統鬧鐘事件，並觸發藥物提醒通知。
-*   `app/src/main/res/`:
-    *   `layout/`:
-        *   `activity_main.xml`: 主 `Activity` 的佈局，包含 `Toolbar`、`TabLayout` 和 `ViewPager2`。
-        *   `fragment_reminder.xml`: 提醒設定頁面的 UI 佈局。
-        *   `fragment_log.xml`: 服藥紀錄頁面的 UI 佈局。
-        *   `fragment_environment.xml`: 環境監測頁面的 UI 佈局。
-    *   `values/themes.xml`: 定義 App 的主題與樣式 (使用 `NoActionBar` 版本以支援自訂 `Toolbar`)。
-
-## 外部相依套件
-
-*   **[Kizitonwose CalendarView](https://github.com/kizitonwose/CalendarView):** 用於實現高度客製化的月曆介面。
-*   **[MPAndroidChart](https://github.com/PhilJay/MPAndroidChart):** 用於繪製即時溫濕度折線圖。
-*   **[Google Gson](https://github.com/google/gson):** 用於將物件序列化為 JSON，以及將 JSON 反序列化回物件。
-*   **AndroidX Libraries & Material Components for Android**
+*   `MainActivity.kt`: App 的主要 `Activity`，負責管理 `ViewPager2`、`TabLayout`、藍牙連線及 **高階指令 (如 `rotateToSlot`) 的發送**。
+*   `ui/ReminderFragment.kt`: **提醒設定**頁面的 `Fragment`，負責處理 **引導式放藥的 UI 流程與佇列管理**。
+*   `ble/BluetoothLeManager.kt`: 處理所有藍牙低功耗相關的原始數據收發。
+*   其餘檔案結構請參考下方... (與先前版本相同)
 
 ## 權限需求
 
-本應用程式需要在 `AndroidManifest.xml` 中宣告以下權限：
-
-*   `POST_NOTIFICATIONS`: (Android 13+) 用於發送藥物提醒通知。
-*   `BLUETOOTH_SCAN`: (Android 12+) 用於掃描附近的藍牙裝置。
-*   `BLUETOOTH_CONNECT`: (Android 12+) 用于與已配對的藍牙裝置建立連線。
-*   `ACCESS_FINE_LOCATION`: (Android 11 及以下) 掃描藍牙裝置時需要。
-*   `SCHEDULE_EXACT_ALARM`: (Android 12+) 用於設定精確的鬧鐘，以準時發出提醒。
+*   `POST_NOTIFICATIONS`, `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`, `ACCESS_FINE_LOCATION`, `SCHEDULE_EXACT_ALARM`

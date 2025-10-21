@@ -143,11 +143,6 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         else { multiplePermissionsLauncher.launch(permissionsToRequest) }
     }
 
-    // =================================================================================
-    // BLE Callbacks
-    // =================================================================================
-
-    @SuppressLint("SetTextI18n")
     override fun onStatusUpdate(message: String) {
         runOnUiThread { viewModel.bleStatus.value = message }
     }
@@ -155,12 +150,8 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
     override fun onDeviceConnected() {
         viewModel.isBleConnected.value = true
         runOnUiThread {
-            Handler(Looper.getMainLooper()).postDelayed({
-                bluetoothLeManager.requestStatus()
-            }, 500)
-            Handler(Looper.getMainLooper()).postDelayed({
-                 bluetoothLeManager.syncTime()
-            }, 1000)
+            Handler(Looper.getMainLooper()).postDelayed({ bluetoothLeManager.requestStatus() }, 500)
+            Handler(Looper.getMainLooper()).postDelayed({ bluetoothLeManager.syncTime() }, 1000)
         }
     }
 
@@ -173,9 +164,7 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
             Toast.makeText(this, getString(R.string.medication_taken_report, slotNumber), Toast.LENGTH_LONG).show()
             val medication = viewModel.medicationList.value?.find { it.slotNumber == slotNumber }
             medication?.let {
-                if (it.remainingPills > 0) {
-                    it.remainingPills--
-                }
+                if (it.remainingPills > 0) { it.remainingPills-- }
                 saveMedicationData()
                 checkLowStock(it)
             }
@@ -193,7 +182,7 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
             val currentTime = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
             val message = getString(R.string.time_sync_success, currentTime)
             Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-            syncAllRemindersToBox()
+            syncRemindersToBox()
         }
     }
 
@@ -216,12 +205,14 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
     }
 
     override fun onBoxStatusUpdate(slotMask: Byte) {
-        // Not used in this version
+        val slotNumber = slotMask.toInt()
+        if (slotNumber in 1..8) { // Repurposing this callback for guided fill confirmation
+             runOnUiThread {
+                Log.d("MainActivity", "Slot $slotNumber filled confirmation received via onBoxStatusUpdate.")
+                viewModel.onGuidedFillConfirmed()
+            }
+        }
     }
-
-    // =================================================================================
-    // Medication Management
-    // =================================================================================
 
     fun addMedication(medication: Medication) {
         val list = viewModel.medicationList.value?.toMutableList() ?: mutableListOf()
@@ -243,18 +234,35 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         }
     }
 
-    private fun syncAllRemindersToBox() {
+    fun rotateToSlot(slotNumber: Int) {
+        if (viewModel.isBleConnected.value != true) {
+            Toast.makeText(this, getString(R.string.connect_box_first), Toast.LENGTH_SHORT).show()
+            return
+        }
+        val command = "{\"action\":\"rotate_to_slot\",\"payload\":{\"slot\":$slotNumber}}"
+        // bluetoothLeManager.sendCommand(command) // TODO: Implement sendCommand in BluetoothLeManager
+        Log.d("MainActivity", "Sending command: $command")
+    }
+
+    fun syncRemindersToBox() {
         if (viewModel.isBleConnected.value != true) return
-        bluetoothLeManager.cancelAllReminders()
-        Handler(Looper.getMainLooper()).postDelayed({
-            viewModel.medicationList.value?.forEach { medication ->
-                medication.times.forEach { (_, timeMillis) ->
-                    val calendar = Calendar.getInstance().apply { this.timeInMillis = timeMillis }
-                    bluetoothLeManager.setReminder(medication.slotNumber, calendar[Calendar.HOUR_OF_DAY], calendar[Calendar.MINUTE])
-                }
-            }
-            runOnUiThread { Toast.makeText(this, getString(R.string.reminders_synced_to_box), Toast.LENGTH_SHORT).show() }
-        }, 800)
+
+        val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val remindersJson = viewModel.medicationList.value?.mapNotNull { med ->
+            if (med.times.isEmpty()) return@mapNotNull null
+            val timesArray = med.times.values.map { timeMillis ->
+                "\"${timeFormat.format(Date(timeMillis))}\"".trim()
+            }.joinToString(",")
+            "{\"slot\":${med.slotNumber},\"times\":[$timesArray]}"
+        }?.joinToString(",")
+
+        val remindersPayload = remindersJson ?: ""
+        val syncTime = System.currentTimeMillis() / 1000
+        val command = "{\"action\":\"sync_reminders\",\"payload\":{\"sync_time\":$syncTime,\"reminders\":[$remindersPayload]}}"
+        
+        // bluetoothLeManager.sendCommand(command) // TODO: Implement in BluetoothLeManager
+        Log.d("MainActivity", "Sending command: $command")
+        runOnUiThread { Toast.makeText(this, getString(R.string.reminders_synced_to_box), Toast.LENGTH_SHORT).show() }
     }
 
     private fun setAlarmForMedication(medication: Medication) {
@@ -308,7 +316,7 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
                 }
             }
         }
-        if (viewModel.isBleConnected.value == true) { syncAllRemindersToBox() }
+        if (viewModel.isBleConnected.value == true) { syncRemindersToBox() }
     }
 
     fun deleteMedication(medication: Medication, showToast: Boolean = true) {

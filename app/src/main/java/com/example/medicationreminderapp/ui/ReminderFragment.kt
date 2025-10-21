@@ -29,6 +29,8 @@ class ReminderFragment : Fragment(), AdapterView.OnItemSelectedListener {
     private val binding get() = _binding!!
     private lateinit var viewModel: MainViewModel
     private var isEditing = false
+    private var medicationAddQueue = mutableListOf<Medication>()
+    private var progressDialog: AlertDialog? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -91,13 +93,24 @@ class ReminderFragment : Fragment(), AdapterView.OnItemSelectedListener {
             }
             updateQuantitySpinner()
         }
+        viewModel.guidedFillConfirmation.observe(viewLifecycleOwner) { confirmed ->
+            if (confirmed) {
+                handleGuidedFillConfirmation()
+                viewModel.onGuidedFillConfirmationConsumed()
+            }
+        }
     }
 
     private fun addMedications() {
+        if (medicationAddQueue.isNotEmpty()) {
+            Toast.makeText(requireContext(), "Please wait for the current process to finish.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         val medicationViews = (0 until binding.medicationInputContainer.childCount).map {
             binding.medicationInputContainer.getChildAt(it)
         }
-        val medicationsToAdd = mutableListOf<Medication>()
+        medicationAddQueue.clear()
 
         for (view in medicationViews) {
             val itemBinding = MedicationInputItemBinding.bind(view)
@@ -120,7 +133,6 @@ class ReminderFragment : Fragment(), AdapterView.OnItemSelectedListener {
                 return
             }
 
-            // Auto-calculate total pills
             val diff = viewModel.endDate.value!!.timeInMillis - viewModel.startDate.value!!.timeInMillis
             val days = TimeUnit.MILLISECONDS.toDays(diff) + 1
             val timesPerDay = itemBinding.frequencySpinner.selectedItemPosition + 1
@@ -131,19 +143,46 @@ class ReminderFragment : Fragment(), AdapterView.OnItemSelectedListener {
             val isSlotOccupied = viewModel.medicationList.value?.any { it.slotNumber == slot && it.name != originalName } ?: false
             if (isSlotOccupied) {
                 AlertDialog.Builder(requireContext()).setTitle(getString(R.string.slot_occupied_title)).setMessage(getString(R.string.slot_occupied_message, slot)).setPositiveButton(R.string.ok, null).show()
+                medicationAddQueue.clear()
                 return
             }
 
-            medicationsToAdd.add(Medication(
+            medicationAddQueue.add(Medication(
                 name = name, dosage = dosage, frequency = frequency, startDate = viewModel.startDate.value!!.timeInMillis,
                 endDate = viewModel.endDate.value!!.timeInMillis, times = viewModel.selectedTimes.value!!.mapValues { it.value.timeInMillis },
                 id = MainActivity.generateNotificationId(), slotNumber = slot, totalPills = totalPills, remainingPills = totalPills
             ))
         }
 
-        medicationsToAdd.forEach { (activity as? MainActivity)?.addMedication(it) }
-        clearInputFields()
+        if (medicationAddQueue.isNotEmpty()) {
+            processNextInQueue()
+        }
     }
+
+    private fun processNextInQueue() {
+        val medication = medicationAddQueue.firstOrNull() ?: return
+        (activity as? MainActivity)?.rotateToSlot(medication.slotNumber)
+        progressDialog = AlertDialog.Builder(requireContext())
+            .setTitle("Guided Filling")
+            .setMessage("Now rotating to slot #${medication.slotNumber}. Please place the medication inside and press the button on the box to confirm.")
+            .setCancelable(false)
+            .show()
+    }
+
+    private fun handleGuidedFillConfirmation() {
+        progressDialog?.dismiss()
+        val addedMedication = medicationAddQueue.removeFirstOrNull() ?: return
+        (activity as? MainActivity)?.addMedication(addedMedication)
+
+        if (medicationAddQueue.isEmpty()) {
+            Toast.makeText(requireContext(), "All medications added!", Toast.LENGTH_SHORT).show()
+            clearInputFields()
+            (activity as? MainActivity)?.syncRemindersToBox() // Final, full sync
+        } else {
+            processNextInQueue()
+        }
+    }
+
 
     private fun showDatePickerDialog(isStart: Boolean) {
         val cal = Calendar.getInstance()
@@ -389,7 +428,6 @@ class ReminderFragment : Fragment(), AdapterView.OnItemSelectedListener {
             return
         }
 
-        // Auto-calculate total pills
         val diff = viewModel.endDate.value!!.timeInMillis - viewModel.startDate.value!!.timeInMillis
         val days = TimeUnit.MILLISECONDS.toDays(diff) + 1
         val timesPerDay = itemBinding.frequencySpinner.selectedItemPosition + 1
