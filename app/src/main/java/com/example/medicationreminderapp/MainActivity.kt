@@ -1,7 +1,6 @@
 package com.example.medicationreminderapp
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.app.AlertDialog
 import android.app.NotificationChannel
@@ -138,7 +137,10 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             arrayOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT)
         } else { arrayOf(Manifest.permission.ACCESS_FINE_LOCATION) }
-        val permissionsToRequest = requiredPermissions.filter { ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }.toTypedArray()
+
+        val permissionsToRequestList = requiredPermissions.filter { ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }
+        val permissionsToRequest = permissionsToRequestList.toTypedArray()
+
         if (permissionsToRequest.isEmpty()) { bluetoothLeManager.startScan() }
         else { multiplePermissionsLauncher.launch(permissionsToRequest) }
     }
@@ -250,9 +252,9 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
         val remindersJson = viewModel.medicationList.value?.mapNotNull { med ->
             if (med.times.isEmpty()) return@mapNotNull null
-            val timesArray = med.times.values.map { timeMillis ->
+            val timesArray = med.times.values.joinToString(",") { timeMillis ->
                 "\"${timeFormat.format(Date(timeMillis))}\"".trim()
-            }.joinToString(",")
+            }
             "{\"slot\":${med.slotNumber},\"times\":[$timesArray]}"
         }?.joinToString(",")
 
