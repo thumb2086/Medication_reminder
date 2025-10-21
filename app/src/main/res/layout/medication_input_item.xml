@@ -1,0 +1,77 @@
+<!-- medication_input_item.xml -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="8dp"
+    android:layout_marginBottom="8dp"
+    android:background="@drawable/item_border">
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/medication_name_hint">
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/medicationNameEditText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/dosage_label" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <com.google.android.material.slider.Slider
+            android:id="@+id/dosageSlider"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:contentDescription="@string/dosage_label"
+            android:stepSize="0.5"
+            android:value="1.0"
+            android:valueFrom="0.5"
+            android:valueTo="5.0" />
+
+        <TextView
+            android:id="@+id/dosageValueTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minWidth="50dp"
+            android:gravity="center"
+            tools:text="1.0 顆" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/frequency_label" />
+
+    <Spinner
+        android:id="@+id/frequencySpinner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/slot_number_label" />
+
+    <Spinner
+        android:id="@+id/slotSpinner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp" />
+
+</LinearLayout>

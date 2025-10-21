@@ -1,0 +1,195 @@
+<!-- fragment_reminder.xml -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <Button
+            android:id="@+id/connectBoxButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:text="@string/connect_to_box" />
+
+        <TextView
+            android:id="@+id/bleStatusTextView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="@string/ble_status_initial" />
+
+        <!-- Common settings for all medications -->
+        <Button
+            android:id="@+id/startDateButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:text="@string/select_start_date" />
+
+        <Button
+            android:id="@+id/endDateButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:text="@string/select_end_date" />
+
+        <LinearLayout
+            android:id="@+id/timeSettingsLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <Button
+                    android:id="@+id/morningTimeButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/morning_time" />
+                <TextView
+                    android:id="@+id/morningTimeDisplay"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/not_set" />
+            </LinearLayout>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <Button
+                    android:id="@+id/noonTimeButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/noon_time" />
+                <TextView
+                    android:id="@+id/noonTimeDisplay"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                     android:layout_marginStart="8dp"
+                    android:text="@string/not_set" />
+            </LinearLayout>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <Button
+                    android:id="@+id/eveningTimeButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/evening_time" />
+                <TextView
+                    android:id="@+id/eveningTimeDisplay"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                     android:layout_marginStart="8dp"
+                    android:text="@string/not_set" />
+            </LinearLayout>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <Button
+                    android:id="@+id/bedtimeTimeButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/bedtime_time" />
+                <TextView
+                    android:id="@+id/bedtimeTimeDisplay"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                     android:layout_marginStart="8dp"
+                    android:text="@string/not_set" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/notes_hint">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/notesEditText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Medication Quantity Selector -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/how_many_medications" />
+
+        <Spinner
+            android:id="@+id/quantitySpinner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp" />
+
+        <!-- Container for medication input forms -->
+        <LinearLayout
+            android:id="@+id/medicationInputContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+        <Button
+            android:id="@+id/addMedicationButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="16dp"
+            android:text="@string/add_medication_reminder" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/showAllMedicationsButton"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/show_all_medications" />
+
+            <Button
+                android:id="@+id/editMedicationButton"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="@string/edit" />
+
+            <Button
+                android:id="@+id/deleteMedicationButton"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="@string/delete" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/displayNotesTextView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#f0f0f0"
+            android:padding="8dp"
+            android:visibility="gone"
+            tools:text="- 藥物資訊預覽 -"
+            tools:visibility="visible" />
+
+    </LinearLayout>
+</ScrollView>

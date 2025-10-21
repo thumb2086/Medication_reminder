@@ -1,14 +1,11 @@
 <resources>
-    <string name="app_name">藥到叮嚀</string>
+    <string name="app_name">藥物提醒</string>
+    <string name="app_title">藥物提醒助手</string>
     <string-array name="medication_frequency_options">
-        <item>每日一次</item>
-        <item>每日兩次</item>
-        <item>每日三次</item>
-        <item>每日四次</item>
-        <item>每隔一天</item>
-        <item>每週一次</item>
-        <item>每週兩次</item>
-        <item>每月一次</item>
+        <item>@string/freq_daily_1</item>
+        <item>@string/freq_daily_2</item>
+        <item>@string/freq_daily_3</item>
+        <item>@string/freq_daily_4</item>
     </string-array>
     <string-array name="dosage_unit_options">
         <item>顆</item>
@@ -20,6 +17,7 @@
     <string name="ok">確定</string>
     <string name="cancel">取消</string>
     <string name="delete">刪除</string>
+    <string name="edit">編輯</string>
     <string name="settings">設定</string>
     <string name="not_set">未設定</string>
 
@@ -29,7 +27,7 @@
     <string name="ble_status">狀態：%s</string>
     <string name="ble_status_initial">藍牙狀態：未連接</string>
     <string name="temperature_empty">溫度: — °C</string>
-    <string name="humidity_empty">濕度: — %%</string>
+    <string name="humidity_empty">濕度: — %</string>
     <string name="medication_name_hint">藥物名稱 (例如：維他命C)</string>
     <string name="dosage_label">單次劑量：</string>
     <string name="total_pills_hint">總藥量 (顆)</string>
@@ -43,9 +41,10 @@
     <string name="bedtime_time">睡前時間</string>
     <string name="notes_hint">備註 (例如：飯後服用)</string>
     <string name="add_medication_reminder">新增藥物提醒</string>
+    <string name="update_medication">更新藥物</string>
     <string name="show_all_medications">顯示所有藥物</string>
     <string name="hide_medication_list">隱藏藥物列表</string>
-    <string name="compliance_rate_label">服藥依從率</string>
+    <string name="compliance_rate_label">藥物正確服藥率</string>
     <string name="request_status">請求狀態</string>
     <string name="dosage_default">1.0 顆</string>
 
@@ -74,27 +73,23 @@
     <string name="low_stock_warning_message">藥物 \\%s\\ 即將用完，僅剩 %d 顆，請記得補充！</string>
     <string name="reminders_synced_to_box">提醒已同步至藥盒</string>
     <string name="no_medication_reminders">目前沒有藥物提醒。</string>
-    <string name="no_medication_to_delete">沒有可刪除的藥物</string>
+    <string name="no_medication_to_modify">沒有可修改或刪除的藥物</string>
+    <string name="select_medication_to_edit">選擇要編輯的藥物</string>
+    <string name="select_medication_to_delete">選擇要刪除的藥物</string>
+    <string name="editing_medication">正在編輯 \'%s\'，請修改後重新儲存</string>
     <string name="confirm_delete_title">確認刪除</string>
-    <string name="confirm_delete_message">您確定要刪除藥物提醒 \\%s\\ 嗎？</string>
-    <string name="medication_deleted">\\%s\\ 已刪除</string>
+    <string name="confirm_delete_message">您確定要刪除藥物提醒 \'%s\' 嗎？</string>
+    <string name="medication_deleted">\'%s\' 已刪除</string>
+    <string name="medication_updated">藥物 \'%s\' 已更新</string>
     <string name="medication_info_header">— 藥物 %d —</string>
-    <string name="medication_info_name">名稱: %s (藥倉: #%d)
-</string>
-    <string name="medication_info_dosage">劑量: %s
-</string>
-    <string name="medication_info_stock">庫存: %d / %d 顆
-</string>
-    <string name="medication_info_frequency">頻率: %s
-</string>
-    <string name="medication_info_date_range">日期區間: %s 至 %s
-</string>
-    <string name="medication_info_times">服藥時間:
-</string>
-    <string name="medication_info_time_entry">  - %s: %s
-</string>
-    <string name="medication_info_notes">備註: %s
-</string>
+    <string name="medication_info_name">名稱: %s (藥倉: #%d)\n</string>
+    <string name="medication_info_dosage">劑量: %s\n</string>
+    <string name="medication_info_stock">庫存: %d / %d 顆\n</string>
+    <string name="medication_info_frequency">頻率: %s\n</string>
+    <string name="medication_info_date_range">日期區間: %s 至 %s\n</string>
+    <string name="medication_info_times">服藥時間:\n</string>
+    <string name="medication_info_time_entry">  — %s: %s\n</string>
+    <string name="medication_info_notes">備註: %s\n</string>
     <string name="time_label_morning">早上</string>
     <string name="time_label_noon">中午</string>
     <string name="time_label_evening">晚上</string>
@@ -111,14 +106,31 @@
 
     <!-- Theme Chooser -->
     <string name="choose_theme_title">選擇應用程式主題</string>
-    <string name="themes_default">跟隨系統 (預設)</string>
-    <string name="themes_light">亮色模式</string>
-    <string name="themes_dark">暗色模式</string>
+    <string name="themes_default">跟隨系統</string>
+    <string name="themes_light">亮色</string>
+    <string name="themes_dark">暗色</string>
+    
+    <!-- Tabs -->
+    <string name="tab_reminders">提醒設定</string>
+    <string name="tab_log">服藥紀錄</string>
+    <string name="tab_environment">環境監測</string>
+
+    <!-- Frequency -->
+    <string name="freq_daily_1">每日一次</string>
+    <string name="freq_daily_2">每日兩次</string>
+    <string name="freq_daily_3">每日三次</string>
+    <string name="freq_daily_4">每日四次</string>
+
+    <!-- Charting -->
+    <string name="temperature_label">溫度</string>
+    <string name="humidity_label">濕度</string>
+
 
     <!-- Formatting Strings -->
     <string name="temperature_format">溫度: %.1f °C</string>
     <string name="humidity_format">濕度: %.1f %%</string>
-    <string name="compliance_rate_format">過去30天服藥依從率: %d%%</string>
+    <string name="compliance_rate_format">過去30天藥物正確服藥率: %d%%</string>
     <string name="dosage_format">%.1f 顆</string>
     <string name="slot_n">藥倉 %d</string>
+    <string name="how_many_medications">輸入幾種藥物？</string>
 </resources>

@@ -26,12 +26,13 @@ android {
         }
     }
     compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
         isCoreLibraryDesugaringEnabled = true
     }
-}
-
-kotlin {
-    jvmToolchain(8)
+    buildFeatures {
+        viewBinding = true
+    }
 }
 
 dependencies {
@@ -42,8 +43,15 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.gson)
     implementation(libs.calendar.view)
+    implementation(libs.mpandroidchart)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+    }
 }

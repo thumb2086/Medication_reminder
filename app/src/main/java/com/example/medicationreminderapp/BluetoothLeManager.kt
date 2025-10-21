@@ -146,6 +146,7 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
         }
 
         @Deprecated("Used for Android versions prior to 13 (TIRAMISU)")
+        @Suppress("OVERRIDE_DEPRECATION")
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
             @Suppress("DEPRECATION")
             handleIncomingData(characteristic.value)
@@ -246,7 +247,7 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
                     gatt?.writeCharacteristic(writeCharacteristic!!)
                 }
             }
-        } else {
+        } else { // 修正後的 else 區塊位置
              isCommandInProgress = false
         }
     }
