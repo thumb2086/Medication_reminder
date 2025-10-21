@@ -20,6 +20,8 @@ import com.example.medicationreminderapp.databinding.FragmentReminderBinding
 import com.example.medicationreminderapp.databinding.MedicationInputItemBinding
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.concurrent.TimeUnit
+import kotlin.math.roundToInt
 
 class ReminderFragment : Fragment(), AdapterView.OnItemSelectedListener {
 
@@ -101,7 +103,6 @@ class ReminderFragment : Fragment(), AdapterView.OnItemSelectedListener {
             val itemBinding = MedicationInputItemBinding.bind(view)
             val name = itemBinding.medicationNameEditText.text.toString()
             val dosage = itemBinding.dosageValueTextView.text.toString()
-            val totalPills = itemBinding.totalPillsEditText.text.toString().toIntOrNull() ?: 0
             val frequency = itemBinding.frequencySpinner.selectedItem.toString()
             val slot = itemBinding.slotSpinner.selectedItemPosition + 1
 
@@ -118,8 +119,14 @@ class ReminderFragment : Fragment(), AdapterView.OnItemSelectedListener {
                 Toast.makeText(requireContext(), getString(R.string.set_all_medication_times), Toast.LENGTH_SHORT).show()
                 return
             }
-            
-            // When editing, the original name is stored in the tag. Check against other meds.
+
+            // Auto-calculate total pills
+            val diff = viewModel.endDate.value!!.timeInMillis - viewModel.startDate.value!!.timeInMillis
+            val days = TimeUnit.MILLISECONDS.toDays(diff) + 1
+            val timesPerDay = itemBinding.frequencySpinner.selectedItemPosition + 1
+            val dosagePerTime = itemBinding.dosageValueTextView.text.toString().split(" ").first().toFloatOrNull() ?: 1.0f
+            val totalPills = (days * timesPerDay * dosagePerTime).roundToInt()
+
             val originalName = itemBinding.medicationNameEditText.tag as? String
             val isSlotOccupied = viewModel.medicationList.value?.any { it.slotNumber == slot && it.name != originalName } ?: false
             if (isSlotOccupied) {
@@ -228,12 +235,11 @@ class ReminderFragment : Fragment(), AdapterView.OnItemSelectedListener {
 
     private fun editMedication(medication: Medication) {
         isEditing = true
-        binding.quantitySpinner.setSelection(0, false) // Set to 1
+        binding.quantitySpinner.setSelection(0, false)
         binding.medicationInputContainer.removeAllViews()
         val itemBinding = MedicationInputItemBinding.inflate(LayoutInflater.from(requireContext()), binding.medicationInputContainer, false)
         binding.medicationInputContainer.addView(itemBinding.root)
 
-        // Manually set up spinners for the inflated item
         ArrayAdapter.createFromResource(requireContext(), R.array.medication_frequency_options, android.R.layout.simple_spinner_item).also { adapter ->
             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
             itemBinding.frequencySpinner.adapter = adapter
@@ -247,11 +253,15 @@ class ReminderFragment : Fragment(), AdapterView.OnItemSelectedListener {
         itemBinding.slotSpinner.adapter = slotAdapter
         itemBinding.slotSpinner.setSelection((medication.slotNumber - 1).coerceIn(0, 7))
 
-        // Populate fields
         itemBinding.medicationNameEditText.setText(medication.name)
-        itemBinding.medicationNameEditText.tag = medication.name // Store original name for slot conflict check
-        itemBinding.dosageSlider.value = medication.dosage.split(" ").first().toFloatOrNull() ?: 1.0f
-        itemBinding.totalPillsEditText.setText(medication.totalPills.toString())
+        itemBinding.medicationNameEditText.tag = medication.name
+        
+        val currentDosage = medication.dosage.split(" ").first().toFloatOrNull() ?: 1.0f
+        itemBinding.dosageSlider.value = currentDosage
+        itemBinding.dosageValueTextView.text = getString(R.string.dosage_format, currentDosage)
+        itemBinding.dosageSlider.addOnChangeListener { _, value, _ ->
+            itemBinding.dosageValueTextView.text = getString(R.string.dosage_format, value)
+        }
 
         viewModel.startDate.value = Calendar.getInstance().apply { timeInMillis = medication.startDate }
         viewModel.endDate.value = Calendar.getInstance().apply { timeInMillis = medication.endDate }
@@ -283,7 +293,7 @@ class ReminderFragment : Fragment(), AdapterView.OnItemSelectedListener {
         binding.endDateButton.text = getString(R.string.select_end_date)
         viewModel.selectedTimes.value = mutableMapOf()
         updateSelectedTimesDisplay()
-        binding.addMedicationButton.text = getString(R.string.add_medication_reminder) // Reset button text
+        binding.addMedicationButton.text = getString(R.string.add_medication_reminder)
         isEditing = false
     }
 
@@ -298,6 +308,11 @@ class ReminderFragment : Fragment(), AdapterView.OnItemSelectedListener {
                 repeat(quantity) {
                     val inflater = LayoutInflater.from(requireContext())
                     val itemBinding = MedicationInputItemBinding.inflate(inflater, binding.medicationInputContainer, false)
+
+                    itemBinding.dosageValueTextView.text = getString(R.string.dosage_format, itemBinding.dosageSlider.value)
+                    itemBinding.dosageSlider.addOnChangeListener { _, value, _ ->
+                        itemBinding.dosageValueTextView.text = getString(R.string.dosage_format, value)
+                    }
 
                     ArrayAdapter.createFromResource(requireContext(), R.array.medication_frequency_options, android.R.layout.simple_spinner_item).also {
                         it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
@@ -354,16 +369,15 @@ class ReminderFragment : Fragment(), AdapterView.OnItemSelectedListener {
 
         val name = itemBinding.medicationNameEditText.text.toString()
         val dosage = itemBinding.dosageValueTextView.text.toString()
-        val totalPills = itemBinding.totalPillsEditText.text.toString().toIntOrNull() ?: 0
         val frequency = itemBinding.frequencySpinner.selectedItem.toString()
         val slot = itemBinding.slotSpinner.selectedItemPosition + 1
 
         if (name.isBlank() || viewModel.startDate.value == null || viewModel.endDate.value == null) {
             Toast.makeText(requireContext(), getString(R.string.fill_all_fields), Toast.LENGTH_SHORT).show()
-            (activity as? MainActivity)?.addMedication(originalMedication) // Re-add if validation fails
+            (activity as? MainActivity)?.addMedication(originalMedication)
             return
         }
-         if (viewModel.startDate.value!!.after(viewModel.endDate.value)) {
+        if (viewModel.startDate.value!!.after(viewModel.endDate.value)) {
             Toast.makeText(requireContext(), getString(R.string.start_date_after_end_date), Toast.LENGTH_SHORT).show()
             (activity as? MainActivity)?.addMedication(originalMedication)
             return
@@ -374,6 +388,13 @@ class ReminderFragment : Fragment(), AdapterView.OnItemSelectedListener {
             (activity as? MainActivity)?.addMedication(originalMedication)
             return
         }
+
+        // Auto-calculate total pills
+        val diff = viewModel.endDate.value!!.timeInMillis - viewModel.startDate.value!!.timeInMillis
+        val days = TimeUnit.MILLISECONDS.toDays(diff) + 1
+        val timesPerDay = itemBinding.frequencySpinner.selectedItemPosition + 1
+        val dosagePerTime = itemBinding.dosageValueTextView.text.toString().split(" ").first().toFloatOrNull() ?: 1.0f
+        val totalPills = (days * timesPerDay * dosagePerTime).roundToInt()
 
         val isSlotOccupied = viewModel.medicationList.value?.any { it.slotNumber == slot && it.name != originalName } ?: false
         if (isSlotOccupied) {

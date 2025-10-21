@@ -46,20 +46,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:minWidth="50dp"
-            tools:text="@string/dosage_default" />
+            android:gravity="center"
+            tools:text="1.0 顆" />
     </LinearLayout>
-
-    <com.google.android.material.textfield.TextInputLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="@string/total_pills_hint">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/totalPillsEditText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="number" />
-    </com.google.android.material.textfield.TextInputLayout>
 
     <TextView
         android:layout_width="wrap_content"
