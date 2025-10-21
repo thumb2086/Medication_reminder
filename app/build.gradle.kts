@@ -12,9 +12,9 @@ android {
         minSdk = 29
         targetSdk = 36
         versionCode = 1
-        versionName = "0.0.1"
+        versionName = "0.1.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        setProperty("archivesBaseName", "藥到叮嚀-v0.0.1")
+        setProperty("archivesBaseName", "藥到叮嚀-v=0.1.1")
     }
 
     buildTypes {
