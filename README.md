@@ -51,13 +51,14 @@
 
 ## 藍牙通訊協定 (Bluetooth Protocol)
 
-為實現 App 與藥盒的互動，定義了以下基於 JSON 格式的雙向通訊協定：
+為實現 App 與藥盒的互動，定義了以下基於 JSON 格式的雙向通訊協定。`BluetoothLeManager` 負責將 App 內部生成的 JSON 物件序列化為字串並發送，同時也負責將從藥盒收到的原始數據反序列化為可處理的 JSON 或對應的資料結構。
 
 ### App -> 藥盒 (指令)
 
 1.  **全量更新提醒 (Full Reminder Sync):**
     *   **用途:** 在所有設定完成後，或 App 啟動並連接上藥盒時，一次性將完整的時間表發送給藥盒。
-    *   **格式:**
+    *   **App 實作:** 在 `MainActivity.kt` 的 `syncRemindersToBox()` 函式中組裝 JSON 並透過 `bluetoothLeManager.sendCommand()` 發送。
+    *   **格式範例:**
         ```json
         {
           "action": "sync_reminders",
@@ -74,7 +75,8 @@
 
 2.  **引導式放藥指令 (Guided Filling Command):**
     *   **用途:** 在「引導式放藥」流程中，命令藥盒旋轉到指定的藥倉。
-    *   **格式:**
+    *   **App 實作:** 在 `MainActivity.kt` 的 `rotateToSlot()` 函式中組裝 JSON 並透過 `bluetoothLeManager.sendCommand()` 發送。
+    *   **格式範例:**
         ```json
         { "action": "rotate_to_slot", "payload": { "slot": 1 } }
         ```
@@ -83,28 +85,32 @@
 
 1.  **藥物已填充確認 (Slot Filled Confirmation):**
     *   **用途:** 當使用者在藥盒上按下確認按鈕後，藥盒回傳此訊號給 App，表示藥物已放入。
-    *   **格式:**
+    *   **App 實作:** 在 `MainActivity.kt` 的 `onBoxStatusUpdate()` 回呼中接收並解析。接著呼叫 `viewModel.onGuidedFillConfirmed()`。
+    *   **格式範例:**
         ```json
         { "status": "slot_filled", "payload": { "slot": 1 } }
         ```
 
 2.  **藥物已取出回報 (Medication Taken Report):**
     *   **用途:** 藥盒偵測到使用者從某個藥倉取藥後，回報給 App。
-    *   **格式:**
+    *   **App 實作:** 在 `MainActivity.kt` 的 `onMedicationTaken()` 回呼中接收。
+    *   **格式範例:**
         ```json
         { "status": "medication_taken", "payload": { "slot": 4 } }
         ```
 
 3.  **環境數據回報 (Environment Data Report):**
     *   **用途:** 藥盒定時回傳感測到的環境溫濕度數據。
-    *   **格式:**
+    *   **App 實作:** 在 `MainActivity.kt` 的 `onSensorData()` 回呼中接收。
+    *   **格式範例:**
         ```json
         { "status": "env_data", "payload": { "temp": 25.4, "humidity": 60.1 } }
         ```
 
 4.  **異常狀態回報 (Anomaly Report):**
     *   **用途:** 當藥盒發生異常（如馬達卡住、感測器錯誤）時，回報給 App。
-    *   **格式:**
+    *   **App 實作:** 在 `MainActivity.kt` 的 `onError()` 回呼中接收。
+    *   **格式範例:**
         ```json
         { "status": "box_anomaly", "payload": { "code": "jammed" } }
         ```
@@ -113,9 +119,9 @@
 
 本專案採用單一 `Activity` 和多 `Fragment` 的現代 Android App 架構。
 
-*   `MainActivity.kt`: App 的主要 `Activity`，負責管理 `ViewPager2`、`TabLayout`、藍牙連線及 **高階指令 (如 `rotateToSlot`) 的發送**。
+*   `MainActivity.kt`: App 的主要 `Activity`，負責管理 `ViewPager2`、`TabLayout`、藍牙連線及 **高階指令的組裝與透過 `BluetoothLeManager` 的發送**。
 *   `ui/ReminderFragment.kt`: **提醒設定**頁面的 `Fragment`，負責處理 **引導式放藥的 UI 流程與佇列管理**。
-*   `ble/BluetoothLeManager.kt`: 處理所有藍牙低功耗相關的原始數據收發。
+*   `ble/BluetoothLeManager.kt`: **低層藍牙通訊介面，負責實際的藍牙數據傳輸（如 `sendCommand()`）和從藥盒接收原始數據，並將其轉發給 `MainActivity` 處理。它也將負責 JSON 數據的序列化和反序列化。**
 *   其餘檔案結構請參考下方... (與先前版本相同)
 
 ## 權限需求
