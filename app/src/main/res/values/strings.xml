@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">藥物提醒</string>
+    <string name="app_name">藥到叮嚀</string>
     <string name="app_title">藥物提醒助手</string>
     <string-array name="medication_frequency_options">
         <item>@string/freq_daily_1</item>
@@ -116,7 +116,7 @@
     <string name="tab_environment">環境監測</string>
 
     <!-- Frequency -->
-    <string name="freq_daily_1">每日一次</string>
+    <string name="freq_daily_1">每日一次</string>geo
     <string name="freq_daily_2">每日兩次</string>
     <string name="freq_daily_3">每日三次</string>
     <string name="freq_daily_4">每日四次</string>
