@@ -66,11 +66,11 @@
     <string name="set_all_medication_times">請設定所有必要的服藥時間</string>
     <string name="slot_occupied_title">藥倉已被佔用</string>
     <string name="slot_occupied_message">藥倉 #%d 已被其他藥物佔用，請選擇其他藥倉。</string>
-    <string name="medication_added_to_slot">藥物 \'%s\' 已新增至第 %d 倉</string>
+    <string name="medication_added_to_slot">藥物 \\%s\\ 已新增至第 %d 倉</string>
 
     <!-- Medication Info & Management -->
     <string name="low_stock_warning_title">低庫存警告</string>
-    <string name="low_stock_warning_message">藥物 \'%s\' 即將用完，僅剩 %d 顆，請記得補充！</string>
+    <string name="low_stock_warning_message">藥物 \\%s\\ 即將用完，僅剩 %d 顆，請記得補充！</string>
     <string name="reminders_synced_to_box">提醒已同步至藥盒</string>
     <string name="no_medication_reminders">目前沒有藥物提醒。</string>
     <string name="no_medication_to_modify">沒有可修改或刪除的藥物</string>
