@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">藥物提醒</string>
+    <string name="app_name">藥到叮嚀</string>
     <string name="app_title">藥物提醒助手</string>
     <string-array name="medication_frequency_options">
         <item>@string/freq_daily_1</item>
