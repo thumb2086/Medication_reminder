@@ -7,14 +7,38 @@ android {
     namespace = "com.example.medicationreminderapp"
     compileSdk = 36
 
+    flavorDimensions += "version"
+
     defaultConfig {
         applicationId = "com.example.medicationreminderapp"
         minSdk = 29
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.1.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        setProperty("archivesBaseName", "藥到叮嚀-v=1.1.1")
+    }
+
+    productFlavors {
+        create("alpha") {
+            dimension = "version"
+            versionCode = 1
+            versionName = "0.0.1"
+            applicationIdSuffix = ".alpha"
+            versionNameSuffix = "-alpha"
+            setProperty("archivesBaseName", "藥到叮嚀-v0.0.1-alpha")
+        }
+        create("beta") {
+            dimension = "version"
+            versionCode = 11
+            versionName = "0.1.1"
+            applicationIdSuffix = ".beta"
+            versionNameSuffix = "-beta"
+            setProperty("archivesBaseName", "藥到叮嚀-v0.1.1-beta")
+        }
+        create("prod") {
+            dimension = "version"
+            versionCode = 111
+            versionName = "1.1.1"
+            setProperty("archivesBaseName", "藥到叮嚀-v1.1.1")
+        }
     }
 
     buildTypes {
