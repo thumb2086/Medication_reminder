@@ -188,7 +188,6 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         if (slotNumber in 1..8) { // Confirmation for guided fill
              runOnUiThread {
                 Log.d("MainActivity", "Slot $slotNumber filled confirmation received.")
-                viewModel.onGuidedFillConfirmed()
             }
         }
     }

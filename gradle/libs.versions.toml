@@ -14,6 +14,7 @@ gson = "2.13.2"
 calendarView = "2.9.0"
 desugarJdkLibs = "2.1.5"
 mpandroidchart = "v3.1.0"
+preferenceKtx = "1.2.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -29,7 +30,7 @@ gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 calendar-view = { group = "com.kizitonwose.calendar", name = "view", version.ref = "calendarView" }
 desugar-jdk-libs = { group = "com.android.tools", name = "desugar_jdk_libs", version.ref = "desugarJdkLibs" }
 mpandroidchart = { group = "com.github.PhilJay", name = "MPAndroidChart", version.ref = "mpandroidchart" }
-
+androidx-preference-ktx = { group = "androidx.preference", name = "preference-ktx", version.ref = "preferenceKtx" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

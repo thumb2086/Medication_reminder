@@ -158,6 +158,10 @@
 
 `POST_NOTIFICATIONS`, `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`, `ACCESS_FINE_LOCATION`, `SCHEDULE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED`, `VIBRATE`
 
+## Bug Fixes
+
+*   **2025/11/06:** 修正了服藥正確率未更新及服藥紀錄頁面時間顯示不清楚的問題。在 `MedicationTakenReceiver` 和 `MainViewModel` 中實作了正確的服藥率計算邏輯，並修正了 `fragment_history.xml` 中的文字顏色，確保其在淺色主題下可見。
+
 ## 最近更新
 
 *   **2025/11/05:** 清理了 `SettingsFragment.kt` 中的警告，移除了無用的 `import` 並以更安全的 `let` 區塊取代了不必要的安全呼叫。

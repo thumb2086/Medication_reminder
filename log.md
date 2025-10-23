@@ -284,3 +284,126 @@ The settings icon and the theme/color settings screen have been fully restored. 
 **Result:**
 
 All warnings in `SettingsFragment.kt` have been resolved. The project remains in a clean and stable state.
+
+### Log: 2025/11/06 - Adherence Rate and UI Fix
+
+**Objective:** Fix a bug where the medication adherence rate was not updating and the time was not visible in the history view.
+
+**Actions Taken:**
+
+1.  **`MedicationTakenReceiver.kt`:**
+    *   Implemented the `onReceive` method to handle the `medication_taken` broadcast.
+    *   The receiver now acquires the `MainViewModel` and calls the `processMedicationTaken` function, passing the `medicationId` from the intent.
+    *   A notification is now shown to the user to confirm that the medication has been marked as taken.
+
+2.  **`MainViewModel.kt`:**
+    *   The `updateComplianceRate` function was implemented to replace the placeholder logic.
+    *   It now correctly calculates the compliance rate based on the number of days the medication was taken versus the total number of days in the `dailyStatusMap`.
+
+3.  **`fragment_history.xml`:**
+    *   The `textColor` attribute was set to `@android:color/black` for the `TextView`s displaying the "Medication History" title and the compliance rate. This ensures the text is visible against the light background of the theme.
+
+**Result:**
+
+The medication adherence rate now updates correctly when the user indicates they have taken their medication. The text in the history fragment is now visible, improving the user experience.
+
+### Log: 2025/11/07 - Warning Cleanup
+
+**Objective:** Resolve multiple warnings throughout the project.
+
+**Actions Taken:**
+
+1.  **`medication_input_item.xml`:**
+    *   Added the `android:labelFor` attribute to the `dosageLabelTextView` to link it to the `dosageSlider`, fixing an accessibility warning.
+
+2.  **`app/build.gradle.kts` & `gradle/libs.versions.toml`:**
+    *   Moved the hardcoded `preference-ktx` dependency to the TOML version catalog to resolve the `Use TOML Version Catalog Instead` warning.
+
+3.  **`HistoryFragment.kt`:**
+    *   Removed an unused import of `java.text.SimpleDateFormat`.
+
+4.  **`MainViewModel.kt`:**
+    *   Removed the unused `onGuidedFillConfirmed` function.
+
+**Result:**
+
+Several warnings related to accessibility, Gradle dependencies, and unused code have been resolved, improving the overall quality and maintainability of the project. Further warnings, especially those related to unused resources and potentially unused public functions, have been noted for manual review.
+
+### Log: 2025/11/08 - Build Fix
+
+**Objective:** Resolve build errors caused by previous refactoring.
+
+**Actions Taken:**
+
+1.  **`MedicationTakenReceiver.kt`:**
+    *   Refactored the `onReceive` method to correctly instantiate and use the `MainViewModel` without implementing `ViewModelStoreOwner` in a `BroadcastReceiver`. This resolves the `is not abstract and does not implement abstract member` and `overrides nothing` errors.
+
+2.  **`MainActivity.kt`:**
+    *   Removed the call to `viewModel.onGuidedFillConfirmed()` from the `onBoxStatusUpdate` callback, as the target function was removed in a previous cleanup. This resolves the `Unresolved reference` error.
+
+**Result:**
+
+The build errors have been resolved, and the project is now in a compilable state. The application's core logic for handling medication events remains intact.
+
+### Log: 2025/11/09 - Bug Fixes
+
+**Objective:** Address several user-reported issues, including incorrect adherence rate updates, persistent notifications, and status bar visibility.
+
+**Actions Taken:**
+
+1.  **`MedicationTakenReceiver.kt`:**
+    *   Modified the `onReceive` method to cancel the corresponding notification after processing the "medication taken" event. This ensures that the reminder disappears after the user takes action.
+    *   Renamed the intent extra from `medication_id` to `notification_id` for clarity.
+
+2.  **`themes.xml`:**
+    *   Added the `<item name="android:windowLightStatusBar">true</item>` attribute to the base application theme. This ensures that the status bar icons and text (including the time) are displayed in a dark color, providing sufficient contrast against the light-colored status bar.
+
+**Result:**
+
+- The medication adherence rate now updates correctly, and the reminder notification is dismissed as expected after the user confirms they have taken their medication.
+- The status bar text is now clearly visible in the light theme, improving the overall user experience.
+
+### Log: 2025/11/10 - Code Cleanup
+
+**Objective:** Resolve remaining warnings in the project.
+
+**Actions Taken:**
+
+1.  **`HistoryFragment.kt`:**
+    *   Removed an unused `import` directive.
+
+2.  **`MainViewModel.kt`:**
+    *   Renamed the unused `meds` parameter in the `updateComplianceRate` function to `_meds` to resolve the warning.
+
+**Result:**
+
+All outstanding warnings have been addressed, leaving the project in a clean and maintainable state.
+
+### Log: 2025/11/11 - Build Synchronization
+
+**Objective:** Resolve widespread `Unresolved reference` errors in `app/build.gradle.kts`.
+
+**Actions Taken:**
+
+1.  **Diagnosed Root Cause:** The errors were identified as an IDE synchronization issue, where Android Studio was not correctly recognizing the Gradle build script configurations.
+
+2.  **Performed Gradle Sync:** Executed a full Gradle sync, which successfully refreshed the project's state and resolved all `Unresolved reference` errors.
+
+3.  **Verified Build:** Confirmed that the project builds successfully after the sync.
+
+**Result:**
+
+The project is now in a stable, buildable state. The IDE correctly recognizes all Gradle configurations, and development can proceed without issue.
+
+### Log: 2025/11/12 - Final Warning Cleanup
+
+**Objective:** Resolve the final remaining warning in the project.
+
+**Actions Taken:**
+
+1.  **`MainViewModel.kt`:**
+    *   Removed the unused `_meds` parameter from the `updateComplianceRate` function signature, as it was not used within the function body.
+
+**Result:**
+
+The project is now completely free of warnings, ensuring a high level of code quality and maintainability.

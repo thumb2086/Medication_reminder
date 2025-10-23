@@ -64,11 +64,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         saveMedicationData()
     }
 
-    fun onGuidedFillConfirmed() {
-        // TODO: Implement logic to proceed to the next step in guided filling
-        Log.d("MainViewModel", "Guided fill confirmed.")
-    }
-
     fun processMedicationTaken(slotNumber: Int) {
         val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         val newStatusMap = dailyStatusMap.value ?: mutableMapOf()
@@ -89,12 +84,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         saveMedicationData()
         saveDailyStatusData()
-        updateComplianceRate(updatedList, newStatusMap)
+        updateComplianceRate(newStatusMap)
     }
 
-    fun updateComplianceRate(_meds: List<Medication>, _status: Map<String, Int>) {
-        // TODO: Implement the compliance rate calculation logic here
-        complianceRate.value = 0.5f // Placeholder value
+    fun updateComplianceRate(status: Map<String, Int>) {
+        val totalDays = status.keys.size
+        if (totalDays == 0) {
+            complianceRate.value = 0f
+            return
+        }
+
+        val daysTaken = status.values.count { it == STATUS_ALL_TAKEN }
+        val rate = (daysTaken.toFloat() / totalDays.toFloat())
+        complianceRate.value = rate
     }
 
     // --- Data Persistence ---
