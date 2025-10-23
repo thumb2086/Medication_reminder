@@ -237,9 +237,15 @@ class ReminderSettingsFragment : Fragment() {
             val dosage = cardBinding.dosageSlider.value
             val notes = cardBinding.notesEditText.text.toString()
 
-            if (name.isBlank() || slot == null || startDate == null || endDate == null || times.isEmpty()) {
+            if (name.isBlank() || slot == null || startDate == null || endDate == null) {
                 allFormsValid = false
                 Toast.makeText(requireContext(), getString(R.string.please_fill_all_fields), Toast.LENGTH_LONG).show()
+                break
+            }
+
+            if (times.isEmpty()) {
+                allFormsValid = false
+                Toast.makeText(requireContext(), getString(R.string.please_add_time), Toast.LENGTH_LONG).show()
                 break
             }
 

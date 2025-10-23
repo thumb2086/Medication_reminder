@@ -121,6 +121,7 @@ dependencies {
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.fragment.ktx)
+    implementation("androidx.preference:preference-ktx:1.2.1")
     implementation(libs.gson)
     implementation(libs.calendar.view)
     implementation(libs.mpandroidchart)

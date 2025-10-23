@@ -15,6 +15,7 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.util.Log
+import android.view.MenuItem
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -66,11 +67,25 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
             tab.text = when (position) {
                 0 -> getString(R.string.tab_reminders)
-                1 -> getString(R.string.tab_log)
-                2 -> getString(R.string.tab_environment)
+                1 -> getString(R.string.tab_medication_list)
+                2 -> getString(R.string.tab_log)
+                3 -> getString(R.string.tab_environment)
                 else -> null
             }
         }.attach()
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_settings -> {
+                supportFragmentManager.beginTransaction()
+                    .replace(android.R.id.content, SettingsFragment())
+                    .addToBackStack(null)
+                    .commit()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
     }
 
     override fun onDestroy() {

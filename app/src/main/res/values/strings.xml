@@ -82,14 +82,14 @@
     <string name="medication_deleted">\'%s\' 已刪除</string>
     <string name="medication_updated">藥物 \'%s\' 已更新</string>
     <string name="medication_info_header">— 藥物 %d —</string>
-    <string name="medication_info_name">名稱: %s (藥倉: #%d)\n</string>
-    <string name="medication_info_dosage">劑量: %s\n</string>
-    <string name="medication_info_stock">庫存: %d / %d 顆\n</string>
-    <string name="medication_info_frequency">頻率: %s\n</string>
-    <string name="medication_info_date_range">日期區間: %s 至 %s\n</string>
-    <string name="medication_info_times">服藥時間:\n</string>
-    <string name="medication_info_time_entry">  — %s: %s\n</string>
-    <string name="medication_info_notes">備註: %s\n</string>
+    <string name="medication_info_name">名稱: %s (藥倉: #%d)\\n</string>
+    <string name="medication_info_dosage">劑量: %s\\n</string>
+    <string name="medication_info_stock">庫存: %d / %d 顆\\n</string>
+    <string name="medication_info_frequency">頻率: %s\\n</string>
+    <string name="medication_info_date_range">日期區間: %s 至 %s\\n</string>
+    <string name="medication_info_times">服藥時間:\\n</string>
+    <string name="medication_info_time_entry">  — %s: %s\\n</string>
+    <string name="medication_info_notes">備註: %s\\n</string>
     <string name="time_label_morning">早上</string>
     <string name="time_label_noon">中午</string>
     <string name="time_label_evening">晚上</string>
@@ -109,11 +109,12 @@
     <string name="themes_default">跟隨系統</string>
     <string name="themes_light">亮色</string>
     <string name="themes_dark">暗色</string>
-    
+
     <!-- Tabs -->
     <string name="tab_reminders">提醒設定</string>
     <string name="tab_log">服藥紀錄</string>
     <string name="tab_environment">環境監測</string>
+    <string name="tab_medication_list">藥物列表</string>
 
     <!-- Frequency -->
     <string name="freq_daily_1">每日一次</string>
@@ -142,16 +143,31 @@
     <string name="slot_number">藥倉編號</string>
     <string name="start_date">開始日期</string>
     <string name="end_date">結束日期</string>
-    <string name="select_time">選擇時間</string>
+    <string name="add_time">新增時間</string>
     <string name="dosage">劑量</string>
     <string name="notes">備註</string>
     <string name="no_available_slots">沒有可用的藥倉</string>
     <string name="dosage_pills">劑量: %d 顆</string>
     <string name="add_at_least_one_medication">請至少新增一筆藥物</string>
     <string name="please_fill_all_fields">請填寫所有必填欄位（藥名、藥倉、日期、時間）</string>
+    <string name="please_add_time">請新增至少一個服藥時間</string>
     <string name="end_date_before_start_date">結束日期不能早於開始日期</string>
     <string name="medications_added_successfully">藥物已成功新增</string>
     <string name="medication_history">服藥紀錄</string>
     <string name="environment_monitor">環境監測</string>
+
+    <!-- Settings -->
+    <string name="theme_settings">主題設定</string>
+    <string name="theme">主題</string>
+    <string-array name="theme_entries">
+        <item>@string/themes_light</item>
+        <item>@string/themes_dark</item>
+        <item>@string/themes_default</item>
+    </string-array>
+    <string-array name="theme_values">
+        <item>light</item>
+        <item>dark</item>
+        <item>system</item>
+    </string-array>
 
 </resources>
