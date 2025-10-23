@@ -216,3 +216,20 @@ The application has now fully restored the critical features of editing, deletin
 **Result:**
 
 All reported errors and warnings have been successfully addressed. The project is now in a clean and stable state, free of IDE-reported issues.
+
+### Log: 2025/11/02 - Error and Warning Cleanup
+
+**Objective:** Resolve all outstanding errors and warnings identified by the IDE.
+
+**Actions Taken:**
+
+1.  **Fixed XML Resource Errors (`fragment_reminder_settings.xml`):**
+    *   Corrected typos in the `android:layout_height` attributes.
+
+2.  **Cleaned Up Kotlin Files:**
+    *   **`MainViewModel.kt`:**
+        *   Removed underscores from the unused parameters `meds` and `status` in the `updateComplianceRate` function.
+
+**Result:**
+
+All reported errors and warnings have been successfully addressed. The project is now in a clean and stable state, free of IDE-reported issues.
