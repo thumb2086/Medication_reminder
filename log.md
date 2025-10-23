@@ -270,3 +270,17 @@ All reported warnings have been successfully addressed. The project is now in a 
 **Result:**
 
 The settings icon and the theme/color settings screen have been fully restored. Users can now access the settings page from the toolbar and customize the application's appearance as before.
+
+### Log: 2025/11/05 - Code Cleanup
+
+**Objective:** Resolve warnings in `SettingsFragment.kt`.
+
+**Actions Taken:**
+
+1.  **`SettingsFragment.kt`:**
+    *   Removed an unused import directive.
+    *   Replaced unnecessary safe calls (`?.`) with a `let` block for improved conciseness and safety.
+
+**Result:**
+
+All warnings in `SettingsFragment.kt` have been resolved. The project remains in a clean and stable state.
