@@ -133,4 +133,25 @@
     <string name="dosage_format">%.1f 顆</string>
     <string name="slot_n">藥倉 %d</string>
     <string name="how_many_medications">輸入幾種藥物？</string>
+
+    <!-- New Strings for Fragment Architecture -->
+    <string name="connect_box">連接藥盒</string>
+    <string name="disconnected">未連接</string>
+    <string name="how_many_meds_prompt">要新增幾種藥物？</string>
+    <string name="medication_name">藥物名稱</string>
+    <string name="slot_number">藥倉編號</string>
+    <string name="start_date">開始日期</string>
+    <string name="end_date">結束日期</string>
+    <string name="select_time">選擇時間</string>
+    <string name="dosage">劑量</string>
+    <string name="notes">備註</string>
+    <string name="no_available_slots">沒有可用的藥倉</string>
+    <string name="dosage_pills">劑量: %d 顆</string>
+    <string name="add_at_least_one_medication">請至少新增一筆藥物</string>
+    <string name="please_fill_all_fields">請填寫所有必填欄位（藥名、藥倉、日期、時間）</string>
+    <string name="end_date_before_start_date">結束日期不能早於開始日期</string>
+    <string name="medications_added_successfully">藥物已成功新增</string>
+    <string name="medication_history">服藥紀錄</string>
+    <string name="environment_monitor">環境監測</string>
+
 </resources>

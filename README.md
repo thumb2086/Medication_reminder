@@ -1,6 +1,6 @@
 # 智能藥盒提醒 App
 
-這是一款 Android 應用程式，旨在幫助使用者管理他們的藥物服用排程，並透過藍牙低功耗 (BLE) 技術與智能藥盒互動。
+這是一款 Android 應用程式，旨在幫助使用者管理他們的藥物服用排程，并透過藍牙低功耗 (BLE) 技術與智能藥盒互動。
 
 ## 設計理念
 
@@ -117,12 +117,31 @@
 
 ## 專案結構
 
-本專案採用單一 `Activity` 和多 `Fragment` 的現代 Android App 架構。
+本專案採用單一 Activity 和多 Fragment 的現代 Android App 架構，確保職責分離和高可擴展性。
 
-*   `MainActivity.kt`: App 的主要 `Activity`，負責管理 `ViewPager2`、`TabLayout`、藍牙連線及 **高階指令的組裝與透過 `BluetoothLeManager` 的發送**。
-*   `ui/ReminderFragment.kt`: **提醒設定**頁面的 `Fragment`，負責處理 **引導式放藥的 UI 流程與佇列管理**。
-*   `ble/BluetoothLeManager.kt`: **低層藍牙通訊介面，負責實際的藍牙數據傳輸（如 `sendCommand()`）和從藥盒接收原始數據，並將其轉發給 `MainActivity` 處理。它也將負責 JSON 數據的序列化和反序列化。**
-*   其餘檔案結構請參考下方... (與先前版本相同)
+*   `MainActivity.kt`: 作為 App 的唯一入口 `Activity`，其角色是「容器」和「總指揮」。
+    *   負責承載 `TabLayout` 和 `ViewPager2`，管理三個主要 Fragment 的切換。
+    *   創建並持有 `BluetoothLeManager` 的唯一實例，集中管理藍牙連接生命週期。
+    *   持有共享的 `MainViewModel`，將藍牙狀態、環境數據等分發給各個 Fragment。
+
+*   `MainViewModel.kt`: 一個共享的 `ViewModel`，用於在 `MainActivity` 和多個 Fragment 之間安全地共享數據。
+    *   持有藍牙連接狀態、溫濕度數據 (`LiveData`/`StateFlow`)。
+    *   包含業務邏輯，例如處理來自藍牙的數據、更新服藥紀錄等。
+
+*   `ui/ReminderSettingsFragment.kt`: 「提醒設定」頁面的 Fragment。
+    *   負責所有藥物相關的 UI 操作，包括動態生成藥物設定卡片。
+    *   收集用戶輸入，並透過 `MainViewModel` 將設定指令傳遞給 `MainActivity`。
+
+*   `ui/HistoryFragment.kt`: 「服藥紀錄」頁面的 Fragment。
+    *   從 `MainViewModel` 觀察服藥紀錄數據 (`dailyStatusMap`) 並更新日曆。
+    *   顯示服藥依從率圖表。
+
+*   `ui/EnvironmentFragment.kt`: 「環境監測」頁面的 Fragment。
+    *   從 `MainViewModel` 觀察溫濕度數據並更新 UI，例如儀表盤或歷史圖表。
+
+*   `ble/BluetoothLeManager.kt`: 封裝所有低階藍牙通訊的細節。
+    *   負責掃描、連接、發送指令和接收數據。
+    *   將原始數據解析後，透過回呼 (callback) 或 `Flow` 傳遞給 `MainActivity`。
 
 ## 權限需求
 
