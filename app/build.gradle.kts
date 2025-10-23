@@ -120,10 +120,10 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
-    implementation("androidx.fragment:fragment-ktx:1.8.9") // Directly specified version
+    implementation(libs.androidx.fragment.ktx)
     implementation(libs.gson)
     implementation(libs.calendar.view)
-    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0") // Directly specified version
+    implementation(libs.mpandroidchart)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -135,4 +135,3 @@ kotlin {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
     }
 }
-

@@ -73,7 +73,7 @@ class ReminderSettingsFragment : Fragment() {
             collectAndSaveMedications()
         }
 
-        (binding.medicationCountSpinner as? AutoCompleteTextView)?.setOnItemClickListener { _, _, position, _ ->
+        binding.medicationCountSpinner.setOnItemClickListener { _, _, position, _ ->
             val selectedCount = (position + 1)
             updateMedicationCards(selectedCount)
         }
@@ -95,7 +95,7 @@ class ReminderSettingsFragment : Fragment() {
         binding.medicationCountSpinner.isEnabled = true
         val countOptions = (1..availableSlotCount).map { it.toString() }.toTypedArray()
         val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, countOptions)
-        (binding.medicationCountSpinner as? AutoCompleteTextView)?.setAdapter(adapter)
+        binding.medicationCountSpinner.setAdapter(adapter)
     }
 
     private fun updateMedicationCards(count: Int) {
@@ -122,12 +122,10 @@ class ReminderSettingsFragment : Fragment() {
         cardBinding.timePickerButton.setOnClickListener { showTimePickerDialog(cardBinding, cardState) }
 
         // Setup listener for the slot spinner
-        (cardBinding.slotNumberSpinner as? AutoCompleteTextView)?.setOnItemClickListener { _, view, position, _ ->
-            val adapter = (view.parent.parent as? AutoCompleteTextView)?.adapter
-            if (adapter != null) {
-                cardState.selectedSlot = adapter.getItem(position) as Int
-                updateAllSlotSpinners() // Update other spinners to exclude the newly selected slot
-            }
+        cardBinding.slotNumberSpinner.setOnItemClickListener { _, _, position, _ ->
+            val adapter = cardBinding.slotNumberSpinner.adapter
+            cardState.selectedSlot = adapter.getItem(position) as Int
+            updateAllSlotSpinners() // Update other spinners to exclude the newly selected slot
         }
 
         // Initialize dosage label
@@ -149,15 +147,15 @@ class ReminderSettingsFragment : Fragment() {
             }.sorted()
 
             val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, availableForThisCard)
-            (cardBinding.slotNumberSpinner as? AutoCompleteTextView)?.setAdapter(adapter)
+            cardBinding.slotNumberSpinner.setAdapter(adapter)
 
             // If a slot was previously selected, ensure it's still displayed
             cardState.selectedSlot?.let {
                  if (availableForThisCard.contains(it)) {
-                    (cardBinding.slotNumberSpinner as? AutoCompleteTextView)?.setText(it.toString(), false)
+                    cardBinding.slotNumberSpinner.setText(it.toString(), false)
                  } else {
                      // The slot is no longer valid (e.g., deleted from another screen), so clear it
-                     (cardBinding.slotNumberSpinner as? AutoCompleteTextView)?.setText("", false)
+                     cardBinding.slotNumberSpinner.setText("", false)
                      cardState.selectedSlot = null
                  }
             }

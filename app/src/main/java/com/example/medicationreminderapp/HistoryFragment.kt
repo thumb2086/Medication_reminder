@@ -16,7 +16,6 @@ class HistoryFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val viewModel: MainViewModel by activityViewModels()
-    private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -39,14 +38,9 @@ class HistoryFragment : Fragment() {
             // Here, we'll log the dates that should be marked.
             statusMap.forEach { (dateStr, status) ->
                 if (status == MainViewModel.STATUS_ALL_TAKEN) {
-                    try {
-                        val date = dateFormat.parse(dateStr)
-                        // You would typically use a custom decorator to highlight this date on the calendar.
-                        // For now, we are just confirming the logic is connected.
-                         android.util.Log.d("HistoryFragment", "Date to be marked as taken: $dateStr")
-                    } catch (e: Exception) {
-                        android.util.Log.e("HistoryFragment", "Error parsing date from status map", e)
-                    }
+                    // You would typically use a custom decorator to highlight this date on the calendar.
+                    // For now, we are just confirming the logic is connected.
+                    android.util.Log.d("HistoryFragment", "Date to be marked as taken: $dateStr")
                 }
             }
         }

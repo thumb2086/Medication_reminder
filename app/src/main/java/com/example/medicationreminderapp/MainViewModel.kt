@@ -2,8 +2,8 @@ package com.example.medicationreminderapp
 
 import android.app.Application
 import android.content.Context.MODE_PRIVATE
-import android.content.SharedPreferences
 import android.util.Log
+import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
 import com.google.gson.Gson
@@ -26,11 +26,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val notesMap = MutableLiveData<MutableMap<String, String>>(mutableMapOf())
     val complianceRate = MutableLiveData<Float>(0f)
 
-    private val sharedPreferences: SharedPreferences
+    private val sharedPreferences = application.getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
     private val gson = Gson()
 
     init {
-        sharedPreferences = application.getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
         loadAllData()
     }
 
@@ -50,22 +49,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         val newStatusMap = dailyStatusMap.value ?: mutableMapOf()
         newStatusMap[todayStr] = STATUS_ALL_TAKEN
-        dailyStatusMap.value = newStatusMap
+        dailyStatusMap.value = newStatusMap // This is fine as it's re-assigning a new map
 
-        val med = medicationList.value?.find { it.slotNumber == slotNumber }
+        val currentMeds = medicationList.value ?: return // Get current list or exit if null
+        val med = currentMeds.find { it.slotNumber == slotNumber }
         med?.let {
             if (it.remainingPills > 0) {
                 it.remainingPills--
             }
-             val updatedList = medicationList.value
-             medicationList.value = updatedList // Trigger LiveData update
+            // Notify observer that the list content has changed
+            medicationList.value = currentMeds
         }
 
         saveMedicationData()
         saveDailyStatusData()
-        updateComplianceRate(medicationList.value ?: listOf(), newStatusMap)
+        updateComplianceRate(currentMeds, newStatusMap)
     }
-
 
     fun updateComplianceRate(meds: List<Medication>, status: Map<String, Int>) {
         // TODO: Implement the compliance rate calculation logic here
@@ -74,20 +73,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // --- Data Persistence ---
 
-    fun loadAllData() {
+    private fun loadAllData() {
         loadMedicationData()
         loadNotesData()
         loadDailyStatusData()
     }
 
-    fun saveAllData() {
-        saveMedicationData()
-        saveNotesData()
-        saveDailyStatusData()
-    }
-
     private fun saveMedicationData() {
-        sharedPreferences.edit().putString(KEY_MEDICATION_DATA, gson.toJson(medicationList.value)).apply()
+        sharedPreferences.edit {
+            putString(KEY_MEDICATION_DATA, gson.toJson(medicationList.value))
+        }
     }
 
     private fun loadMedicationData() {
@@ -102,7 +97,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun saveNotesData() {
-        sharedPreferences.edit().putString(KEY_NOTES_DATA, gson.toJson(notesMap.value)).apply()
+        sharedPreferences.edit {
+            putString(KEY_NOTES_DATA, gson.toJson(notesMap.value))
+        }
     }
 
     private fun loadNotesData() {
@@ -117,7 +114,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun saveDailyStatusData() {
-        sharedPreferences.edit().putString(KEY_DAILY_STATUS, gson.toJson(dailyStatusMap.value)).apply()
+        sharedPreferences.edit {
+            putString(KEY_DAILY_STATUS, gson.toJson(dailyStatusMap.value))
+        }
     }
 
     private fun loadDailyStatusData() {

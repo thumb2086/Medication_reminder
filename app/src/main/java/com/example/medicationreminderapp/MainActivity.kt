@@ -18,7 +18,6 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import com.example.medicationreminderapp.adapter.ViewPagerAdapter
@@ -112,7 +111,6 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
     }
 
     // --- BluetoothLeManager.BleListener Callbacks ---
-    // --- These methods now forward data to the ViewModel ---
 
     override fun onStatusUpdate(message: String) {
         runOnUiThread { viewModel.bleStatus.value = message }
@@ -121,7 +119,6 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
     override fun onDeviceConnected() {
         viewModel.isBleConnected.value = true
         runOnUiThread {
-            // Perform initial sync after connection
             Handler(Looper.getMainLooper()).postDelayed({ bluetoothLeManager.requestStatus() }, 500)
             Handler(Looper.getMainLooper()).postDelayed({ bluetoothLeManager.syncTime() }, 1000)
         }
@@ -134,7 +131,7 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
     override fun onMedicationTaken(slotNumber: Int) {
         runOnUiThread {
             Toast.makeText(this, getString(R.string.medication_taken_report, slotNumber), Toast.LENGTH_LONG).show()
-            // viewModel.processMedicationTaken(slotNumber) // TODO: Implement in ViewModel
+            viewModel.processMedicationTaken(slotNumber)
         }
     }
 
@@ -143,7 +140,6 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
             val currentTime = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
             val message = getString(R.string.time_sync_success, currentTime)
             Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-            // syncRemindersToBox() // This will now be triggered from the Fragment via ViewModel
         }
     }
 
@@ -170,32 +166,9 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         if (slotNumber in 1..8) { // Confirmation for guided fill
              runOnUiThread {
                 Log.d("MainActivity", "Slot $slotNumber filled confirmation received.")
-                // viewModel.onGuidedFillConfirmed() // TODO: Implement in ViewModel
+                viewModel.onGuidedFillConfirmed()
             }
         }
-    }
-
-    // --- Commands to be called from Fragments (via ViewModel) ---
-
-    fun rotateToSlot(slotNumber: Int) {
-        if (viewModel.isBleConnected.value != true) {
-            Toast.makeText(this, getString(R.string.connect_box_first), Toast.LENGTH_SHORT).show()
-            return
-        }
-        val command = "{\"action\":\"rotate_to_slot\",\"payload\":{\"slot\":$slotNumber}}"
-        // bluetoothLeManager.sendCommand(command) // TODO: Re-enable this
-        Log.d("MainActivity", "Sending command: $command")
-    }
-
-    fun syncRemindersToBox(remindersJsonPayload: String) {
-        if (viewModel.isBleConnected.value != true) return
-
-        val syncTime = System.currentTimeMillis() / 1000
-        val command = "{\"action\":\"sync_reminders\",\"payload\":{\"sync_time\":$syncTime,\"reminders\":[$remindersJsonPayload]}}"
-        
-        // bluetoothLeManager.sendCommand(command) // TODO: Re-enable this
-        Log.d("MainActivity", "Sending command: $command")
-        runOnUiThread { Toast.makeText(this, getString(R.string.reminders_synced_to_box), Toast.LENGTH_SHORT).show() }
     }
 
     private fun createNotificationChannel() {
