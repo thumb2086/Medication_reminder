@@ -39,4 +39,6 @@
     <color name="surfaceTint">#6750A4</color>
     <color name="outlineVariant">#CAC4D0</color>
     <color name="scrim">#000000</color>
+    <color name="temp_color">#FF0000</color>
+    <color name="humidity_color">#0000FF</color>
 </resources>

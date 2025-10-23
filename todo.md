@@ -1,0 +1,14 @@
+- **DONE** Fix issue where medication adherence rate is not updated and notification is not dismissed after taking medication.
+- **DONE** Fix status bar text color issue.
+- **DONE** Fix Accessibility warning in `medication_input_item.xml`.
+- **DONE** Fix Productivity warning in `build.gradle.kts` (Use TOML).
+- **DONE** Fix unused declarations in `HistoryFragment.kt` and `MainViewModel.kt`.
+- **DONE** Fix build errors in `MainActivity.kt` and `MedicationTakenReceiver.kt`.
+- **DONE** Fix remaining warnings in `HistoryFragment.kt` and `MainViewModel.kt`.
+- **DONE** Fix `Unresolved reference` errors in `app/build.gradle.kts` by performing a Gradle sync.
+- **DONE** Fix final warning in `MainViewModel.kt`.
+- **TODO** Fix Performance warnings (`baselineAligned`, unused resources). Suggestion: Use Android Studio's "Remove Unused Resources" feature. The `Missing baselineAligned attribute` warning needs further investigation.
+- **TODO** Fix Java declaration redundancy warnings (unnecessary module dependency, unused declarations in `MedicationListFragment`, `ReminderSettingsFragment`).
+- **TODO** Fix Kotlin warnings.
+- **TODO** Fix Markdown warnings.
+- **TODO** Fix Proofreading typos.
