@@ -1,5 +1,6 @@
 package com.example.medicationreminderapp
 
+import android.app.AlertDialog
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.os.Bundle
@@ -32,16 +33,18 @@ class ReminderSettingsFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val viewModel: MainViewModel by activityViewModels()
+    private var editingMedication: Medication? = null
 
-    // List to hold bindings and state for each card
     private val medicationCards = mutableListOf<Pair<MedicationInputItemBinding, MedicationCardState>>()
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    private lateinit var alarmScheduler: AlarmScheduler
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentReminderSettingsBinding.inflate(inflater, container, false)
+        alarmScheduler = AlarmScheduler(requireContext())
         return binding.root
     }
 
@@ -56,10 +59,9 @@ class ReminderSettingsFragment : Fragment() {
         viewModel.bleStatus.observe(viewLifecycleOwner) { status ->
             binding.bleStatusTextView.text = status
         }
-        // Observe changes in the medication list to update the available slots
         viewModel.medicationList.observe(viewLifecycleOwner) {
             setupMedicationCountSpinner()
-            updateAllSlotSpinners() // In case a medication was deleted elsewhere
+            updateAllSlotSpinners()
         }
     }
 
@@ -72,19 +74,99 @@ class ReminderSettingsFragment : Fragment() {
             collectAndSaveMedications()
         }
 
+        binding.editReminderButton.setOnClickListener {
+            showMedicationSelectionDialog(isForEdit = true)
+        }
+
+        binding.deleteReminderButton.setOnClickListener {
+            showMedicationSelectionDialog(isForEdit = false)
+        }
+
         binding.medicationCountSpinner.setOnItemClickListener { _, _, position, _ ->
             val selectedCount = (position + 1)
             updateMedicationCards(selectedCount)
+            editingMedication = null
+            binding.addReminderButton.text = getString(R.string.add_medication_reminder)
         }
+    }
+
+    private fun showMedicationSelectionDialog(isForEdit: Boolean) {
+        val medications = viewModel.medicationList.value ?: emptyList()
+        if (medications.isEmpty()) {
+            Toast.makeText(requireContext(), getString(R.string.no_medication_to_modify), Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val medicationNames = medications.map { it.name }.toTypedArray()
+        val title = if (isForEdit) getString(R.string.select_medication_to_edit) else getString(R.string.select_medication_to_delete)
+
+        AlertDialog.Builder(requireContext())
+            .setTitle(title)
+            .setItems(medicationNames) { _, which ->
+                val selectedMed = medications[which]
+                if (isForEdit) {
+                    populateFormForEdit(selectedMed)
+                } else {
+                    confirmAndDelete(selectedMed)
+                }
+            }
+            .show()
+    }
+
+    private fun populateFormForEdit(med: Medication) {
+        editingMedication = med
+        updateMedicationCards(1)
+
+        val (cardBinding, cardState) = medicationCards.first()
+
+        cardBinding.medicationNameEditText.setText(med.name)
+        cardBinding.dosageSlider.value = med.dosage.toFloat()
+
+        cardState.startDate = Calendar.getInstance().apply { timeInMillis = med.startDate }
+        cardState.endDate = Calendar.getInstance().apply { timeInMillis = med.endDate }
+        cardBinding.startDateEditText.setText(dateFormat.format(cardState.startDate!!.time))
+        cardBinding.endDateEditText.setText(dateFormat.format(cardState.endDate!!.time))
+
+        cardState.selectedSlot = med.slotNumber
+        updateAllSlotSpinners()
+
+        cardBinding.timeChipGroup.removeAllViews()
+        cardState.times.clear()
+        med.times.values.forEach { timeInMillis ->
+            val time = Calendar.getInstance().apply { this.timeInMillis = timeInMillis }
+            addTimeChip(cardBinding, cardState, time)
+        }
+
+        binding.addReminderButton.text = getString(R.string.update_medication)
+        binding.medicationCountSpinner.setText("1", false)
+        binding.medicationCountSpinner.isEnabled = false
+    }
+
+    private fun confirmAndDelete(med: Medication) {
+        AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.confirm_delete_title))
+            .setMessage(getString(R.string.confirm_delete_message, med.name))
+            .setPositiveButton(R.string.delete) { _, _ ->
+                alarmScheduler.cancel(med)
+                viewModel.deleteMedication(med)
+                Toast.makeText(requireContext(), getString(R.string.medication_deleted, med.name), Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     private fun getAvailableSlots(): List<Int> {
         val allSlots = (1..8).toSet()
-        val occupiedSlots = viewModel.medicationList.value?.map { it.slotNumber }?.toSet() ?: emptySet()
+        val occupiedSlots = viewModel.medicationList.value
+            ?.map { it.slotNumber }
+            ?.filter { it != editingMedication?.slotNumber }
+            ?.toSet() ?: emptySet()
         return (allSlots - occupiedSlots).toList().sorted()
     }
 
     private fun setupMedicationCountSpinner() {
+        if (editingMedication != null) return
+
         val availableSlotCount = getAvailableSlots().size
         if (availableSlotCount == 0) {
             binding.medicationCountSpinner.setText(getString(R.string.no_available_slots), false)
@@ -98,12 +180,10 @@ class ReminderSettingsFragment : Fragment() {
     }
 
     private fun updateMedicationCards(count: Int) {
-        // Clear previous cards
         binding.medicationCardsContainer.removeAllViews()
         medicationCards.clear()
 
-        // Create new cards
-        for (i in 1..count) {
+        repeat(count) {
             val cardBinding = MedicationInputItemBinding.inflate(layoutInflater, binding.medicationCardsContainer, false)
             val cardState = MedicationCardState()
             medicationCards.add(Pair(cardBinding, cardState))
@@ -115,19 +195,19 @@ class ReminderSettingsFragment : Fragment() {
     }
 
     private fun setupCard(cardBinding: MedicationInputItemBinding, cardState: MedicationCardState) {
-        // Setup listeners for date and time pickers
         cardBinding.startDateEditText.setOnClickListener { showDatePickerDialog(cardBinding, cardState, isStartDate = true) }
         cardBinding.endDateEditText.setOnClickListener { showDatePickerDialog(cardBinding, cardState, isStartDate = false) }
         cardBinding.timePickerButton.setOnClickListener { showTimePickerDialog(cardBinding, cardState) }
 
-        // Setup listener for the slot spinner
         cardBinding.slotNumberSpinner.setOnItemClickListener { _, _, position, _ ->
             val adapter = cardBinding.slotNumberSpinner.adapter
-            cardState.selectedSlot = adapter.getItem(position) as Int
-            updateAllSlotSpinners() // Update other spinners to exclude the newly selected slot
+            val selected = adapter?.getItem(position) as? Int
+            if (selected != null) {
+                cardState.selectedSlot = selected
+                updateAllSlotSpinners()
+            }
         }
 
-        // Initialize dosage label
         cardBinding.dosageLabelTextView.text = getString(R.string.dosage_pills, cardBinding.dosageSlider.value.toInt())
         cardBinding.dosageSlider.addOnChangeListener { _, value, _ ->
             cardBinding.dosageLabelTextView.text = getString(R.string.dosage_pills, value.toInt())
@@ -139,24 +219,20 @@ class ReminderSettingsFragment : Fragment() {
         val selectedInThisForm = medicationCards.mapNotNull { it.second.selectedSlot }
 
         medicationCards.forEach { (cardBinding, cardState) ->
-            // A slot is available for this card if it's globally available AND not selected by another card in this form
-            // OR if it's the one currently selected by this card itself.
-            val availableForThisCard = globallyAvailableSlots.filter { slot ->
-                !selectedInThisForm.contains(slot) || slot == cardState.selectedSlot
+            val availableForThisCard = globallyAvailableSlots.filter {
+                !selectedInThisForm.contains(it) || it == cardState.selectedSlot
             }.sorted()
 
             val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, availableForThisCard)
             cardBinding.slotNumberSpinner.setAdapter(adapter)
 
-            // If a slot was previously selected, ensure it's still displayed
             cardState.selectedSlot?.let {
-                 if (availableForThisCard.contains(it)) {
+                if (availableForThisCard.contains(it)) {
                     cardBinding.slotNumberSpinner.setText(it.toString(), false)
-                 } else {
-                     // The slot is no longer valid (e.g., deleted from another screen), so clear it
-                     cardBinding.slotNumberSpinner.setText("", false)
-                     cardState.selectedSlot = null
-                 }
+                } else {
+                    cardBinding.slotNumberSpinner.setText("", false)
+                    cardState.selectedSlot = null
+                }
             }
         }
     }
@@ -205,20 +281,43 @@ class ReminderSettingsFragment : Fragment() {
         val chip = Chip(context).apply {
             text = timeFormat.format(time.time)
             isCloseIconVisible = true
-            id = View.generateViewId() // Unique ID for the chip
+            id = View.generateViewId()
         }
 
-        // Store time with chip's ID
         cardState.times[chip.id] = time
 
         chip.setOnCloseIconClickListener { view ->
             cardBinding.timeChipGroup.removeView(view)
-            cardState.times.remove(view.id) // Remove time from state
+            cardState.times.remove(view.id)
         }
         cardBinding.timeChipGroup.addView(chip)
     }
 
     private fun collectAndSaveMedications() {
+        if (editingMedication != null) {
+            collectAndUpdateSingleMedication()
+        } else {
+            collectAndAddNewMedications()
+        }
+    }
+
+    private fun collectAndUpdateSingleMedication() {
+        val (cardBinding, cardState) = medicationCards.firstOrNull() ?: return
+        val medToUpdate = editingMedication ?: return
+
+        // First, cancel the old alarms
+        alarmScheduler.cancel(medToUpdate)
+
+        val updatedMed = createMedicationFromInput(cardBinding, cardState, medToUpdate.id)
+        if (updatedMed != null) {
+            viewModel.updateMedication(updatedMed)
+            alarmScheduler.schedule(updatedMed) // Schedule new alarms
+            Toast.makeText(requireContext(), getString(R.string.medication_updated, updatedMed.name), Toast.LENGTH_SHORT).show()
+            resetForm()
+        }
+    }
+
+    private fun collectAndAddNewMedications() {
         val newMedications = mutableListOf<Medication>()
         var allFormsValid = true
 
@@ -228,68 +327,79 @@ class ReminderSettingsFragment : Fragment() {
         }
 
         for ((cardBinding, cardState) in medicationCards) {
-            val name = cardBinding.medicationNameEditText.text.toString()
-            val slot = cardState.selectedSlot
-            val startDate = cardState.startDate
-            val endDate = cardState.endDate
-            val times = cardState.times
-            val dosage = cardBinding.dosageSlider.value
-            val notes = cardBinding.notesEditText.text.toString()
-
-            if (name.isBlank() || slot == null || startDate == null || endDate == null) {
+            val newMed = createMedicationFromInput(cardBinding, cardState, Random.nextInt())
+            if (newMed == null) {
                 allFormsValid = false
-                Toast.makeText(requireContext(), getString(R.string.please_fill_all_fields), Toast.LENGTH_LONG).show()
                 break
             }
-
-            if (times.isEmpty()) {
-                allFormsValid = false
-                Toast.makeText(requireContext(), getString(R.string.please_add_time), Toast.LENGTH_LONG).show()
-                break
-            }
-
-            if (startDate.after(endDate)) {
-                 allFormsValid = false
-                Toast.makeText(requireContext(), getString(R.string.end_date_before_start_date), Toast.LENGTH_LONG).show()
-                break
-            }
-
-            // Calculate total pills
-            val diff = endDate.timeInMillis - startDate.timeInMillis
-            val days = TimeUnit.MILLISECONDS.toDays(diff).toInt() + 1
-            val dosesPerDay = times.size
-            val pillsPerDose = dosage.toInt()
-            val totalPills = days * dosesPerDay * pillsPerDose
-
-            val timesMap = times.values.mapIndexed { index, calendar -> index to calendar.timeInMillis }.toMap()
-
-            val newMed = Medication(
-                id = Random.nextInt(),
-                name = name,
-                dosage = pillsPerDose.toString(),
-                frequency = "", // Frequency is implicitly defined by the number of times
-                startDate = startDate.timeInMillis,
-                endDate = endDate.timeInMillis,
-                times = timesMap,
-                slotNumber = slot,
-                totalPills = totalPills,
-                remainingPills = totalPills
-            )
             newMedications.add(newMed)
-
-            // Also save notes to the shared ViewModel
-             if (notes.isNotBlank()) {
-                 viewModel.notesMap.value?.put(name, notes)
-             }
         }
 
         if (allFormsValid) {
             viewModel.addMedications(newMedications)
+            newMedications.forEach { alarmScheduler.schedule(it) }
             Toast.makeText(requireContext(), getString(R.string.medications_added_successfully), Toast.LENGTH_SHORT).show()
-            // Reset the form
-            binding.medicationCountSpinner.setText("", false)
-            updateMedicationCards(0)
+            resetForm()
         }
+    }
+
+    private fun createMedicationFromInput(cardBinding: MedicationInputItemBinding, cardState: MedicationCardState, medicationId: Int): Medication? {
+        val name = cardBinding.medicationNameEditText.text.toString()
+        val slot = cardState.selectedSlot
+        val startDate = cardState.startDate
+        val endDate = cardState.endDate
+        val times = cardState.times
+        val dosage = cardBinding.dosageSlider.value
+        val notes = cardBinding.notesEditText.text.toString()
+
+        if (name.isBlank() || slot == null || startDate == null || endDate == null) {
+            Toast.makeText(requireContext(), getString(R.string.please_fill_all_fields), Toast.LENGTH_LONG).show()
+            return null
+        }
+
+        if (times.isEmpty()) {
+            Toast.makeText(requireContext(), getString(R.string.please_add_time), Toast.LENGTH_LONG).show()
+            return null
+        }
+
+        if (startDate.after(endDate)) {
+            Toast.makeText(requireContext(), getString(R.string.end_date_before_start_date), Toast.LENGTH_LONG).show()
+            return null
+        }
+
+        val diff = endDate.timeInMillis - startDate.timeInMillis
+        val days = TimeUnit.MILLISECONDS.toDays(diff).toInt() + 1
+        val dosesPerDay = times.size
+        val pillsPerDose = dosage.toInt()
+        val totalPills = days * dosesPerDay * pillsPerDose
+
+        val timesMap = times.values.mapIndexed { index, calendar -> index to calendar.timeInMillis }.toMap()
+
+        if (notes.isNotBlank()) {
+            viewModel.notesMap.value?.put(name, notes)
+        }
+
+        return Medication(
+            id = medicationId,
+            name = name,
+            dosage = pillsPerDose.toString(),
+            frequency = "",
+            startDate = startDate.timeInMillis,
+            endDate = endDate.timeInMillis,
+            times = timesMap,
+            slotNumber = slot,
+            totalPills = totalPills,
+            remainingPills = totalPills
+        )
+    }
+
+    private fun resetForm() {
+        editingMedication = null
+        binding.medicationCountSpinner.setText("", false)
+        binding.medicationCountSpinner.isEnabled = true
+        updateMedicationCards(0)
+        binding.addReminderButton.text = getString(R.string.add_medication_reminder)
+        setupMedicationCountSpinner()
     }
 
     override fun onDestroyView() {

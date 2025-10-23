@@ -35,9 +35,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun addMedications(newMedications: List<Medication>) {
         val currentList = medicationList.value ?: mutableListOf()
-        currentList.addAll(newMedications)
-        medicationList.value = currentList
+        val newList = currentList.toMutableList().apply {
+            addAll(newMedications)
+        }
+        medicationList.value = newList
         saveMedicationData() // Save the updated list
+    }
+
+    fun updateMedication(updatedMed: Medication) {
+        val currentList = medicationList.value ?: return
+        val newList = currentList.map {
+            if (it.slotNumber == updatedMed.slotNumber) {
+                updatedMed
+            } else {
+                it
+            }
+        }.toMutableList()
+        medicationList.value = newList
+        saveMedicationData()
+    }
+
+    fun deleteMedication(medToDelete: Medication) {
+        val currentList = medicationList.value ?: return
+        val newList = currentList.filter {
+            it.slotNumber != medToDelete.slotNumber
+        }.toMutableList()
+        medicationList.value = newList
+        saveMedicationData()
     }
 
     fun onGuidedFillConfirmed() {
@@ -52,18 +76,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         dailyStatusMap.value = newStatusMap // This is fine as it's re-assigning a new map
 
         val currentMeds = medicationList.value ?: return // Get current list or exit if null
-        val med = currentMeds.find { it.slotNumber == slotNumber }
-        med?.let {
-            if (it.remainingPills > 0) {
-                it.remainingPills--
+        val updatedList = currentMeds.map {
+            if (it.slotNumber == slotNumber && it.remainingPills > 0) {
+                it.copy(remainingPills = it.remainingPills - 1)
+            } else {
+                it
             }
-            // Notify observer that the list content has changed
-            medicationList.value = currentMeds
-        }
+        }.toMutableList()
+
+        medicationList.value = updatedList
+
 
         saveMedicationData()
         saveDailyStatusData()
-        updateComplianceRate(currentMeds, newStatusMap)
+        updateComplianceRate(updatedList, newStatusMap)
     }
 
     fun updateComplianceRate(meds: List<Medication>, status: Map<String, Int>) {

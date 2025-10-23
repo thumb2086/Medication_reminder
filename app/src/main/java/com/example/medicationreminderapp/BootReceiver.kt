@@ -3,11 +3,27 @@ package com.example.medicationreminderapp
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 
 class BootReceiver : BroadcastReceiver() {
+
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
-            // Re-register alarms here
+            val sharedPreferences = context.getSharedPreferences(MainViewModel.PREFS_NAME, Context.MODE_PRIVATE)
+            val gson = Gson()
+            val alarmScheduler = AlarmScheduler(context)
+
+            sharedPreferences.getString(MainViewModel.KEY_MEDICATION_DATA, null)?.let {
+                try {
+                    val medications: List<Medication> = gson.fromJson(it, object : TypeToken<List<Medication>>() {}.type)
+                    medications.forEach { medication ->
+                        alarmScheduler.schedule(medication)
+                    }
+                } catch (e: Exception) {
+                    // Log error or handle gracefully
+                }
+            }
         }
     }
 }

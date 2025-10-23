@@ -67,5 +67,29 @@
             android:layout_marginTop="24dp"
             android:text="@string/add_medication_reminder" />
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+
+            <Button
+                android:id="@+id/editReminderButton"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:text="@string/edit_reminder" />
+
+            <Button
+                android:id="@+id/deleteReminderButton"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/delete_reminder" />
+        </LinearLayout>
+
     </LinearLayout>
 </ScrollView>

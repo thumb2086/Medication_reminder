@@ -69,6 +69,8 @@
     <string name="medication_added_to_slot">藥物 \\%s\\ 已新增至第 %d 倉</string>
 
     <!-- Medication Info & Management -->
+    <string name="edit_reminder">編輯提醒</string>
+    <string name="delete_reminder">刪除提醒</string>
     <string name="low_stock_warning_title">低庫存警告</string>
     <string name="low_stock_warning_message">藥物 \\%s\\ 即將用完，僅剩 %d 顆，請記得補充！</string>
     <string name="reminders_synced_to_box">提醒已同步至藥盒</string>
@@ -95,6 +97,8 @@
     <string name="time_label_evening">晚上</string>
     <string name="time_label_bedtime">睡前</string>
     <string name="time_label_default">時間</string>
+    <string name="medication_list_item_details">藥倉: %1$d | 時間: %2$s</string>
+
 
     <!-- Permissions -->
     <string name="notification_permission_denied">通知權限被拒絕</string>

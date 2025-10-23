@@ -6,6 +6,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.medicationreminderapp.Medication
+import com.example.medicationreminderapp.R
 import com.example.medicationreminderapp.databinding.MedicationListItemBinding
 import java.text.SimpleDateFormat
 import java.util.*
@@ -30,7 +31,8 @@ class MedicationListAdapter : ListAdapter<Medication, MedicationListAdapter.Medi
         fun bind(medication: Medication) {
             binding.medicationNameTextView.text = medication.name
             val times = medication.times.values.sorted().joinToString { timeFormat.format(Date(it)) }
-            binding.medicationDetailsTextView.text = "Slot: ${medication.slotNumber} | Times: $times"
+            val context = binding.root.context
+            binding.medicationDetailsTextView.text = context.getString(R.string.medication_list_item_details, medication.slotNumber, times)
         }
     }
 }
