@@ -76,7 +76,7 @@ The medication reminder form is now more intuitive and provides clearer feedback
 
 The settings functionality has been restored, and a new medication list page has been added, improving the app's usability and providing a more comprehensive overview of the user's medication schedule.
 
-### Log: 2025/10/26 - Fixed Resource Linking Error
+### Log: 2025/10/26 - Fixed Resource LinkingError
 
 **Objective:** Resolve the Android resource linking build error.
 
@@ -250,3 +250,23 @@ All reported errors and warnings have been successfully addressed. The project i
 **Result:**
 
 All reported warnings have been successfully addressed. The project is now in a clean and stable state, free of IDE-reported issues.
+
+### Log: 2025/11/04 - Restore Settings Functionality
+
+**Objective:** Restore the missing settings functionality, including the settings icon, theme switching, and accent color adjustment.
+
+**Actions Taken:**
+
+1.  **Restored Settings Icon:**
+    *   Created `res/menu/main_menu.xml` to define the settings action item.
+    *   Inflated the menu in `MainActivity.kt`'s `onCreateOptionsMenu`.
+
+2.  **Restored Settings Screen:**
+    *   Created `SettingsFragment.kt` to host the preference UI.
+    *   Created `res/xml/preferences.xml` to define the theme and accent color `ListPreference` options.
+    *   Handled clicks on the settings icon in `MainActivity.kt`'s `onOptionsItemSelected` to navigate to the `SettingsFragment`.
+    *   Added a `FrameLayout` with the ID `fragment_container` to `activity_main.xml` to serve as the container for the `SettingsFragment`.
+
+**Result:**
+
+The settings icon and the theme/color settings screen have been fully restored. Users can now access the settings page from the toolbar and customize the application's appearance as before.

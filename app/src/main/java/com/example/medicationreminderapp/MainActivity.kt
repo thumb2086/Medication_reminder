@@ -15,11 +15,13 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.util.Log
+import android.view.Menu
 import android.view.MenuItem
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.commit
 import androidx.lifecycle.ViewModelProvider
 import com.example.medicationreminderapp.adapter.ViewPagerAdapter
 import com.example.medicationreminderapp.databinding.ActivityMainBinding
@@ -62,6 +64,11 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         requestAppPermissions()
     }
 
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.main_menu, menu)
+        return true
+    }
+
     private fun setupViewPagerAndTabs() {
         binding.viewPager.adapter = ViewPagerAdapter(this)
         TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
@@ -78,10 +85,10 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.action_settings -> {
-                supportFragmentManager.beginTransaction()
-                    .replace(android.R.id.content, SettingsFragment())
-                    .addToBackStack(null)
-                    .commit()
+                supportFragmentManager.commit {
+                    replace(R.id.fragment_container, SettingsFragment())
+                    addToBackStack(null)
+                }
                 true
             }
             else -> super.onOptionsItemSelected(item)
