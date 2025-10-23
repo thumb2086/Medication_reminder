@@ -91,3 +91,24 @@ The settings functionality has been restored, and a new medication list page has
 **Result:**
 
 The resource linking error has been resolved, and the project now builds successfully.
+
+### Log: 2025/10/27 - Code Cleanup
+
+**Objective:** Address all remaining warnings in the project.
+
+**Actions Taken:**
+
+1.  **`strings.xml`:**
+    *   Renamed the `not_set` string to `status_not_set` to avoid a conflict with a private resource in the `androidx.preference` library.
+
+2.  **`ReminderSettingsFragment.kt`:**
+    *   Removed the unused import `android.widget.AutoCompleteTextView`.
+    *   Removed the unused `i` parameter in the `mapIndexed` function when creating `timesMap`.
+
+3.  **XML Layouts:**
+    *   Removed the unused `xmlns:android` namespace declaration from `res/xml/preferences.xml`.
+    *   Removed the unused `xmlns:app` namespace declaration from `res/layout/medication_input_item.xml`.
+
+**Result:**
+
+All warnings have been resolved, and the project is now clean and maintainable.

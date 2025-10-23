@@ -1,13 +1,14 @@
 ### TODO
 
-1.  **Build Verification:**
-    *   Run a clean build and ensure the app runs on a device or emulator to confirm the fix.
+1.  **Fix `strings.xml`:**
+    *   Rename the `not_set` string to `status_not_set` to avoid conflicts with the preference library.
 
-2.  **Gradle Sync:**
-    *   Perform a Gradle sync to ensure the new dependency is correctly integrated.
+2.  **Clean up `ReminderSettingsFragment.kt`:**
+    *   Remove the unused import directive.
+    *   Remove the unused parameter `i`.
 
-3.  **Testing:**
-    *   Thoroughly test the settings page to ensure all preference items function as expected.
+3.  **Clean up XML layouts:**
+    *   Remove the unused namespace declarations in `preferences.xml` and `medication_input_item.xml`.
 
-4.  **Code Review:**
-    *   Review the `app/build.gradle.kts` file to ensure the new dependency has been added correctly and doesn't introduce any conflicts.
+4.  **Documentation:**
+    *   Update `log.md` and `README.md` to reflect the changes.
