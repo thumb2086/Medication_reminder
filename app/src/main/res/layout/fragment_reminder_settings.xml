@@ -40,6 +40,7 @@
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:labelFor="@+id/medicationCountSpinner"
             android:hint="@string/how_many_meds_prompt">
 
             <AutoCompleteTextView

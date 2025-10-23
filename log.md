@@ -233,3 +233,20 @@ All reported errors and warnings have been successfully addressed. The project i
 **Result:**
 
 All reported errors and warnings have been successfully addressed. The project is now in a clean and stable state, free of IDE-reported issues.
+
+### Log: 2025/11/03 - Warning Cleanup
+
+**Objective:** Resolve all outstanding warnings identified by the IDE.
+
+**Actions Taken:**
+
+1.  **Fixed XML Accessibility Warning (`fragment_reminder_settings.xml`):**
+    *   Added a `labelFor` attribute to the `TextInputLayout` to improve accessibility.
+
+2.  **Cleaned Up Kotlin Files:**
+    *   **`MainViewModel.kt`:**
+        *   Added underscores to the unused parameters `meds` and `status` in the `updateComplianceRate` function.
+
+**Result:**
+
+All reported warnings have been successfully addressed. The project is now in a clean and stable state, free of IDE-reported issues.
