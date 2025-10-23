@@ -13,7 +13,6 @@ import com.kizitonwose.calendar.core.CalendarDay
 import com.kizitonwose.calendar.core.DayPosition
 import com.kizitonwose.calendar.view.MonthDayBinder
 import com.kizitonwose.calendar.view.ViewContainer
-import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 
@@ -51,14 +50,14 @@ class HistoryFragment : Fragment() {
         viewModel.dailyStatusMap.observe(viewLifecycleOwner) { statusMap ->
             binding.calendarView.dayBinder = object : MonthDayBinder<DayViewContainer> {
                 override fun create(view: View) = DayViewContainer(view)
-                override fun bind(container: DayViewContainer, day: CalendarDay) {
-                    container.day = day
+                override fun bind(container: DayViewContainer, data: CalendarDay) {
+                    container.day = data
                     val textView = container.view.findViewById<TextView>(R.id.calendarDayText)
-                    textView.text = day.date.dayOfMonth.toString()
+                    textView.text = data.date.dayOfMonth.toString()
                     val dotView = container.view.findViewById<View>(R.id.dotView)
 
-                    if (day.position == DayPosition.MonthDate) {
-                        val dateStr = formatter.format(day.date)
+                    if (data.position == DayPosition.MonthDate) {
+                        val dateStr = formatter.format(data.date)
                         dotView.isVisible = statusMap[dateStr] == MainViewModel.STATUS_ALL_TAKEN
                     } else {
                         dotView.isVisible = false
@@ -82,5 +81,4 @@ class HistoryFragment : Fragment() {
 
 class DayViewContainer(view: View) : ViewContainer(view) {
     lateinit var day: CalendarDay // Will be set when the view is bound.
-    val textView = view.findViewById<TextView>(R.id.calendarDayText)
 }

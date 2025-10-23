@@ -1,3 +1,24 @@
+### Log: 0024 - IDE Warning Cleanup
+
+**Objective:** Resolve all outstanding warnings identified by the IDE.
+
+**Actions Taken:**
+
+1.  **`calendar_day_layout.xml`:**
+    *   Added a `contentDescription` to the `ImageView` to address an accessibility warning.
+
+2.  **`fragment_medication_list.xml`:**
+    *   Replaced the hardcoded string "無提醒" with the `@string/no_medication_reminders` resource.
+
+3.  **`HistoryFragment.kt`:**
+    *   Removed an unused import directive.
+    *   Renamed the `day` parameter in the `MonthDayBinder` to `data` to match the supertype.
+    *   Removed the unused `textView` property from the `DayViewContainer`.
+
+**Result:**
+
+All identified IDE warnings have been resolved, improving code quality and accessibility.
+
 ### Log: 0023 - Calendar Medication Tracker
 
 **Objective:** Enhance the medication history view to visually indicate days when all medications were taken correctly.
@@ -366,7 +387,7 @@ All warnings have been resolved, and the project is now clean and maintainable.
 1.  **Diagnosed Root Cause:** The build was failing due to an `Android resource linking failed` error. The root cause was a missing dependency on the `androidx.preference:preference-ktx` library.
 .  **Added Dependency:** Added `implementation("androidx.preference:preference-ktx:1.2.1")` to the `dependencies` block in `app/build.gradle.kts`.
 
-2.  **Corrected Namespace:** While investigating, it was also noted that the attributes in `preferences.xml` were incorrectly using the `android:` namespace instead of the `app:` namespace required by the AndroidX Preference library. This was corrected by adding `xmlns:app="http://schemas.android.com/apk/res-auto"` and changing the prefixes of all attributes to `app:`.
+3.  **Corrected Namespace:** While investigating, it was also noted that the attributes in `preferences.xml` were incorrectly using the `android:` namespace instead of the `app:` namespace required by the AndroidX Preference library. This was corrected by adding `xmlns:app="http://schemas.android.com/apk/res-auto"` and changing the prefixes of all attributes to `app:`.
 
 **Result:**
 

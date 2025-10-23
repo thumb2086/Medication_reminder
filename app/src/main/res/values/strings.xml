@@ -74,7 +74,7 @@
     <string name="low_stock_warning_title">低庫存警告</string>
     <string name="low_stock_warning_message">藥物 \\%s\\ 即將用完，僅剩 %d 顆，請記得補充！</string>
     <string name="reminders_synced_to_box">提醒已同步至藥盒</string>
-    <string name="no_medication_reminders">目前沒有藥物提醒。</string>
+    <string name="no_medication_reminders">無提醒</string>
     <string name="no_medication_to_modify">沒有可修改或刪除的藥物</string>
     <string name="select_medication_to_edit">選擇要編輯的藥物</string>
     <string name="select_medication_to_delete">選擇要刪除的藥物</string>
@@ -98,6 +98,7 @@
     <string name="time_label_bedtime">睡前</string>
     <string name="time_label_default">時間</string>
     <string name="medication_list_item_details">藥倉: %1$d | 時間: %2$s</string>
+    <string name="medication_taken_indicator">藥物已服用標示</string>
 
 
     <!-- Permissions -->

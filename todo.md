@@ -1,3 +1,4 @@
+- **DONE** Fix IDE warnings in XML layouts and Kotlin files.
 - **DONE** Refactor Gradle build scripts to simplify versioning.
 - **DONE** Update the MedicationListFragment to show a "no reminders" message when the list is empty.
 - **DONE** Fix issue where medication adherence rate is not updated and notification is not dismissed after taking medication.
