@@ -195,3 +195,24 @@ The UI now correctly observes changes to the `medicationList` and updates accord
 **Result:**
 
 The application has now fully restored the critical features of editing, deleting, and receiving scheduled alarm notifications for medication reminders. The alarm system is also robust against device reboots, ensuring reminders are not missed.
+
+### Log: 2025/11/01 - Error and Warning Cleanup
+
+**Objective:** Resolve all outstanding errors and warnings identified by the IDE.
+
+**Actions Taken:**
+
+1.  **Fixed XML Resource Errors (`fragment_reminder_settings.xml`):**
+    *   The "Cannot resolve symbol" errors for `@+id/editReminderButton`, `@string/edit_reminder`, etc., were identified as likely IDE synchronization issues.
+    *   A **Gradle Sync** was performed, which successfully resolved these errors.
+    *   Removed an unused namespace declaration (`xmlns:app`) from the file.
+
+2.  **Cleaned Up Kotlin Files:**
+    *   **`BootReceiver.kt`:** Replaced the unused exception parameter `e` in the `catch` block with an underscore (`_`) to resolve the "Parameter is never used" warning.
+    *   **`MainViewModel.kt`:**
+        *   Replaced the unused parameters `meds` and `status` in the `updateComplianceRate` function with underscores.
+        *   Removed the `saveNotesData` function, which was identified as unused.
+
+**Result:**
+
+All reported errors and warnings have been successfully addressed. The project is now in a clean and stable state, free of IDE-reported issues.

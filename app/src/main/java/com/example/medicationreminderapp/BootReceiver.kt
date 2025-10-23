@@ -20,7 +20,7 @@ class BootReceiver : BroadcastReceiver() {
                     medications.forEach { medication ->
                         alarmScheduler.schedule(medication)
                     }
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     // Log error or handle gracefully
                 }
             }

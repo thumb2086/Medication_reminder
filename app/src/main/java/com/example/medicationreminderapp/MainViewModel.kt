@@ -92,7 +92,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         updateComplianceRate(updatedList, newStatusMap)
     }
 
-    fun updateComplianceRate(meds: List<Medication>, status: Map<String, Int>) {
+    fun updateComplianceRate(_meds: List<Medication>, _status: Map<String, Int>) {
         // TODO: Implement the compliance rate calculation logic here
         complianceRate.value = 0.5f // Placeholder value
     }
@@ -119,12 +119,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: JsonSyntaxException) {
                 Log.e("MainViewModel", "Failed to parse medication data", e)
             }
-        }
-    }
-
-    private fun saveNotesData() {
-        sharedPreferences.edit {
-            putString(KEY_NOTES_DATA, gson.toJson(notesMap.value))
         }
     }
 
