@@ -29,7 +29,7 @@ extra["branchConfigs"] = mapOf(
         "appName" to "藥到叮嚀 (Alpha)",
         "enableLogging" to true,
         "versionCode" to 1,
-        "versionName" to "0.0.3",
-        "archivesBaseName" to "藥到叮嚀-v0.0.3-alpha"
+        "versionName" to "0.0.4",
+        "archivesBaseName" to "藥到叮嚀-v0.0.4-alpha"
     )
 )

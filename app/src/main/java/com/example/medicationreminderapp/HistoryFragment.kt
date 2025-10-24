@@ -51,7 +51,6 @@ class HistoryFragment : Fragment() {
             binding.calendarView.dayBinder = object : MonthDayBinder<DayViewContainer> {
                 override fun create(view: View) = DayViewContainer(view)
                 override fun bind(container: DayViewContainer, data: CalendarDay) {
-                    container.day = data
                     val textView = container.view.findViewById<TextView>(R.id.calendarDayText)
                     textView.text = data.date.dayOfMonth.toString()
                     val dotView = container.view.findViewById<View>(R.id.dotView)
@@ -79,6 +78,4 @@ class HistoryFragment : Fragment() {
     }
 }
 
-class DayViewContainer(view: View) : ViewContainer(view) {
-    lateinit var day: CalendarDay // Will be set when the view is bound.
-}
+class DayViewContainer(view: View) : ViewContainer(view)

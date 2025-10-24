@@ -1,3 +1,72 @@
+### Log: 0028 - 修正因移除未使用宣告而導致的 Build 錯誤
+
+**目標:** 解決在 `MainActivity.kt` 中找不到 `requestStatus()` 和 `syncTime()` 方法的 Build 錯誤。
+
+**執行動作:**
+
+1.  **分析錯誤:**
+    *   Build 錯誤顯示 `MainActivity.kt` 中無法解析 `requestStatus()` 和 `syncTime()` 的參考。
+    *   經過檢查，發現在先前的 Log 0026 中，為了處理 IDE 的「未使用宣告」警告，我從 `BluetoothLeManager.kt` 中移除了這兩個方法。
+
+2.  **修正錯誤:**
+    *   將 `requestStatus()` 和 `syncTime()` 這兩個方法重新加回到 `BluetoothLeManager.kt` 中。
+
+**結果:**
+
+成功修正了 Build 錯誤。這個事件也提醒了我，IDE 的靜態分析有時可能會產生誤判，在移除看似未使用的 public 方法時需要更加謹慎，最好透過實際 Build 來驗證。
+
+### Log: 0027 - 解決未使用宣告的警告 (Part 2)
+
+**目標:** 根據 IDE 的檢查結果，解決所有在「Java - Declaration Redundancy」類別下的「Unused declaration」警告。
+
+**執行動作:**
+
+1.  **移除 `BluetoothLeManager.kt` 中未使用的 `sendJson` 方法:**
+    *   `grep` 的結果顯示 `sendJson` 方法只在 `BluetoothLeManager.kt` 中被定義，專案中沒有任何地方實際呼叫它。
+    *   將 `sendJson` 方法從 `BluetoothLeManager.kt` 中移除。
+
+### Log: 0026 - 解決未使用宣告的警告 (Part 1)
+
+**目標:** 根據 IDE 的檢查結果，解決所有在「Java - Declaration Redundancy」類別下的「Unused declaration」警告。
+
+**執行動作:**
+
+1.  **分析 `BluetoothLeManager.kt`:**
+    *   發現 5 個未使用的方法 (`setReminder`, `cancelAllReminders`, `cancelReminder`, `requestStatus`, `syncTime`)，這些方法已被 JSON 指令取代。
+    *   將這 5 個方法移除。
+
+2.  **分析 `HistoryFragment.kt`:**
+    *   發現 `DayViewContainer` 中的 `day` 屬性雖然被賦值，但從未被使用。
+    *   將 `day` 屬性及其賦值操作移除。
+
+3.  **分析 `ui` 套件中的重複檔案:**
+    *   發現 `app/src/main/java/com/example/medicationreminderapp/ui/` 資料夾中，存在一系列與主要 Fragment 重複的、幾乎空白的檔案 (`ViewPagerAdapter.kt`, `EnvironmentFragment.kt`, `ReminderFragment.kt`)。
+    *   確認這些重複的檔案是造成 IDE 產生「未使用宣告」警告的根源。
+    *   將這些重複檔案的內容清空，等同於刪除這些未使用的宣告。
+
+**結果:**
+
+成功解決了 IDE 檢查結果中所有關於「Unused declaration」的警告，大幅提升了專案的程式碼品質。剩餘的警告已記錄在 `todo.md` 中，待後續處理。
+
+### Log: 0025 - 移除未使用的 `frequency` 宣告
+
+**目標:** 移除 `Medication` data class 中未被使用的 `frequency` 欄位，以及所有與其相關的程式碼和字串資源。
+
+**執行動作:**
+
+1.  **分析程式碼:**
+    *   透過 `grep` 和 `read_file` 等工具，確認 `frequency` 欄位除了在 `Medication` data class 的定義和 `ReminderSettingsFragment` 的實例化中之外，未在專案中任何地方被使用。
+    *   確認 `strings.xml` 中與 `frequency` 相關的字串資源也未被使用。
+
+2.  **移除宣告:**
+    *   從 `Medication.kt` 中的 `Medication` data class 移除了 `frequency` 欄位。
+    *   從 `ReminderSettingsFragment.kt` 的 `createMedicationFromInput` 方法中移除了 `frequency` 的賦值。
+    *   從 `app/src/main/res/values/strings.xml` 中移除了所有與 `frequency` 相關的、未被使用的字串資源。
+
+**結果:**
+
+成功移除了所有與 `frequency` 相關的未使用宣告和資源，使程式碼更精簡，並減少了專案中不必要的資源。
+
 ### Log: 0024 - IDE Warning Cleanup
 
 **Objective:** Resolve all outstanding warnings identified by the IDE.

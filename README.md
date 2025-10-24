@@ -124,7 +124,7 @@
 
 *   `MainViewModel.kt`: 一個共享的 `ViewModel`，作為應用程式的「單一事實來源」(Single Source of Truth)。
     *   持有藍牙連接狀態、溫濕度數據、藥物列表、服藥紀錄等所有共享數據 (`LiveData`)。
-    *   包含核心業務 logique，例如處理服藥事件、計算服藥依從率、儲存與讀取數據等。
+    *   包含核心業務 oblique，例如處理服藥事件、計算服藥依從率、儲存與讀取數據等。
 
 *   `ReminderSettingsFragment.kt`: 「提醒設定」頁面的 Fragment。
     *   負責所有與藥物設定相關的 UI 操作，包括動態生成藥物設定卡片。
