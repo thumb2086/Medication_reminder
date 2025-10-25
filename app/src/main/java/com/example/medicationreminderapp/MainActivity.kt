@@ -212,7 +212,7 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         val channel = NotificationChannel(CHANNEL_ID, name, NotificationManager.IMPORTANCE_HIGH).apply {
             description = getString(R.string.notification_channel_description)
             enableVibration(true)
-            val soundUri = RingtoneManager..getDefaultUri(RingtoneManager.TYPE_ALARM)
+            val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
             val audioAttributes = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build()
             setSound(soundUri, audioAttributes)
         }
