@@ -13,7 +13,6 @@ import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
 class EnvironmentFragment : Fragment() {
 

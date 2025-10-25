@@ -49,77 +49,86 @@
 
 ## 藍牙通訊協定 (Bluetooth Protocol)
 
-為實現 App 與藥盒的互動，定義了以下基於 JSON 格式的雙向通訊協定。`BluetoothLeManager` 負責將 App 內部生成的 JSON 物件序列化為字串並發送，同時也負責將從藥盒收到的原始數據反序列化為可處理的 JSON 或對應的資料結構。
+為實現 App 與藥盒的互動，我們定義了一套基於位元組陣列 (Byte Array) 的雙向通訊協定。`BluetoothLeManager` 類別負責將指令封裝成位元組陣列並發送，同時也負責解析從藥盒收到的數據。
+
+### Service 與 Characteristics UUID
+
+- **Service UUID:** `4fafc201-1fb5-459e-8fcc-c5c9c331914b`
+- **Write Characteristic UUID:** `beb5483e-36e1-4688-b7f5-ea07361b26a8` (App -> 藥盒)
+- **Notify Characteristic UUID:** `c8c7c599-809c-43a5-b825-1038aa349e5d` (藥盒 -> App)
 
 ### App -> 藥盒 (指令)
 
-1.  **全量更新提醒 (Full Reminder Sync):**
-    *   **用途:** 在所有設定完成後，或 App 啟動並連接上藥盒時，一次性將完整的時間表發送給藥盒。
-    *   **App 實作:** 由 `ReminderSettingsFragment` 觸發，透過 `MainViewModel` 組裝 JSON，最終由 `MainActivity` 呼叫 `BluetoothLeManager` 發送。
-    *   **格式範例:**
-        ```json
-        {
-          "action": "sync_reminders",
-          "payload": {
-            "sync_time": 1678886400,
-            "reminders": [
-              { "slot": 1, "times": [ "08:00", "20:00" ] },
-              { "slot": 3, "times": [ "09:00" ] },
-              { "slot": 5, "times": [ "12:00", "18:00", "22:00" ] }
-            ]
-          }
-        }
-        ```
+所有指令均透過寫入 **Write Characteristic** 發送。
 
-2.  **引導式放藥指令 (Guided Filling Command):**
-    *   **用途:** 在「引導式放藥」流程中，命令藥盒旋轉到指定的藥倉。
-    *   **App 實作:** 由 `ReminderSettingsFragment` 觸發，透過 `MainViewModel` 發起，最終由 `MainActivity` 呼叫 `BluetoothLeManager` 發送。
-    *   **格式範例:**
-        ```json
-        { "action": "rotate_to_slot", "payload": { "slot": 1 } }
-        ```
+1.  **時間同步 (Time Sync):**
+    - **指令碼:** `0x11`
+    - **用途:** 將 App 的當前時間同步給藥盒。
+    - **格式 (7 bytes):**
+        - `[0]`: `0x11`
+        - `[1]`: `年 - 2000`
+        - `[2]`: `月 (1-12)`
+        - `[3]`: `日`
+        - `[4]`: `時 (0-23)`
+        - `[5]`: `分`
+        - `[6]`: `秒`
+    - **範例:** `sendCommand(byteArrayOf(0x11, 24, 5, 29, 10, 30, 0))`
+
+2.  **請求藥盒狀態 (Request Status):**
+    - **指令碼:** `0x20`
+    - **用途:** 主動向藥盒查詢其當前狀態（例如各藥倉是否有藥）。
+    - **格式 (1 byte):**
+        - `[0]`: `0x20`
+    - **範例:** `sendCommand(byteArrayOf(0x20))`
 
 3.  **請求環境數據 (Request Environment Data):**
-    *   **用途:** 主動向藥盒請求目前的溫濕度數據。
-    *   **App 實作:** 可由「環境監測」頁面的下拉刷新等操作觸發。
-    *   **格式範例:**
-        ```json
-        { "action": "request_env_data" }
-        ```
+    - **指令碼:** `0x30`
+    - **用途:** 主動向藥盒請求目前的溫濕度數據。
+    - **格式 (1 byte):**
+        - `[0]`: `0x30`
+    - **範例:** `sendCommand(byteArrayOf(0x30))`
 
-### 藥盒 -> App (狀態回傳)
+### 藥盒 -> App (通知)
 
-1.  **藥物已填充確認 (Slot Filled Confirmation):**
-    *   **用途:** 當使用者在藥盒上按下確認按鈕後，藥盒回傳此訊號給 App，表示藥物已放入。
-    *   **App 實作:** 在 `MainActivity` 的 `onBoxStatusUpdate()` 回呼中接收並解析，接著呼叫 `MainViewModel.onGuidedFillConfirmed()`。
-    *   **格式範例:**
-        ```json
-        { "status": "slot_filled", "payload": { "slot": 1 } }
-        ```
+所有通知均透過 **Notify Characteristic** 發送。App 在 `handleIncomingData(data: ByteArray)` 方法中解析這些數據。
+
+1.  **藥盒狀態回報 (Box Status Update):**
+    - **指令碼:** `0x80`
+    - **用途:** 回報藥盒各藥倉的狀態（例如，在引導式放藥流程中，使用者按下按鈕確認藥已放入）。
+    - **格式 (2 bytes):**
+        - `[0]`: `0x80`
+        - `[1]`: `藥倉狀態位元遮罩 (Slot Mask)`
 
 2.  **藥物已取出回報 (Medication Taken Report):**
-    *   **用途:** 藥盒偵測到使用者從某個藥倉取藥後，回報給 App。
-    *   **App 實作:** 在 `MainActivity` 的 `onMedicationTaken()` 回呼中接收，並轉發給 `MainViewModel` 處理。
-    *   **格式範例:**
-        ```json
-        { "status": "medication_taken", "payload": { "slot": 4 } }
-        ```
+    - **指令碼:** `0x81`
+    - **用途:** 藥盒偵測到使用者從某個藥倉取藥後，回報給 App。
+    - **格式 (2 bytes):**
+        - `[0]`: `0x81`
+        - `[1]`: `藥倉編號 (Slot Number)`
 
-3.  **環境數據回報 (Environment Data Report):**
-    *   **用途:** 藥盒定時或在收到請求時，回傳感測到的環境溫濕度數據。
-    *   **App 實作:** 在 `MainActivity` の `onSensorData()` 回呼中接收，並轉發給 `MainViewModel` 更新數據。
-    *   **格式範例:**
-        ```json
-        { "status": "env_data", "payload": { "temp": 25.4, "humidity": 60.1 } }
-        ```
+3.  **時間同步確認 (Time Sync Acknowledged):**
+    - **指令碼:** `0x82`
+    - **用途:** 確認已成功接收並設定 App 同步過來的時間。
+    - **格式 (1 byte):**
+        - `[0]`: `0x82`
 
-4.  **異常狀態回報 (Anomaly Report):**
-    *   **用途:** 當藥盒發生異常（如馬達卡住、感測器錯誤）時，回報給 App。
-    *   **App 實作:** 在 `MainActivity` 的 `onError()` 回呼中接收並顯示警告。
-    *   **格式範例:**
-        ```json
-        { "status": "box_anomaly", "payload": { "code": "jammed" } }
-        ```
+4.  **溫濕度數據回報 (Sensor Data Report):**
+    - **指令碼:** `0x90`
+    - **用途:** 回報感測到的環境溫濕度數據。
+    - **格式 (5 bytes):**
+        - `[0]`: `0x90`
+        - `[1]`: `溫度整數部分`
+        - `[2]`: `溫度小數部分`
+        - `[3]`: `濕度整數部分`
+        - `[4]`: `濕度小數部分`
+    - **解析:** `溫度 = byte[1] + byte[2] / 100.0` , `濕度 = byte[3] + byte[4] / 100.0`
+
+5.  **異常狀態回報 (Error Report):**
+    - **指令碼:** `0xEE`
+    - **用途:** 當藥盒發生異常（如馬達卡住、感測器錯誤）時，回報給 App。
+    - **格式 (2 bytes):**
+        - `[0]`: `0xEE`
+        - `[1]`: `錯誤碼 (Error Code)` (例如: 1=卡住, 2=感應器錯誤)
 
 ## 專案結構
 
@@ -172,6 +181,9 @@
 
 ## 最近更新
 
+*   **0032:** 修正了專案中的多個編譯錯誤與警告，包含 `SwipeRefreshLayout` 依賴問題、`MainActivity.kt` 中的錯誤，以及清理未使用的程式碼。
+*   **0031:** 清理了 `app/src/main/java/com/example/medicationreminderapp/ui/` 目錄中所有重複且空白的檔案。
+*   **0030:** 實作了藍牙協定中「App 主動請求溫濕度數據」的功能，並提供 UI 介面讓使用者觸發此操作。
 *   **0029:** 修正了 `app/build.gradle.kts` 中的多個 build 錯誤與警告。處理了 `buildConfigField` 不正確的字串引號問題，並將棄用的 `exec` 方法替換為更現代的 `ProcessBuilder`，確保了 Gradle build script 的穩定性。
 *   **0028:** 修復了因移除 `BluetoothLeManager` 中看似未使用的 `requestStatus()` 和 `syncTime()` 方法而導致的 Build 失敗問題。這兩個方法已被重新加回，確保 `MainActivity` 可以正常呼叫。
 *   **0027:** 移除了 `BluetoothLeManager.kt` 中未被使用的 `sendJson` 方法，進一步清理了藍牙通訊的程式碼。

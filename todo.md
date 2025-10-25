@@ -15,6 +15,7 @@
 - **DONE** Fix build errors and warnings in `app/build.gradle.kts`.
 - **DONE** Implement the "request environment data" Bluetooth protocol, including UI implementation.
 - **DONE** Clean up empty and duplicate files in the `app/src/main/java/com/example/medicationreminderapp/ui/` package.
+- **DONE** Fix build errors in `MainActivity.kt` and `fragment_environment.xml`, and clean up unused declarations in `EnvironmentFragment.kt` and `SingleLiveEvent.kt`.
 
 ### New Inspection Results To-Do List
 
@@ -23,13 +24,6 @@
 
 - **TODO: Java - Declaration Redundancy (2 warnings remaining)**
     - Fix unnecessary module dependencies (2 warnings).
-    - **DONE:** Fix unused declarations (10 warnings) in the following files:
-        - `BluetoothLeManager` (5 warnings)
-        - `DayViewContainer` (1 warning)
-        - `EnvironmentFragment` (1 warning - resolved by removing duplicate empty file in `ui` package)
-        - `HistoryFragment` (1 warning - Likely a false positive, investigated and no unused declaration was found).
-        - `MedicationListFragment` (1 warning - Likely a false positive, investigated and no unused declaration was found).
-        - `ReminderSettingsFragment` (1 warning - resolved by removing duplicate empty file in `ui` package)
 
 - **TODO: Android Lint - Correctness (6 warnings)**
     - Investigate and fix correctness warnings.

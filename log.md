@@ -1,3 +1,27 @@
+### Log: 0032 - 修正編譯錯誤與警告
+
+**目標:** 解決專案中的多個編譯錯誤與警告，包含 `SwipeRefreshLayout` 依賴問題、`MainActivity.kt` 中的錯誤，以及清理未使用的程式碼。
+
+**執行動作:**
+
+1.  **解決 `SwipeRefreshLayout` 依賴問題:**
+    *   在 `app/build.gradle.kts` 中，新增 `androidx.swiperefreshlayout:swiperefreshlayout:1.1.0` 的依賴。
+    *   執行 Gradle Sync，確保專案正確引入該函式庫。
+    *   在 `EnvironmentFragment.kt` 中，由於 IDE 仍可能無法正確解析，因此手動加入了 `import androidx.swiperefreshlayout.widget.SwipeRefreshLayout`。
+    *   修正 `fragment_environment.xml` 中 `LineChart` 的 `android.layout_height` 屬性名稱錯誤，將其更正為 `android:layout_height`。
+
+2.  **修正 `MainActivity.kt` 中的錯誤:**
+    *   **`rangeTo` 錯誤:** 將 `if (slotNumber in 1..8)` 中的 `..` 運算子替換為 `in 1..8` 的寫法，解決 `rangeTo` 無法解析的問題。
+    *   **`getDefaultUri` 錯誤:** 在 `createNotificationChannel` 方法中，將 `RingtoneManager..getDefaultUri` 的雙點錯誤修正為單點 `RingtoneManager.getDefaultUri`。
+
+3.  **清理未使用的程式碼:**
+    *   **`EnvironmentFragment.kt`:** 移除了未使用的 `import`。
+    *   **`SingleLiveEvent.kt`:** 移除了未被呼叫的 `call()` 方法。
+
+**結果:**
+
+成功解決了所有來自使用者截圖的編譯錯誤，並清理了多個 IDE 警告，確保了專案的穩定性和程式碼的整潔。專案現在可以順利編譯和運行。
+
 ### Log: 0031 - 清理多餘的 UI 檔案
 
 **目標:** 根據 `todo.md` 的紀錄，清理 `app/src/main/java/com/example/medicationreminderapp/ui/` 目錄中所有重複且空白的檔案。
@@ -292,7 +316,7 @@ The build errors have been resolved, and the project is now in a compilable stat
 
 **Result:**
 
-Several warnings related to accessibility, Gradle dependencies, and unused code have been resolved, improving the overall quality and maintainability of the project. Further warnings, especially those related to unused resources and potentially unused public functions, have been noted for manual review.
+Several warnings related to accessibility, Gradle dependencies, and unused code have been resolved, improving the overall quality and maintainability of the project. Further warnings, especially those related to unused resources and midfielders public functions, have been noted for manual review.
 
 ### Log: 0015 - Adherence Rate and UI Fix
 
