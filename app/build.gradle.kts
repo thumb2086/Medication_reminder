@@ -13,8 +13,13 @@ android {
     compileSdk = 36
 
     // --- Core logic starts ---
-    // Determine the current branch from system properties or default to "alpha"
-    val currentBranch = System.getProperty("git.branch", "alpha")
+    // Determine the current branch from git, or default to "alpha"
+    val currentBranch = try {
+        val process = ProcessBuilder("git", "rev-parse", "--abbrev-ref", "HEAD").start()
+        process.inputStream.bufferedReader().readText().trim()
+    } catch (e: java.io.IOException) {
+        "alpha"
+    }.ifEmpty { "alpha" }
     val branchConfigs: Map<String, Map<String, Any>> by extra
     val config = branchConfigs[currentBranch] ?: branchConfigs["alpha"]!!
 
@@ -25,20 +30,20 @@ android {
         applicationId = config["applicationId"] as String
         minSdk = 29
         targetSdk = 36
-        
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        
+
         // --- Simplified versioning logic ---
         versionCode = config["versionCode"] as Int
         versionName = config["versionName"] as String
-        
+
         setProperty("archivesBaseName", config["archivesBaseName"] as String)
         // --- Logic ends ---
 
         // Dynamically set BuildConfig fields for access in Kotlin/Java code
         buildConfigField("String", "API_URL", "\"${config["apiUrl"] as String}\"")
         buildConfigField("boolean", "ENABLE_LOGGING", config["enableLogging"].toString())
-        
+
         // Dynamically set Android resources (e.g., app_name)
         resValue("string", "app_name", config["appName"] as String)
     }
