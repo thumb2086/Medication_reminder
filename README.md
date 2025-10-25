@@ -1,129 +1,218 @@
-# 智能藥盒提醒 App
+# Smart Pillbox Reminder App
 
-這是一款 Android 應用程式，旨在幫助使用者管理他們的藥物服用排程，並透過藍牙低功耗 (BLE) 技術與智能藥盒互動。
+This is an Android application designed to help users manage their medication schedules and interact with a smart pillbox via Bluetooth Low Energy (BLE) technology.
 
-## 設計理念
+## Design Philosophy
 
-本專案的核心設計是將複雜的邏輯處理保留在 Android App 中，讓智能藥盒 (ESP32) 的職責盡可能單純，只作為一個忠實的時間與指令執行者。這樣的設計大大簡化了硬體端的韌體開發，提高了系統的穩定性與省電效率。
+The core design of this project is to keep complex logic processing within the Android App, making the role of the smart pillbox (ESP32) as simple as possible—acting merely as a faithful executor of time and commands. This design significantly simplifies the firmware development on the hardware side, improving system stability and power efficiency.
 
-## 主要功能
+## Main Features
 
-*   **分頁式介面:**
-    *   採用 `TabLayout` 和 `ViewPager2` 打造現代化的分頁式介面，分為「提醒設定」、「服藥紀錄」和「環境監測」三大功能區塊，操作更直覺。
-*   **藥物排程管理:**
-    *   提供獨立的 **新增、編輯、刪除** 按鈕，操作流程清晰。
-    *   藥倉總數為 8 格，可新增的藥物數量會根據 **已被佔用的藥倉數量動態調整**。
-    *   設定藥物名稱、劑量、服用頻率、起訖日期，**總藥量將自動計算**。
-    *   自訂服藥的開始與結束日期及一天中不同時段 (早、中、晚、睡前) 的服藥時間。
-    *   智慧檢查機制，防止使用者將多種藥物指派到同一個已被佔用的藥倉。
-*   **藍牙智能藥盒整合:**
-    *   **引導式放藥 (Guided Filling):** 新增藥物時，App 會引導您逐一完成。每設定完一筆藥物，藥盒會自動旋轉到對應藥倉，讓您直接放入藥物，並透過藥盒上的按鈕確認，實現軟硬體結合的流暢體驗。
-    *   掃描並連接到智能藥盒。
-    *   與藥盒同步時間及各藥倉的用藥提醒。
-    *   接收藥盒的狀態更新，例如：哪個藥倉的藥物已被取出、藥倉堵塞、感應器錯誤等。
-*   **數據監測與追蹤:**
-    *   在「環境監測」頁面，透過 **即時折線圖** 視覺化呈現藥盒回傳的溫濕度數據。
-    *   在「服藥紀錄」頁面，透過月曆視覺化呈現每日服藥記錄。
-    *   計算並顯示過去 30 天的服藥依從率。
-*   **通知與提醒:**
-    *   在指定的服藥時間發送本地通知。
-    *   當 App 計算出藥物庫存過低時，發出警告提醒。
-*   **個人化設定:**
-    *   提供亮色、暗色及跟隨系統設定的主題模式。
+*   **Tabbed Interface:**
+    *   Utilizes `TabLayout` and `ViewPager2` to create a modern tabbed interface, divided into four main functional areas: "Reminder Settings," "Medication List," "Medication History," and "Environment Monitoring," for more intuitive operation.
+*   **Complete Medication Management (CRUD):**
+    *   On the "Reminder Settings" page, you can dynamically add, edit, and delete medication reminders.
+    *   Set the name, dosage, medication time, and start/end dates for each medication. The **total dosage will be calculated automatically**.
+    *   An intelligent compartment exclusion mechanism prevents you from assigning multiple medications to the same compartment.
+*   **Reliable Alarm Reminders:**
+    *   The app sends precise local notifications for each medication time you set.
+    *   Alarms remain effective even if the app is not in the foreground or the phone is rebooted.
+*   **Smart Pillbox Integration:**
+    *   **Guided Filling:** When adding medications, the app guides you through the process one by one. After setting up each medication, the pillbox automatically rotates to the corresponding compartment, allowing you to place the medication directly and confirm with a button on the pillbox, achieving a seamless hardware-software experience.
+    *   Scan for and connect to the smart pillbox.
+    *   Synchronize time and medication reminders for each compartment with the pillbox.
+    *   Receive status updates from the pillbox, such as which compartment's medication has been taken, compartment blockages, sensor errors, etc.
+*   **Data Monitoring and Tracking:**
+    *   On the "Environment Monitoring" page, when connected via Bluetooth, a **real-time line chart** visualizes the temperature and humidity data sent back from the pillbox. When not connected, a prompt message is displayed. When the user pulls to refresh, the app syncs **historical temperature and humidity data** from the offline period and displays it completely on the chart.
+    *   On the "Medication History" page, a calendar visualizes daily medication records and calculates and displays the medication adherence rate for the past 30 days.
+*   **Settings:**
+    *   The settings page can be accessed via the settings icon on the toolbar.
+    *   Supports light, dark, and system-following theme switching.
 
-## 使用說明
+## Instructions for Use
 
-1.  **新增藥物 (引導式放藥流程):**
-    *   在「提醒設定」分頁，選擇您要一次新增的藥物數量，系統會自動產生對應的輸入欄位。
-    *   填寫完所有藥物的資訊（名稱、劑量、頻率、藥倉等）後，點擊「新增藥物提醒」。
-    *   **藥盒自動轉動:** App 會鎖定畫面並發送指令，讓藥盒自動轉到 **第一筆藥物** 對應的藥倉。
-    *   **放入藥物並確認:** 畫面上會提示您將藥物放入指定的藥倉。完成後，**直接按下藥盒上的實體按鈕**。
-    *   **重複流程:** App 收到確認訊號後，會再次發送指令，讓藥盒轉到 **下一筆藥物** 的藥倉。您只需重複「放藥 -> 按按鈕」的動作，直到所有藥物都已放入。
-    *   **完成同步:** 全部完成後，App 會將所有提醒一次性同步給藥盒，並解除畫面鎖定。
-2.  **編輯或刪除藥物:**
-    *   點擊「提醒設定」分頁下方的 **「編輯」** 或 **「刪除」** 按鈕。
-    *   App 會彈出一個包含所有已設定藥物的列表。
-    *   從列表中選擇您想操作的藥物。
-    *   **編輯:** 選擇後，該藥物的資訊會自動填入上方的表單中。修改後點擊「更新藥物」即可。
-    *   **刪除:** 選擇後，在跳出的確認對話框中進行確認即可刪除。
-3.  **連接藥盒:**
-    *   點擊「提醒設定」分頁的「連接藥盒」按鈕。App 會開始掃描並讓您選擇您的智能藥盒進行配對。
+1.  **Add Medication (Guided Filling Process):**
+    *   In the "Reminder Settings" tab, select the number of medications you want to add at once, and the system will automatically generate the corresponding input fields.
+    *   After filling in all the medication information (name, dosage, frequency, compartment, etc.), click "Add Medication Reminder."
+    *   **Pillbox Rotates Automatically:** The app will lock the screen and send a command to automatically rotate the pillbox to the compartment corresponding to the **first medication**.
+    *   **Place Medication and Confirm:** The screen will prompt you to place the medication in the specified compartment. After completion, **press the physical button on the pillbox directly**.
+    *   **Repeat the Process:** After receiving the confirmation signal, the app will send another command to rotate the pillbox to the compartment for the **next medication**. Simply repeat the "place medication -> press button" action until all medications have been placed.
+    *   **Complete Synchronization:** Once all are finished, the app will sync all reminders to the pillbox at once and unlock the screen.
+2.  **Edit or Delete Medication:**
+    *   Click the **"Edit Reminder"** or **"Delete Reminder"** button at the bottom of the "Reminder Settings" tab.
+    *   The app will pop up a list of all set medications.
+    *   Select the medication you want to operate on from the list.
+    *   **Edit:** After selection, the medication's information will be automatically filled into the form above. After making changes, click "Update Medication."
+    *   **Delete:** After selection, confirm in the pop-up confirmation dialog to delete.
+3.  **Connect to Pillbox:**
+    *   Click the "Connect to Pillbox" button in the "Reminder Settings" tab. The app will start scanning and allow you to select your smart pillbox for pairing.
 
-## 藍牙通訊協定 (Bluetooth Protocol)
+## Bluetooth Protocol
 
-為實現 App 與藥盒的互動，定義了以下基於 JSON 格式的雙向通訊協定。`BluetoothLeManager` 負責將 App 內部生成的 JSON 物件序列化為字串並發送，同時也負責將從藥盒收到的原始數據反序列化為可處理的 JSON 或對應的資料結構。
+To enable interaction between the app and the pillbox, we have defined a bidirectional communication protocol based on byte arrays. The `BluetoothLeManager` class is responsible for encapsulating commands into byte arrays and sending them, as well as parsing the data received from the pillbox.
 
-### App -> 藥盒 (指令)
+### Service and Characteristics UUIDs
 
-1.  **全量更新提醒 (Full Reminder Sync):**
-    *   **用途:** 在所有設定完成後，或 App 啟動並連接上藥盒時，一次性將完整的時間表發送給藥盒。
-    *   **App 實作:** 在 `MainActivity.kt` 的 `syncRemindersToBox()` 函式中組裝 JSON 並透過 `bluetoothLeManager.sendCommand()` 發送。
-    *   **格式範例:**
-        ```json
-        {
-          "action": "sync_reminders",
-          "payload": {
-            "sync_time": 1678886400,
-            "reminders": [
-              { "slot": 1, "times": [ "08:00", "20:00" ] },
-              { "slot": 3, "times": [ "09:00" ] },
-              { "slot": 5, "times": [ "12:00", "18:00", "22:00" ] }
-            ]
-          }
-        }
-        ```
+- **Service UUID:** `4fafc201-1fb5-459e-8fcc-c5c9c331914b`
+- **Write Characteristic UUID:** `beb5483e-36e1-4688-b7f5-ea07361b26a8` (App -> Pillbox)
+- **Notify Characteristic UUID:** `c8c7c599-809c-43a5-b825-1038aa349e5d` (Pillbox -> App)
 
-2.  **引導式放藥指令 (Guided Filling Command):**
-    *   **用途:** 在「引導式放藥」流程中，命令藥盒旋轉到指定的藥倉。
-    *   **App 實作:** 在 `MainActivity.kt` 的 `rotateToSlot()` 函式中組裝 JSON 並透過 `bluetoothLeManager.sendCommand()` 發送。
-    *   **格式範例:**
-        ```json
-        { "action": "rotate_to_slot", "payload": { "slot": 1 } }
-        ```
+### App -> Pillbox (Commands)
 
-### 藥盒 -> App (狀態回傳)
+All commands are sent by writing to the **Write Characteristic**.
 
-1.  **藥物已填充確認 (Slot Filled Confirmation):**
-    *   **用途:** 當使用者在藥盒上按下確認按鈕後，藥盒回傳此訊號給 App，表示藥物已放入。
-    *   **App 實作:** 在 `MainActivity.kt` 的 `onBoxStatusUpdate()` 回呼中接收並解析。接著呼叫 `viewModel.onGuidedFillConfirmed()`。
-    *   **格式範例:**
-        ```json
-        { "status": "slot_filled", "payload": { "slot": 1 } }
-        ```
+1.  **Time Sync:**
+    - **Opcode:** `0x11`
+    - **Purpose:** Synchronize the app's current time with the pillbox.
+    - **Format (7 bytes):**
+        - `[0]`: `0x11`
+        - `[1]`: `Year - 2000`
+        - `[2]`: `Month (1-12)`
+        - `[3]`: `Day`
+        - `[4]`: `Hour (0-23)`
+        - `[5]`: `Minute`
+        - `[6]`: `Second`
 
-2.  **藥物已取出回報 (Medication Taken Report):**
-    *   **用途:** 藥盒偵測到使用者從某個藥倉取藥後，回報給 App。
-    *   **App 實作:** 在 `MainActivity.kt` 的 `onMedicationTaken()` 回呼中接收。
-    *   **格式範例:**
-        ```json
-        { "status": "medication_taken", "payload": { "slot": 4 } }
-        ```
+2.  **Request Status:**
+    - **Opcode:** `0x20`
+    - **Purpose:** Actively query the pillbox for its current status (e.g., whether each compartment contains medication).
+    - **Format (1 byte):** `[0]: 0x20`
 
-3.  **環境數據回報 (Environment Data Report):**
-    *   **用途:** 藥盒定時回傳感測到的環境溫濕度數據。
-    *   **App 實作:** 在 `MainActivity.kt` 的 `onSensorData()` 回呼中接收。
-    *   **格式範例:**
-        ```json
-        { "status": "env_data", "payload": { "temp": 25.4, "humidity": 60.1 } }
-        ```
+3.  **Request Instant Environment Data:**
+    - **Opcode:** `0x30`
+    - **Purpose:** Actively request the current real-time temperature and humidity data from the pillbox.
+    - **Format (1 byte):** `[0]: 0x30`
 
-4.  **異常狀態回報 (Anomaly Report):**
-    *   **用途:** 當藥盒發生異常（如馬達卡住、感測器錯誤）時，回報給 App。
-    *   **App 實作:** 在 `MainActivity.kt` 的 `onError()` 回呼中接收。
-    *   **格式範例:**
-        ```json
-        { "status": "box_anomaly", "payload": { "code": "jammed" } }
-        ```
+4.  **Request Historic Environment Data:**
+    - **Opcode:** `0x31`
+    - **Purpose:** Request the pillbox to start transmitting all its stored historical temperature and humidity data.
+    - **Format (1 byte):** `[0]: 0x31`
 
-## 專案結構
+### Pillbox -> App (Notifications)
 
-本專案採用單一 `Activity` 和多 `Fragment` 的現代 Android App 架構。
+All notifications are sent via the **Notify Characteristic**. The app parses this data in the `handleIncomingData(data: ByteArray)` method.
 
-*   `MainActivity.kt`: App 的主要 `Activity`，負責管理 `ViewPager2`、`TabLayout`、藍牙連線及 **高階指令的組裝與透過 `BluetoothLeManager` 的發送**。
-*   `ui/ReminderFragment.kt`: **提醒設定**頁面的 `Fragment`，負責處理 **引導式放藥的 UI 流程與佇列管理**。
-*   `ble/BluetoothLeManager.kt`: **低層藍牙通訊介面，負責實際的藍牙數據傳輸（如 `sendCommand()`）和從藥盒接收原始數據，並將其轉發給 `MainActivity` 處理。它也將負責 JSON 數據的序列化和反序列化。**
-*   其餘檔案結構請參考下方... (與先前版本相同)
+1.  **Box Status Update:**
+    - **Opcode:** `0x80`
+    - **Purpose:** Report the status of each compartment of the pillbox.
+    - **Format (2 bytes):** `[0]: 0x80`, `[1]: Slot Mask`
 
-## 權限需求
+2.  **Medication Taken Report:**
+    - **Opcode:** `0x81`
+    - **Purpose:** Report to the app after the pillbox detects that the user has taken medication from a compartment.
+    - **Format (2 bytes):** `[0]: 0x81`, `[1]: Slot Number`
 
-*   `POST_NOTIFICATIONS`, `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`, `ACCESS_FINE_LOCATION`, `SCHEDULE_EXACT_ALARM`
+3.  **Time Sync Acknowledged:**
+    - **Opcode:** `0x82`
+    - **Purpose:** Confirm that the time synchronized from the app has been successfully received and set.
+    - **Format (1 byte):** `[0]: 0x82`
+
+4.  **Instant Sensor Data Report:**
+    - **Opcode:** `0x90`
+    - **Purpose:** Report the currently sensed environmental temperature and humidity data.
+    - **Format (5 bytes):**
+        - `[0]`: `0x90`
+        - `[1]`: `Temperature Integer Part`
+        - `[2]`: `Temperature Fractional Part`
+        - `[3]`: `Humidity Integer Part`
+        - `[4]`: `Humidity Fractional Part`
+    - **Parsing:** `Temperature = byte[1] + byte[2] / 100.0`, `Humidity = byte[3] + byte[4] / 100.0`
+
+5.  **Historic Sensor Data Point:**
+    - **Opcode:** `0x91`
+    - **Purpose:** Report a single piece of historical temperature and humidity data.
+    - **Format (9 bytes):**
+        - `[0]`: `0x91`
+        - `[1-4]`: `Timestamp (Unix Timestamp, 4 bytes, Little Endian)`
+        - `[5]`: `Temperature Integer Part`
+        - `[6]`: `Temperature Fractional Part`
+        - `[7]`: `Humidity Integer Part`
+        - `[8]`: `Humidity Fractional Part`
+
+6.  **End of Historic Data Transmission:**
+    - **Opcode:** `0x92`
+    - **Purpose:** Inform the app that all historical data has been transmitted.
+    - **Format (1 byte):** `[0]: 0x92`
+
+7.  **Error Report:**
+    - **Opcode:** `0xEE`
+    - **Purpose:** Report to the app when an error occurs in the pillbox.
+    - **Format (2 bytes):** `[0]: 0xEE`, `[1]: Error Code`
+
+## Project Structure
+
+This project adopts a modern Android app architecture with a single Activity and multiple Fragments to ensure separation of concerns and high scalability.
+
+*   `MainActivity.kt`: The app's single entry point `Activity`, acting as a "container" and "master controller."
+    *   Responsible for hosting `TabLayout` and `ViewPager2`, managing the switching of main Fragments.
+    *   Creates and holds the single instance of `BluetoothLeManager`, centralizing the management of the Bluetooth connection lifecycle.
+    *   Receives Bluetooth callbacks and forwards all events to the shared `MainViewModel`.
+
+*   `MainViewModel.kt`: A shared `ViewModel` that serves as the "Single Source of Truth" for the application.
+    *   Holds all shared data (`LiveData`) such as Bluetooth connection status, temperature/humidity data, medication list, and medication history.
+    *   Contains core business logic, such as handling medication-taking events, calculating medication adherence, and storing/reading data.
+
+*   `ReminderSettingsFragment.kt`: The Fragment for the "Reminder Settings" page.
+    *   Responsible for all UI operations related to medication settings, including dynamically generating medication setting cards.
+    *   Collects user input and uses `MainViewModel` to save new medications in the application.
+
+*   `MedicationListFragment.kt`: The Fragment for the "Medication List" page.
+    *   Observes the medication list data from `MainViewModel` and updates the list.
+
+*   `HistoryFragment.kt`: The Fragment for the "Medication History" page.
+    *   Observes the medication history data from `MainViewModel` and updates the calendar.
+    *   Displays the medication adherence chart.
+
+*   `EnvironmentFragment.kt`: The Fragment for the "Environment Monitoring" page.
+    *   Observes the Bluetooth connection status and temperature/humidity data from `MainViewModel`.
+    *   Displays a real-time temperature/humidity line chart or a "not connected" prompt based on the status.
+
+*   `SettingsFragment.kt`: The Fragment for the "Settings" page.
+    *   Provides application theme settings.
+
+*   `ble/BluetoothLeManager.kt`: Encapsulates all low-level Bluetooth communication details.
+    *   Responsible for scanning, connecting, sending commands, and receiving data.
+    *   Parses the raw data received from the pillbox and passes it to `MainActivity` via a callback.
+
+*   `AlarmScheduler.kt`: A helper class responsible for setting and canceling system alarms (`AlarmManager`).
+
+*   `AlarmReceiver.kt`: A `BroadcastReceiver` that, when an alarm is triggered, is responsible for creating and displaying a "Time to take your medication!" notification.
+
+*   `BootReceiver.kt`: A `BroadcastReceiver` that automatically reads all saved medication reminders and resets the alarms when the device is rebooted.
+
+## Permissions Required
+
+`POST_NOTIFICATIONS`, `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`, `ACCESS_FINE_LOCATION`, `SCHEDULE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED`, `VIBRATE`
+
+## Bug Fixes
+
+*   **0015:** Fixed an issue where the medication adherence rate was not updating and the time display on the medication history page was unclear. Implemented correct adherence calculation logic in `MedicationTakenReceiver` and `MainViewModel`, and corrected the text color in `fragment_history.xml` to ensure it is visible in the light theme.
+
+## Recent Updates
+
+*   **0033:** Implemented historical temperature and humidity data synchronization. Extended the Bluetooth protocol to allow the app to sync all historical temperature and humidity data recorded during the offline period from the pillbox upon connection and display it completely on the chart.
+*   **0032:** Fixed multiple compilation errors and warnings in the project, including a `SwipeRefreshLayout` dependency issue, an error in `MainActivity.kt`, and cleaned up unused code.
+*   **0031:** Cleaned up all duplicate and empty files in the `app/src/main/java/com/example/medicationreminderapp/ui/` directory.
+*   **0030:** Implemented the "App actively requests temperature/humidity data" feature in the Bluetooth protocol and provided a UI for users to trigger this action.
+*   **0029:** Fixed multiple build errors and warnings in `app/build.gradle.kts`. Handled incorrect string quotes for `buildConfigField` and replaced the deprecated `exec` method with the more modern `ProcessBuilder` to ensure the stability of the Gradle build script.
+*   **0028:** Fixed a build failure caused by removing the seemingly unused `requestStatus()` and `syncTime()` methods from `BluetoothLeManager`. These two methods have been re-added to ensure `MainActivity` can call them normally.
+*   **0027:** Removed the unused `sendJson` method from `BluetoothLeManager.kt`, further cleaning up the Bluetooth communication code.
+*   **0026:** Cleaned up multiple "unused declaration" warnings in the project, including removing old methods in the Bluetooth module replaced by JSON commands, removing unused properties in `HistoryFragment.kt`, and clearing the content of duplicate and useless files in the `ui` package, significantly improving code quality.
+*   **0025:** Removed the unused `frequency` field and its related string resource from the `Medication` data class, making the code more concise.
+*   **0024:** Fixed multiple warnings in the IDE, including adding accessibility descriptions to image resources, moving hardcoded strings to resource files, and cleaning up unused imports and parameters in Kotlin files, improving code quality and maintainability.
+*   **0023:** Added a visual indicator feature to the medication history page. Now, a green dot is displayed below the corresponding date on the calendar when all medications for that day have been taken on time, allowing users to track their medication status more intuitively.
+*   **0022:** Simplified the version number setting and displayed a hint message when the medication list is empty. Removed the complex Git version control in `app/build.gradle.kts` and now read version information directly from `config.gradle.kts`. Also, updated the medication list page to display "No reminders" text when there are no reminders, improving the user experience.
+*   **0021:** Cleaned up warnings in `SettingsFragment.kt`, removing unused `import`s and replacing unnecessary safe calls with safer `let` blocks.
+*   **0020:** Restored missing settings features, including the settings icon, theme switching, and accent color adjustment. Users can now access the settings page from the toolbar and customize the app's appearance again.
+*   **0019:** Resolved accessibility warnings in `fragment_reminder_settings.xml` and cleaned up unused parameters in `MainViewModel.kt`.
+*   **0018:** Resolved XML resource parsing errors and multiple unused code warnings in Kotlin files that appeared in the IDE, and ensured project state stability through a Gradle sync.
+*   **0017:** Resolved XML resource parsing errors and multiple unused code warnings in Kotlin files that appeared in the IDE, and ensured project state stability through a Gradle sync.
+*   **0016:** Restored the ability to edit and delete medication reminders and reintegrated the alarm scheduling function. Now, alarms are not only enabled when set but are also automatically reset after the device reboots.
+*   **0015:** Fixed a UI issue where the medication list would not update immediately after adding a new medication. The UI update is now correctly triggered by ensuring that `LiveData` receives a new list instance instead of just modifying the existing one.
+*   **0014:** Handled outdated warnings in the IDE regarding `MedicationListAdapter.kt` and `ReminderSettingsFragment.kt` and refreshed the project state with a Gradle sync.
+*   **0013:** Cleaned up all warnings in the project, including unused imports, parameters, and namespace declarations, and fixed string resource conflicts.
+*   **0012:** Cleaned up all warnings in the project, including unused imports, parameters, and namespace declarations, and fixed string resource conflicts.
+*   **0011:** Fixed a resource linking error caused by a missing `androidx.preference:preference-ktx` dependency.
+*   **0010:** Added a settings page and a medication list page, and restored the theme setting function.
+*   **0009:** Optimized the validation of the medication reminder form to provide clearer error messages.
+*   **0008:** Fixed a critical build error caused by an incomplete Gradle version directory.

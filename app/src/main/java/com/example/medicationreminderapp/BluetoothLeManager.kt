@@ -17,6 +17,8 @@ import android.content.Context
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.util.UUID
 import java.util.concurrent.ConcurrentLinkedQueue
 
@@ -31,6 +33,8 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
         fun onBoxStatusUpdate(slotMask: Byte)
         fun onTimeSyncAcknowledged()
         fun onSensorData(temperature: Float, humidity: Float)
+        fun onHistoricSensorData(timestamp: Long, temperature: Float, humidity: Float)
+        fun onHistoricDataComplete()
         fun onError(errorCode: Int)
     }
 
@@ -156,7 +160,7 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
             handleIncomingData(value)
         }
 
-         private fun handleIncomingData(data: ByteArray) {
+        private fun handleIncomingData(data: ByteArray) {
             if (data.isEmpty()) return
             when (data[0].toInt() and 0xFF) {
                 0x80 -> { if (data.size > 1) listener.onBoxStatusUpdate(data[1]) }
@@ -164,14 +168,24 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
                     if (data.size > 1) listener.onMedicationTaken(data[1].toInt())
                 }
                 0x82 -> { listener.onTimeSyncAcknowledged() }
-                0x90 -> { // 溫濕度數據
+                0x90 -> { // Instantaneous sensor data
                     if (data.size > 4) {
                         val temp = data[1] + data[2] / 100f
                         val hum = data[3] + data[4] / 100f
                         listener.onSensorData(temp, hum)
                     }
                 }
-                0xEE -> { // 錯誤回報
+                0x91 -> { // Historic sensor data point
+                    if (data.size > 8) {
+                        val buffer = ByteBuffer.wrap(data, 1, 4).order(ByteOrder.LITTLE_ENDIAN)
+                        val timestamp = buffer.int.toLong()
+                        val temp = data[5] + data[6] / 100f
+                        val hum = data[7] + data[8] / 100f
+                        listener.onHistoricSensorData(timestamp, temp, hum)
+                    }
+                }
+                0x92 -> { listener.onHistoricDataComplete() } // End of historic data
+                0xEE -> { // Error report
                     if (data.size > 1) listener.onError(data[1].toInt())
                 }
             }
@@ -266,29 +280,15 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
         sendCommand(command)
     }
 
-    fun setReminder(slotNumber: Int, hour: Int, minute: Int) {
-        val command = byteArrayOf(
-            0x10.toByte(),
-            slotNumber.toByte(),
-            hour.toByte(),
-            minute.toByte()
-        )
-        sendCommand(command)
-    }
-    
     fun requestStatus() {
         sendCommand(byteArrayOf(0x20.toByte()))
     }
-    
-    fun cancelAllReminders() {
-        sendCommand(byteArrayOf(0x12.toByte()))
+
+    fun requestEnvironmentData() {
+        sendCommand(byteArrayOf(0x30.toByte()))
     }
 
-    fun cancelReminder(slotNumber: Int) {
-        val command = byteArrayOf(
-            0x13.toByte(),
-            slotNumber.toByte()
-        )
-        sendCommand(command)
+    fun requestHistoricEnvironmentData() {
+        sendCommand(byteArrayOf(0x31.toByte()))
     }
 }
