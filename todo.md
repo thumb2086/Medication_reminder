@@ -12,6 +12,7 @@
 - **DONE** Fix final warning in `MainViewModel.kt`.
 - **DONE** Fix Performance warning for `baselineAligned`.
 - **DONE** Fix Java declaration redundancy warnings by removing the unused `frequency` field from the `Medication` data class and its related resources.
+- **DONE** Fix build errors and warnings in `app/build.gradle.kts`.
 
 ### New Inspection Results To-Do List
 
