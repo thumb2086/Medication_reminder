@@ -7,4 +7,4 @@
 如果有沒改完的文件、需要的功能優化寫todo.md下次對話改
 將更改了什麼寫到log.md
 將完成的工作從todo.md移除
-然後更新 README.md 檔案
+然後更新 README.md 、readme_cn.md檔案
