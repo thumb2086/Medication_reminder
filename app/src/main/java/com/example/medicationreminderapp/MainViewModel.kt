@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
+import com.example.medicationreminderapp.util.SingleLiveEvent
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import com.google.gson.reflect.TypeToken
@@ -26,11 +27,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val notesMap = MutableLiveData<MutableMap<String, String>>(mutableMapOf())
     val complianceRate = MutableLiveData<Float>(0f)
 
+    // Event for triggering BLE actions in Activity
+    val requestBleAction = SingleLiveEvent<BleAction>()
+
     private val sharedPreferences = application.getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
     private val gson = Gson()
 
     init {
         loadAllData()
+    }
+
+    fun onRefreshEnvironmentData() {
+        requestBleAction.value = BleAction.REQUEST_ENV_DATA
     }
 
     fun addMedications(newMedications: List<Medication>) {
@@ -150,6 +158,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 Log.e("MainViewModel", "Failed to parse daily status data", e)
             }
         }
+    }
+
+    enum class BleAction {
+        REQUEST_ENV_DATA
     }
 
     companion object {

@@ -13,6 +13,8 @@
 - **DONE** Fix Performance warning for `baselineAligned`.
 - **DONE** Fix Java declaration redundancy warnings by removing the unused `frequency` field from the `Medication` data class and its related resources.
 - **DONE** Fix build errors and warnings in `app/build.gradle.kts`.
+- **DONE** Implement the "request environment data" Bluetooth protocol, including UI implementation.
+- **DONE** Clean up empty and duplicate files in the `app/src/main/java/com/example/medicationreminderapp/ui/` package.
 
 ### New Inspection Results To-Do List
 

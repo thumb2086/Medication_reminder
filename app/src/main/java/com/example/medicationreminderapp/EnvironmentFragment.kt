@@ -36,7 +36,14 @@ class EnvironmentFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupChart()
+        setupSwipeToRefresh()
         setupObservers()
+    }
+
+    private fun setupSwipeToRefresh() {
+        binding.swipeRefreshLayout.setOnRefreshListener {
+            viewModel.onRefreshEnvironmentData()
+        }
     }
 
     private fun setupChart() {
@@ -68,6 +75,7 @@ class EnvironmentFragment : Fragment() {
 
     private fun setupObservers() {
         viewModel.isBleConnected.observe(viewLifecycleOwner) { isConnected ->
+            binding.swipeRefreshLayout.isEnabled = isConnected
             if (isConnected) {
                 binding.lineChart.visibility = View.VISIBLE
                 binding.notConnectedTextView.visibility = View.GONE
@@ -82,6 +90,9 @@ class EnvironmentFragment : Fragment() {
         viewModel.temperature.observe(viewLifecycleOwner) { temp ->
             if (viewModel.isBleConnected.value == true) {
                 addChartEntry(temp, tempDataSet)
+                if (binding.swipeRefreshLayout.isRefreshing) {
+                    binding.swipeRefreshLayout.isRefreshing = false
+                }
             }
         }
 
@@ -89,6 +100,9 @@ class EnvironmentFragment : Fragment() {
             if (viewModel.isBleConnected.value == true) {
                 addChartEntry(humidity, humidityDataSet)
                 entryCount++
+                if (binding.swipeRefreshLayout.isRefreshing) {
+                    binding.swipeRefreshLayout.isRefreshing = false
+                }
             }
         }
     }

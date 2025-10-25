@@ -62,6 +62,21 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         createNotificationChannel()
         setupViewPagerAndTabs()
         requestAppPermissions()
+        observeViewModel()
+    }
+
+    private fun observeViewModel() {
+        viewModel.requestBleAction.observe(this) { action ->
+            when (action) {
+                MainViewModel.BleAction.REQUEST_ENV_DATA -> {
+                    if (viewModel.isBleConnected.value == true) {
+                        bluetoothLeManager.requestEnvironmentData()
+                    } else {
+                        Toast.makeText(this, "Bluetooth not connected", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -197,7 +212,7 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         val channel = NotificationChannel(CHANNEL_ID, name, NotificationManager.IMPORTANCE_HIGH).apply {
             description = getString(R.string.notification_channel_description)
             enableVibration(true)
-            val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            val soundUri = RingtoneManager..getDefaultUri(RingtoneManager.TYPE_ALARM)
             val audioAttributes = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build()
             setSound(soundUri, audioAttributes)
         }

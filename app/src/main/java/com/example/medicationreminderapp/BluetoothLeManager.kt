@@ -269,4 +269,8 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
     fun requestStatus() {
         sendCommand(byteArrayOf(0x20.toByte()))
     }
+
+    fun requestEnvironmentData() {
+        sendCommand(byteArrayOf(0x30.toByte()))
+    }
 }

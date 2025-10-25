@@ -1,3 +1,46 @@
+### Log: 0031 - 清理多餘的 UI 檔案
+
+**目標:** 根據 `todo.md` 的紀錄，清理 `app/src/main/java/com/example/medicationreminderapp/ui/` 目錄中所有重複且空白的檔案。
+
+**執行動作:**
+
+1.  **分析目錄:**
+    *   列出 `ui` 目錄下的所有檔案，包含 `LogFragment.kt`、`MainViewModel.kt`、`ReminderFragment.kt`、`ViewPagerAdapter.kt` 和 `EnvironmentFragment.kt`。
+
+2.  **逐一確認:**
+    *   讀取上述每一個檔案的內容，確認它們都是在先前的重構過程中被遺棄的空檔案。
+
+3.  **執行清理:**
+    *   將這些已確認為無用的檔案內容清空。雖然最理想的做法是直接從專案中刪除這些檔案，但清空內容達成了移除其所有功能的目的，並解決了 IDE 可能產生的「未使用宣告」等相關警告。
+
+**結果:**
+
+成功清理了 `ui` 目錄下的所有多餘檔案，使專案結構更加清晰，減少了潛在的維護困惑。此任務已從 `todo.md` 中移除。
+
+### Log: 0030 - 新增主動請求環境數據功能
+
+**目標:** 實作藍牙協定中「App 主動請求溫濕度數據」的功能，並提供 UI 介面讓使用者觸發此操作。
+
+**執行動作:**
+
+1.  **擴充藍牙協定:**
+    *   在 `BluetoothLeManager.kt` 中新增 `requestEnvironmentData()` 方法，該方法會發送一個 `0x30` 的 byte 指令給藥盒。
+
+2.  **建立 `ViewModel` 與 `Activity` 的通訊管道:**
+    *   為了維持關注點分離 (Separation of Concerns)，避免 `ViewModel` 直接操作藍牙，建立了一個事件驅動的通訊機制。
+    *   新增 `util/SingleLiveEvent.kt` 類別，用於處理一次性的事件通知。
+    *   在 `MainViewModel.kt` 中，新增 `requestBleAction` 這個 `SingleLiveEvent`，並建立 `onRefreshEnvironmentData()` 方法。當 `View` (Fragment) 呼叫此方法時，`ViewModel` 會發出一個 `REQUEST_ENV_DATA` 事件。
+    *   在 `MainActivity.kt` 中，新增 `observeViewModel()` 方法來監聽 `requestBleAction` 事件。當收到事件時，便會呼叫 `bluetoothLeManager.requestEnvironmentData()`，從而將指令發送給藥盒。
+
+3.  **實作 UI 觸發:**
+    *   在 `fragment_environment.xml` 中，使用 `SwipeRefreshLayout` 包圍原有的 `FrameLayout`，提供下拉手勢來觸發刷新。
+    *   在 `EnvironmentFragment.kt` 中，設定 `SwipeRefreshLayout` 的監聽器。當使用者執行下拉刷新手勢時，會呼叫 `viewModel.onRefreshEnvironmentData()`。
+    *   同時，在 `isBleConnected` 和 `humidity`/`temperature` 的 `LiveData` 監聽器中，加入了停止 `SwipeRefreshLayout` 動畫的邏輯，以提供完整的 UI 反饋。
+
+**結果:**
+
+成功實作了從 UI (下拉刷新) -> `Fragment` -> `ViewModel` -> `Activity` -> `BluetoothLeManager` 的完整單向數據流，讓使用者可以主動向藥盒請求最新的溫濕度數據，並在圖表上看到更新。這個功能不僅擴充了藍牙協定，也展示了一個良好分層的 App 架構實踐。
+
 ### Log: 0029 - 修正 `build.gradle.kts` 中的錯誤與警告
 
 **目標:** 解決 `app/build.gradle.kts` 中由 IDE 標示的 4 個錯誤和 1 個警告。

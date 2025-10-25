@@ -79,6 +79,14 @@
         { "action": "rotate_to_slot", "payload": { "slot": 1 } }
         ```
 
+3.  **請求環境數據 (Request Environment Data):**
+    *   **用途:** 主動向藥盒請求目前的溫濕度數據。
+    *   **App 實作:** 可由「環境監測」頁面的下拉刷新等操作觸發。
+    *   **格式範例:**
+        ```json
+        { "action": "request_env_data" }
+        ```
+
 ### 藥盒 -> App (狀態回傳)
 
 1.  **藥物已填充確認 (Slot Filled Confirmation):**
@@ -98,7 +106,7 @@
         ```
 
 3.  **環境數據回報 (Environment Data Report):**
-    *   **用途:** 藥盒定時回傳感測到的環境溫濕度數據。
+    *   **用途:** 藥盒定時或在收到請求時，回傳感測到的環境溫濕度數據。
     *   **App 實作:** 在 `MainActivity` の `onSensorData()` 回呼中接收，並轉發給 `MainViewModel` 更新數據。
     *   **格式範例:**
         ```json
@@ -164,6 +172,11 @@
 
 ## 最近更新
 
+*   **0029:** 修正了 `app/build.gradle.kts` 中的多個 build 錯誤與警告。處理了 `buildConfigField` 不正確的字串引號問題，並將棄用的 `exec` 方法替換為更現代的 `ProcessBuilder`，確保了 Gradle build script 的穩定性。
+*   **0028:** 修復了因移除 `BluetoothLeManager` 中看似未使用的 `requestStatus()` 和 `syncTime()` 方法而導致的 Build 失敗問題。這兩個方法已被重新加回，確保 `MainActivity` 可以正常呼叫。
+*   **0027:** 移除了 `BluetoothLeManager.kt` 中未被使用的 `sendJson` 方法，進一步清理了藍牙通訊的程式碼。
+*   **0026:** 清理了專案中多個「未使用宣告」的警告，包括移除藍牙模組中已由 JSON 指令取代的舊方法、移除 `HistoryFragment.kt` 中未被使用的屬性，以及清空了 `ui` 套件中重複且無用的檔案內容，顯著提升了程式碼品質。
+*   **0025:** 移除了 `Medication` data class 中未被使用的 `frequency` 欄位及其相關的字串資源，使程式碼更精簡。
 *   **0024:** 修復了 IDE 中的多個警告，包括為圖片資源添加無障礙描述、將硬編碼字串移至資源檔，以及清理了 Kotlin 檔案中未使用的導入和參數，提升了程式碼品質與可維護性。
 *   **0023:** 在服藥紀錄頁面新增了視覺標示功能。現在，當天所有藥物都按時服用後，日曆上對應的日期下方會顯示一個綠色圓點，讓使用者可以更直觀地追蹤自己的服藥狀況。
 *   **0022:** 簡化了版本號碼的設定，並在藥物清單為空時顯示提示訊息。移除了 `app/build.gradle.kts` 中複雜的 Git 版本控制，改為直接從 `config.gradle.kts` 讀取版本資訊。同時，更新了藥物列表頁面，當沒有提醒事項時，會顯示「無提醒」的文字，改善了使用者體驗。
