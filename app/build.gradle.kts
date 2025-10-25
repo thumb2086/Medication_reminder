@@ -17,7 +17,7 @@ android {
     val currentBranch = try {
         val process = ProcessBuilder("git", "rev-parse", "--abbrev-ref", "HEAD").start()
         process.inputStream.bufferedReader().readText().trim()
-    } catch (e: java.io.IOException) {
+    } catch (_: java.io.IOException) {
         "alpha"
     }.ifEmpty { "alpha" }
     val branchConfigs: Map<String, Map<String, Any>> by extra

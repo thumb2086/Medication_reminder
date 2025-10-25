@@ -1,15 +1,35 @@
-### Log: 0028 - 修正因移除未使用宣告而導致的 Build 錯誤
+### Log: 0029 - 修正 `build.gradle.kts` 中的錯誤與警告
 
-**目標:** 解決在 `MainActivity.kt` 中找不到 `requestStatus()` 和 `syncTime()` 方法的 Build 錯誤。
+**目標:** 解決 `app/build.gradle.kts` 中由 IDE 標示的 4 個錯誤和 1 個警告。
 
 **執行動作:**
 
 1.  **分析錯誤:**
-    *   Build 錯誤顯示 `MainActivity.kt` 中無法解析 `requestStatus()` 和 `syncTime()` 的參考。
+    *   `Expecting ')'` 和 `Unexpected tokens` 錯誤發生在第 43 行，原因是 `buildConfigField` 的字串參數引號使用不正確。
+    *   `'exec(String!): Process!' is deprecated` 警告發生在第 18 行，指出 `Runtime.getRuntime().exec()` 方法已被棄用。
+    *   `Too many arguments for...buildConfigField` 和 `Script compilation errors` 是由上述錯誤引起的連帶問題。
+
+2.  **修正錯誤與警告:**
+    *   **修正 `buildConfigField` 引號:** 在第 43 行，將 `buildConfigField` 的第三個參數從 `""${config["apiUrl"] as String}""` 修改為 `"\"${config["apiUrl"] as String}\""`，對內部的雙引號進行轉義，以符合 Groovy/Kotlin 字串的語法要求。
+    *   **替換棄用的 `exec` 方法:** 在第 18 行，將 `Runtime.getRuntime().exec(...)` 替換為 `ProcessBuilder("git", "rev-parse", "--abbrev-ref", "HEAD").start()`。`ProcessBuilder` 是更現代且推薦的建立外部 process 的方式。
+    *   **移除未使用的 `catch` 參數:** 根據 IDE 的提示，將 `catch (e: java.io.IOException)` 中的參數 `e` 修改為 `_`，表示該參數在此 `catch` 區塊中未被使用，以消除「Parameter is never used」的警告。
+
+**結果:**
+
+成功修正了 `app/build.gradle.kts` 中的所有編譯錯誤和警告，使 Gradle build script 恢復正常。專案現在可以順利進行 Gradle sync 和 build。
+
+### Log: 0028 - 修正因移除未使用宣告而導致的 Build 錯誤
+
+**目標:** 解決在 `MainActivity.kt` 中找不到 `requestStatus()` และ `syncTime()` 方法的 Build 錯誤。
+
+**執行動作:**
+
+1.  **分析錯誤:**
+    *   Build 錯誤顯示 `MainActivity.kt` 中無法解析 `requestStatus()` และ `syncTime()` 的參考。
     *   經過檢查，發現在先前的 Log 0026 中，為了處理 IDE 的「未使用宣告」警告，我從 `BluetoothLeManager.kt` 中移除了這兩個方法。
 
 2.  **修正錯誤:**
-    *   將 `requestStatus()` 和 `syncTime()` 這兩個方法重新加回到 `BluetoothLeManager.kt` 中。
+    *   將 `requestStatus()` และ `syncTime()` 這兩個方法重新加回到 `BluetoothLeManager.kt` 中。
 
 **結果:**
 
