@@ -13,6 +13,10 @@ import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
+import com.github.mikephil.charting.formatter.ValueFormatter
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class EnvironmentFragment : Fragment() {
 
@@ -23,7 +27,6 @@ class EnvironmentFragment : Fragment() {
 
     private lateinit var tempDataSet: LineDataSet
     private lateinit var humidityDataSet: LineDataSet
-    private var entryCount = 0f
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -36,7 +39,14 @@ class EnvironmentFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupChart()
+        setupSwipeToRefresh()
         setupObservers()
+    }
+
+    private fun setupSwipeToRefresh() {
+        binding.swipeRefreshLayout.setOnRefreshListener {
+            viewModel.onRefreshEnvironmentData()
+        }
     }
 
     private fun setupChart() {
@@ -51,7 +61,16 @@ class EnvironmentFragment : Fragment() {
             setScaleEnabled(true)
             setPinchZoom(true)
 
-            xAxis.position = XAxis.XAxisPosition.BOTTOM
+            xAxis.apply {
+                position = XAxis.XAxisPosition.BOTTOM
+                valueFormatter = object : ValueFormatter() {
+                    private val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
+                    override fun getFormattedValue(value: Float):
+                            String {
+                        return sdf.format(Date(value.toLong() * 1000))
+                    }
+                }
+            }
             axisRight.isEnabled = false
         }
     }
@@ -68,47 +87,54 @@ class EnvironmentFragment : Fragment() {
 
     private fun setupObservers() {
         viewModel.isBleConnected.observe(viewLifecycleOwner) { isConnected ->
+            binding.swipeRefreshLayout.isEnabled = isConnected
             if (isConnected) {
                 binding.lineChart.visibility = View.VISIBLE
                 binding.notConnectedTextView.visibility = View.GONE
+                // Automatically refresh data on connect
+                viewModel.onRefreshEnvironmentData()
             } else {
                 binding.lineChart.visibility = View.GONE
                 binding.notConnectedTextView.visibility = View.VISIBLE
-                // Clear chart data on disconnect
                 clearChartData()
             }
         }
 
-        viewModel.temperature.observe(viewLifecycleOwner) { temp ->
-            if (viewModel.isBleConnected.value == true) {
-                addChartEntry(temp, tempDataSet)
+        viewModel.historicSensorData.observe(viewLifecycleOwner) { dataPoints ->
+            if (dataPoints.isNotEmpty()) {
+                updateChart(dataPoints)
+            } else {
+                clearChartData()
+            }
+            if (binding.swipeRefreshLayout.isRefreshing) {
+                binding.swipeRefreshLayout.isRefreshing = false
             }
         }
-
-        viewModel.humidity.observe(viewLifecycleOwner) { humidity ->
-            if (viewModel.isBleConnected.value == true) {
-                addChartEntry(humidity, humidityDataSet)
-                entryCount++
+        viewModel.bleStatus.observe(viewLifecycleOwner) {
+            if (it == "Historic data sync complete" && binding.swipeRefreshLayout.isRefreshing) {
+                binding.swipeRefreshLayout.isRefreshing = false
             }
         }
     }
 
-    private fun addChartEntry(value: Float, dataSet: LineDataSet) {
-        val data = binding.lineChart.data
-        if (data != null) {
-            dataSet.addEntry(Entry(entryCount, value))
-            data.notifyDataChanged()
-            binding.lineChart.notifyDataSetChanged()
-            binding.lineChart.setVisibleXRangeMaximum(20f)
-            binding.lineChart.moveViewToX(data.entryCount.toFloat())
-        }
+    private fun updateChart(dataPoints: List<SensorDataPoint>) {
+        val tempEntries = dataPoints.map { Entry(it.timestamp.toFloat(), it.temperature) }
+        val humidityEntries = dataPoints.map { Entry(it.timestamp.toFloat(), it.humidity) }
+
+        tempDataSet.values = tempEntries
+        humidityDataSet.values = humidityEntries
+
+        binding.lineChart.data.notifyDataChanged()
+        binding.lineChart.notifyDataSetChanged()
+        binding.lineChart.invalidate()
     }
-    
+
     private fun clearChartData() {
         tempDataSet.clear()
         humidityDataSet.clear()
-        entryCount = 0f
-        binding.lineChart.invalidate() // Refresh the chart view
+        binding.lineChart.data.notifyDataChanged()
+        binding.lineChart.notifyDataSetChanged()
+        binding.lineChart.invalidate()
     }
 
     override fun onDestroyView() {

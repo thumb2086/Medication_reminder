@@ -5,20 +5,28 @@ import android.content.Context.MODE_PRIVATE
 import android.util.Log
 import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import com.example.medicationreminderapp.util.SingleLiveEvent
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import com.google.gson.reflect.TypeToken
 import java.text.SimpleDateFormat
 import java.util.*
 
+data class SensorDataPoint(val timestamp: Long, val temperature: Float, val humidity: Float)
+
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // LiveData for UI state
     val isBleConnected = MutableLiveData<Boolean>(false)
     val bleStatus = MutableLiveData<String>("Disconnected")
-    val temperature = MutableLiveData<Float>(0.0f)
-    val humidity = MutableLiveData<Float>(0.0f)
+
+    // LiveData for Sensor Data
+    private val _historicSensorData = MutableLiveData<List<SensorDataPoint>>(emptyList())
+    val historicSensorData: LiveData<List<SensorDataPoint>> = _historicSensorData
+
+    private val historicDataBuffer = mutableListOf<SensorDataPoint>()
 
     // LiveData for App Data
     val medicationList = MutableLiveData<MutableList<Medication>>(mutableListOf())
@@ -26,11 +34,37 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val notesMap = MutableLiveData<MutableMap<String, String>>(mutableMapOf())
     val complianceRate = MutableLiveData<Float>(0f)
 
+    // Event for triggering BLE actions in Activity
+    val requestBleAction = SingleLiveEvent<BleAction>()
+
     private val sharedPreferences = application.getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
     private val gson = Gson()
 
     init {
         loadAllData()
+    }
+
+    fun onRefreshEnvironmentData() {
+        historicDataBuffer.clear()
+        requestBleAction.value = BleAction.REQUEST_HISTORIC_ENV_DATA
+    }
+
+    // Called from MainActivity when a new real-time data point arrives
+    fun onNewSensorData(temperature: Float, humidity: Float) {
+        val now = System.currentTimeMillis() / 1000
+        val newDataPoint = SensorDataPoint(now, temperature, humidity)
+        _historicSensorData.value = (_historicSensorData.value ?: emptyList()) + newDataPoint
+    }
+
+    // Called from MainActivity to buffer historic data points
+    fun addHistoricSensorData(timestamp: Long, temperature: Float, humidity: Float) {
+        historicDataBuffer.add(SensorDataPoint(timestamp, temperature, humidity))
+    }
+
+    // Called from MainActivity when all historic data has been received
+    fun onHistoricDataSyncCompleted() {
+        _historicSensorData.value = historicDataBuffer.sortedBy { it.timestamp }.toList()
+        bleStatus.value = "Historic data sync complete"
     }
 
     fun addMedications(newMedications: List<Medication>) {
@@ -150,6 +184,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 Log.e("MainViewModel", "Failed to parse daily status data", e)
             }
         }
+    }
+
+    enum class BleAction {
+        REQUEST_ENV_DATA,
+        REQUEST_HISTORIC_ENV_DATA
     }
 
     companion object {
