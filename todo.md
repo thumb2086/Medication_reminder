@@ -16,6 +16,7 @@
 - **DONE** Implement the "request environment data" Bluetooth protocol, including UI implementation.
 - **DONE** Clean up empty and duplicate files in the `app/src/main/java/com/example/medicationreminderapp/ui/` package.
 - **DONE** Fix build errors in `MainActivity.kt` and `fragment_environment.xml`, and clean up unused declarations in `EnvironmentFragment.kt` and `SingleLiveEvent.kt`.
+- **DONE** Implement historic environment data synchronization.
 
 ### New Inspection Results To-Do List
 

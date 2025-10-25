@@ -67,14 +67,13 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
 
     private fun observeViewModel() {
         viewModel.requestBleAction.observe(this) { action ->
+            if (viewModel.isBleConnected.value != true) {
+                Toast.makeText(this, "Bluetooth not connected", Toast.LENGTH_SHORT).show()
+                return@observe
+            }
             when (action) {
-                MainViewModel.BleAction.REQUEST_ENV_DATA -> {
-                    if (viewModel.isBleConnected.value == true) {
-                        bluetoothLeManager.requestEnvironmentData()
-                    } else {
-                        Toast.makeText(this, "Bluetooth not connected", Toast.LENGTH_SHORT).show()
-                    }
-                }
+                MainViewModel.BleAction.REQUEST_ENV_DATA -> bluetoothLeManager.requestEnvironmentData()
+                MainViewModel.BleAction.REQUEST_HISTORIC_ENV_DATA -> bluetoothLeManager.requestHistoricEnvironmentData()
             }
         }
     }
@@ -181,10 +180,15 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
     }
 
     override fun onSensorData(temperature: Float, humidity: Float) {
-        runOnUiThread {
-            viewModel.temperature.value = temperature
-            viewModel.humidity.value = humidity
-        }
+        runOnUiThread { viewModel.onNewSensorData(temperature, humidity) }
+    }
+
+    override fun onHistoricSensorData(timestamp: Long, temperature: Float, humidity: Float) {
+        viewModel.addHistoricSensorData(timestamp, temperature, humidity)
+    }
+
+    override fun onHistoricDataComplete() {
+        viewModel.onHistoricDataSyncCompleted()
     }
 
     override fun onError(errorCode: Int) {

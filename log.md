@@ -1,3 +1,37 @@
+### Log: 0033 - 實作歷史溫濕度數據同步功能
+
+**目標:** 擴充藍牙協定，允許 App 在連接到藥盒時，能一次性同步藥盒在離線期間所記錄的所有歷史溫濕度數據。
+
+**執行動作:**
+
+1.  **擴充藍牙協定 (`BluetoothLeManager.kt`):**
+    *   **新增指令:** 定義了新的指令 `0x31` (`requestHistoricEnvironmentData`)，由 App 發送給藥盒，用於請求歷史數據。
+    *   **新增通知:** 定義了新的通知 `0x91` (`onHistoricSensorData`) 和 `0x92` (`onHistoricDataComplete`)。
+        *   `0x91` 封包格式被設計為包含一個 4 位元組的 Unix 時間戳，以及溫濕度數據，允許 App 精確還原數據的紀錄時間。
+        *   `0x92` 作為歷史數據串流結束的標記。
+    *   **更新 `BleListener`:** 在介面中加入了 `onHistoricSensorData` 和 `onHistoricDataComplete` 回呼，以便將解析後的數據傳遞給上層。
+
+2.  **更新 `MainActivity.kt`:**
+    *   實作了新的 `BleListener` 回呼方法。當收到歷史數據點 (`onHistoricSensorData`) 或傳輸完成訊號 (`onHistoricDataComplete`) 時，會直接呼叫 `MainViewModel` 中對應的方法。
+    *   在 `observeViewModel` 中，加入了對 `REQUEST_HISTORIC_ENV_DATA` 事件的處理，確保能觸發新的藍牙指令。
+
+3.  **重構 `MainViewModel.kt`:**
+    *   新增了 `SensorDataPoint` data class，用於封裝包含時間戳的感測器數據。
+    *   引入了 `historicSensorData` LiveData，作為 UI 顯示的唯一數據來源。
+    *   建立了 `historicDataBuffer` 緩衝區，在藍牙數據串流傳輸過程中，臨時儲存收到的數據點。
+    *   當收到傳輸完成的訊號 (`onHistoricDataSyncCompleted`) 時，會將緩衝區內的數據進行排序，並一次性更新到 `historicSensorData` LiveData 中，觸發 UI 更新。
+
+4.  **改造 `EnvironmentFragment.kt`:**
+    *   **UI 邏輯更新:** Fragment 現在觀察 `historicSensorData` LiveData。一旦數據更新，它會清空圖表，並將所有歷史數據點一次性繪製到圖表上。
+    *   **X 軸格式化:** 為圖表的 X 軸新增了 `ValueFormatter`，將 Unix 時間戳轉換為使用者易於閱讀的 `HH:mm` 格式。
+    *   **使用者體驗優化:**
+        *   在藍牙成功連接時，會自動觸發一次數據刷新。
+        *   確保下拉刷新的動畫在數據同步完成後能正確停止。
+
+**結果:**
+
+成功實現了高效的歷史數據同步機制。現在，當 App 與藥盒連接時，使用者可以透過下拉刷新，獲取並在圖表上看到藥盒在離線期間記錄的完整溫濕度變化歷史，極大地提升了藥物儲存環境監控的完整性與實用性。此任務已從 `todo.md` 中完成。
+
 ### Log: 0032 - 修正編譯錯誤與警告
 
 **目標:** 解決專案中的多個編譯錯誤與警告，包含 `SwipeRefreshLayout` 依賴問題、`MainActivity.kt` 中的錯誤，以及清理未使用的程式碼。
