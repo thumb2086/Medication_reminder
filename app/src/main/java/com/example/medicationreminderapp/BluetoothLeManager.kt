@@ -266,29 +266,7 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
         sendCommand(command)
     }
 
-    fun setReminder(slotNumber: Int, hour: Int, minute: Int) {
-        val command = byteArrayOf(
-            0x10.toByte(),
-            slotNumber.toByte(),
-            hour.toByte(),
-            minute.toByte()
-        )
-        sendCommand(command)
-    }
-    
     fun requestStatus() {
         sendCommand(byteArrayOf(0x20.toByte()))
-    }
-    
-    fun cancelAllReminders() {
-        sendCommand(byteArrayOf(0x12.toByte()))
-    }
-
-    fun cancelReminder(slotNumber: Int) {
-        val command = byteArrayOf(
-            0x13.toByte(),
-            slotNumber.toByte()
-        )
-        sendCommand(command)
     }
 }

@@ -41,8 +41,15 @@ class MedicationListFragment : Fragment() {
     }
 
     private fun observeViewModel() {
-        viewModel.medicationList.observe(viewLifecycleOwner) {
-            medicationAdapter.submitList(it)
+        viewModel.medicationList.observe(viewLifecycleOwner) { medications ->
+            if (medications.isNullOrEmpty()) {
+                binding.medicationRecyclerView.visibility = View.GONE
+                binding.emptyView.visibility = View.VISIBLE
+            } else {
+                binding.medicationRecyclerView.visibility = View.VISIBLE
+                binding.emptyView.visibility = View.GONE
+                medicationAdapter.submitList(medications)
+            }
         }
     }
 

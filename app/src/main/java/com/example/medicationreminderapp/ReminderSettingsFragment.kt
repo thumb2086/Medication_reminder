@@ -383,7 +383,6 @@ class ReminderSettingsFragment : Fragment() {
             id = medicationId,
             name = name,
             dosage = pillsPerDose.toString(),
-            frequency = "",
             startDate = startDate.timeInMillis,
             endDate = endDate.timeInMillis,
             times = timesMap,

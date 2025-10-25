@@ -3,7 +3,6 @@ package com.example.medicationreminderapp
 data class Medication(
     val name: String,
     val dosage: String,
-    val frequency: String,
     val startDate: Long,
     val endDate: Long,
     val times: Map<Int, Long>,
