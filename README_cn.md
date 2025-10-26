@@ -28,6 +28,7 @@
 *   **設定:**
     *   可透過工具列上的設定圖示進入設定頁面。
     *   支援亮色、暗色和跟隨系統主題的切換。
+    *   支援在「繁體中文」和「English」之間切換語言。
 
 ## 使用說明
 
@@ -168,7 +169,7 @@
     *   根據狀態，顯示即時的溫濕度折線圖或「未連接」的提示。
 
 *   `SettingsFragment.kt`: 「設定」頁面的 Fragment。
-    *   提供應用程式的主題設定。
+    *   提供應用程式的主題和語言設定。
 
 *   `ble/BluetoothLeManager.kt`: 封裝所有低階藍牙通訊的細節。
     *   負責掃描、連接、發送指令和接收數據。
@@ -190,6 +191,12 @@
 
 ## 最近更新
 
+*   **0039:** 修正了 `MainActivity.kt` 中的多個棄用警告。更新了返回按鈕的處理方式以使用新的 `OnBackPressedDispatcher`，並將地區/語言設定邏輯現代化為使用 `AppCompatDelegate.setApplicationLocales` API，移除了所有相關的已棄用方法。
+*   **0038:** 在設定頁面 (`SettingsFragment`) 新增了返回箭頭。讓使用者可以輕鬆地從設定選單返回到上一個畫面。
+*   **0037:** 修正了設定頁面 (`SettingsFragment`) 的 UI 顯示問題。先前設定選單的背景是透明的，導致文字與下方的 UI 元件重疊。此問題已透過以編程方式設定一個遵循當前應用程式主題 (亮色/暗色) 的背景顏色來解決，確保了畫面的清晰可見度。
+*   **0036:** 修正了設定圖示在亮色模式下不可見的問題，並將設定頁面中的「主題設定」和「語言設定」合併為一個「外觀」分類，以簡化介面。
+*   **0035:** 在設定頁面中新增了語言切換功能，讓使用者可以手動切換應用程式的顯示語言 (繁體中文、英文或跟隨系統)。
+*   **0034:** 為應用程式新增英文本地化，以支援英語系使用者。
 *   **0033:** 實作了歷史溫濕度數據同步功能。擴充了藍牙協定，允許 App 在連接時，從藥盒同步離線期間記錄的所有溫濕度歷史數據，並在圖表上完整呈現。
 *   **0032:** 修正了專案中的多個編譯錯誤與警告，包含 `SwipeRefreshLayout` 依賴問題、`MainActivity.kt` 中的錯誤，以及清理未使用的程式碼。
 *   **0031:** 清理了 `app/src/main/java/com/example/medicationreminderapp/ui/` 目錄中所有重複且空白的檔案。
@@ -203,16 +210,16 @@
 *   **0023:** 在服藥紀錄頁面新增了視覺標示功能。現在，當天所有藥物都按時服用後，日曆上對應的日期下方會顯示一個綠色圓點，讓使用者可以更直觀地追蹤自己的服藥狀況。
 *   **0022:** 簡化了版本號碼的設定，並在藥物清單為空時顯示提示訊息。移除了 `app/build.gradle.kts` 中複雜的 Git 版本控制，改為直接從 `config.gradle.kts` 讀取版本資訊。同時，更新了藥物列表頁面，當沒有提醒事項時，會顯示「無提醒」的文字，改善了使用者體驗。
 *   **0021:** 清理了 `SettingsFragment.kt` 中的警告，移除了無用的 `import` 並以更安全的 `let` 區塊取代了不必要的安全呼叫。
-*   **0020:** 恢復了遺失的設定功能，包括設定圖示、主題切換和輔色調整。使用者現在可以再次從工具列存取設定頁面並自訂應用程式的外觀。
-*   **0019:** 解決了 `fragment_reminder_settings.xml` 中的無障礙功能警告，並清理了 `MainViewModel.kt` 中未使用的參數。
-*   **0018:** 解決了 IDE 中出現的 XML 資源解析錯誤和多個 Kotlin 檔案中的無用程式碼警告，並透過 Gradle 同步確保了專案狀態的穩定。
-*   **0017:** 解決了 IDE 中出現的 XML 資源解析錯誤和多個 Kotlin 檔案中的無用程式碼警告，並透過 Gradle 同步確保了專案狀態的穩定。
-*   **0016:** 恢復了編輯、刪除藥物提醒的功能，並重新整合了鬧鐘排程功能。現在，鬧鐘不僅可以在設定時啟用，還能在設備重啟後自動重新設定。
-*   **0015:** 修正了新增藥物後，藥物列表不會立即更新的 UI 問題。透過確保 `LiveData` 收到的是一個全新的列表實例，而非僅修改現有列表，來正確觸發 UI 更新。
-*   **0014:** 處理了 IDE 中關於 `MedicationListAdapter.kt` 和 `ReminderSettingsFragment.kt` 的過時警告，透過 Gradle 同步刷新了專案狀態。
-*   **0013:** 清理了專案中所有警告，包括無用的導入、參數和命名空間宣告，並修復了字串資源衝突。
-*   **0012:** 清理了專案中所有警告，包括無用的導入、參數和命名空間宣告，並修復了字串資源衝突。
-*   **0011:** 修復了因缺少 `androidx.preference:preference-ktx` 依賴而導致的資源連結錯誤。
-*   **0010:** 新增了設定頁面與藥物列表頁面，並恢復了主題設定功能。
-*   **0009:** 優化了藥物提醒表單的驗證，提供更清晰的錯誤提示。
-*   **0008:** 修復了因 Gradle 版本目錄不完整而導致的嚴重 build 錯誤。
+*   **0.020:** Restored missing settings features, including the settings icon, theme switching, and accent color adjustment. Users can now access the settings page from the toolbar and customize the app's appearance again.
+*   **0019:** Resolved accessibility warnings in `fragment_reminder_settings.xml` and cleaned up unused parameters in `MainViewModel.kt`.
+*   **0018:** Resolved XML resource parsing errors and multiple unused code warnings in Kotlin files that appeared in the IDE, and ensured project state stability through a Gradle sync.
+*   **0017:** Resolved XML resource parsing errors and multiple unused code warnings in Kotlin files that appeared in the IDE, and ensured project state stability through a Gradle sync.
+*   **0016:** Restored the ability to edit and delete medication reminders and reintegrated the alarm scheduling function. Now, alarms are not only enabled when set but are also automatically reset after the device reboots.
+*   **0015:** Fixed a UI issue where the medication list would not update immediately after adding a new medication. The UI update is now correctly triggered by ensuring that `LiveData` receives a new list instance instead of just modifying the existing one.
+*   **0014:** Handled outdated warnings in the IDE regarding `MedicationListAdapter.kt` and `ReminderSettingsFragment.kt` and refreshed the project state with a Gradle sync.
+*   **0013:** Cleaned up all warnings in the project, including unused imports, parameters, and namespace declarations, and fixed string resource conflicts.
+*   **0012:** Cleaned up all warnings in the project, including unused imports, parameters, and namespace declarations, and fixed string resource conflicts.
+*   **0011:** Fixed a resource linking error caused by a missing `androidx.preference:preference-ktx` dependency.
+*   **0010:** Added a settings page and a medication list page, and restored the theme setting function.
+*   **0009:** Optimized the validation of the medication reminder form to provide clearer error messages.
+*   **0008:** Fixed a critical build error caused by an incomplete Gradle version directory.

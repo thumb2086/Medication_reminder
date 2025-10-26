@@ -20,7 +20,9 @@ import android.view.MenuItem
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
+import androidx.core.os.LocaleListCompat
 import androidx.fragment.app.commit
 import androidx.lifecycle.ViewModelProvider
 import com.example.medicationreminderapp.adapter.ViewPagerAdapter
@@ -98,6 +100,10 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
+            android.R.id.home -> {
+                onBackPressedDispatcher.onBackPressed()
+                true
+            }
             R.id.action_settings -> {
                 supportFragmentManager.commit {
                     replace(R.id.fragment_container, SettingsFragment())
@@ -144,6 +150,15 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         } else {
             multiplePermissionsLauncher.launch(permissionsToRequest.toTypedArray())
         }
+    }
+
+    fun setLocale(languageCode: String?) {
+        val locales = if (languageCode == "system" || languageCode.isNullOrEmpty()) {
+            LocaleListCompat.getEmptyLocaleList()
+        } else {
+            LocaleListCompat.forLanguageTags(languageCode)
+        }
+        AppCompatDelegate.setApplicationLocales(locales)
     }
 
     // --- BluetoothLeManager.BleListener Callbacks ---

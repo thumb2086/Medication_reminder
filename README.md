@@ -190,6 +190,9 @@ This project adopts a modern Android app architecture with a single Activity and
 
 ## Recent Updates
 
+*   **0036:** Fixed several deprecation warnings in `MainActivity.kt`. Updated the handling of the back button to use the new `OnBackPressedDispatcher` and modernized the locale/language setting logic to use the `AppCompatDelegate.setApplicationLocales` API, removing all related deprecated methods.
+*   **0035:** Added a back arrow to the settings page (`SettingsFragment`). This allows users to easily navigate back to the previous screen from the settings menu.
+*   **0034:** Fixed a UI display issue on the settings page (`SettingsFragment`). The background of the settings menu was previously transparent, causing text to overlap with the UI elements underneath. The issue has been resolved by programmatically setting a background color that respects the current application theme (light/dark), ensuring clear visibility.
 *   **0033:** Implemented historical temperature and humidity data synchronization. Extended the Bluetooth protocol to allow the app to sync all historical temperature and humidity data recorded during the offline period from the pillbox upon connection and display it completely on the chart.
 *   **0032:** Fixed multiple compilation errors and warnings in the project, including a `SwipeRefreshLayout` dependency issue, an error in `MainActivity.kt`, and cleaned up unused code.
 *   **0031:** Cleaned up all duplicate and empty files in the `app/src/main/java/com/example/medicationreminderapp/ui/` directory.
@@ -198,7 +201,7 @@ This project adopts a modern Android app architecture with a single Activity and
 *   **0028:** Fixed a build failure caused by removing the seemingly unused `requestStatus()` and `syncTime()` methods from `BluetoothLeManager`. These two methods have been re-added to ensure `MainActivity` can call them normally.
 *   **0027:** Removed the unused `sendJson` method from `BluetoothLeManager.kt`, further cleaning up the Bluetooth communication code.
 *   **0026:** Cleaned up multiple "unused declaration" warnings in the project, including removing old methods in the Bluetooth module replaced by JSON commands, removing unused properties in `HistoryFragment.kt`, and clearing the content of duplicate and useless files in the `ui` package, significantly improving code quality.
-*   **0025:** Removed the unused `frequency` field and its related string resource from the `Medication` data class, making the code more concise.
+*   **0'便服藥紀錄'025:** Removed the unused `frequency` field and its related string resource from the `Medication` data class, making the code more concise.
 *   **0024:** Fixed multiple warnings in the IDE, including adding accessibility descriptions to image resources, moving hardcoded strings to resource files, and cleaning up unused imports and parameters in Kotlin files, improving code quality and maintainability.
 *   **0023:** Added a visual indicator feature to the medication history page. Now, a green dot is displayed below the corresponding date on the calendar when all medications for that day have been taken on time, allowing users to track their medication status more intuitively.
 *   **0022:** Simplified the version number setting and displayed a hint message when the medication list is empty. Removed the complex Git version control in `app/build.gradle.kts` and now read version information directly from `config.gradle.kts`. Also, updated the medication list page to display "No reminders" text when there are no reminders, improving the user experience.

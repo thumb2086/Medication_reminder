@@ -17,6 +17,9 @@
 - **DONE** Clean up empty and duplicate files in the `app/src/main/java/com/example/medicationreminderapp/ui/` package.
 - **DONE** Fix build errors in `MainActivity.kt` and `fragment_environment.xml`, and clean up unused declarations in `EnvironmentFragment.kt` and `SingleLiveEvent.kt`.
 - **DONE** Implement historic environment data synchronization.
+- **DONE** Add English localization.
+- **DONE** Add language switcher to settings page.
+- **DONE** Fix settings icon color in light mode and redesign settings menu.
 
 ### New Inspection Results To-Do List
 
