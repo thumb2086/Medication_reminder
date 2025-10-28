@@ -43,7 +43,7 @@
 
     <!-- BLE Status & Errors -->
     <string name="ble_status_disconnected">Bluetooth Status: Disconnected</string>
-    <string name="ble_status_connected_syncing">Bluetooth Status: Connected, Syncing...</string>
+    <string name="ble_status_connected_syncing">Bluetooth Status: Connected, Syncing…</string>
     <string name="medication_taken_report">Pillbox Report: Medication taken from slot #%d</string>
     <string name="status_slot_update">Status: Received slot status update (%s)</string>
     <string name="time_sync_success">Time synchronized successfully! (%s)</string>
@@ -196,5 +196,7 @@
         <item>pink</item>
         <item>blue</item>
     </string-array>
+
+    <string name="kuromi_image_description">Kuromi image</string>
 
 </resources>

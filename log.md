@@ -7,3 +7,5 @@
 - 再次調整字體大小，以符合使用者回饋。
 - 修正設定頁面沒有返回箭頭的問題。
 - 新增輔助顏色調整功能，讓使用者可以在設定頁面選擇不同的輔助顏色主題。
+- 修正 `Missing contentDescription` 警告，在 `activity_main.xml` 的 `ImageView` 中加入 `contentDescription` 屬性，並在 `strings.xml` 中新增對應的字串資源。
+- 修正省略號警告，在 `values-en/strings.xml` 中，將 "..." 替換為標準的省略號字元 `…`。

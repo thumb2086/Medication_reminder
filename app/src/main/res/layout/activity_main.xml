@@ -44,6 +44,7 @@
         android:layout_height="150dp"
         android:layout_gravity="bottom|center_horizontal"
         android:layout_marginBottom="16dp"
-        android:src="@drawable/kuromi" />
+        android:src="@drawable/kuromi"
+        android:contentDescription="@string/kuromi_image_description" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

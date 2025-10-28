@@ -190,6 +190,7 @@ This project adopts a modern Android app architecture with a single Activity and
 
 ## Recent Updates
 
+*   **0038:** Fixed accessibility warnings by adding a `contentDescription` to the Kuromi image and replacing "..." with the standard ellipsis character (`…`).
 *   **0037:** Fixed a resource linking error by correcting the `textViewStyle` attribute in `themes.xml` and added a decorative Kuromi image to the main screen.
 *   **0036:** Fixed several deprecation warnings in `MainActivity.kt`. Updated the handling of the back button to use the new `OnBackPressedDispatcher` and modernized the locale/language setting logic to use the `AppCompatDelegate.setApplicationLocales` API, removing all related deprecated methods.
 *   **0035:** Added a back arrow to the settings page (`SettingsFragment`). This allows users to easily navigate back to the previous screen from the settings menu.

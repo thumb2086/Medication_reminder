@@ -190,4 +190,6 @@
         <item>blue</item>
     </string-array>
 
+    <string name="kuromi_image_description">酷洛米圖片</string>
+
 </resources>
