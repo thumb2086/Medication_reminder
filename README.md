@@ -190,6 +190,7 @@ This project adopts a modern Android app architecture with a single Activity and
 
 ## Recent Updates
 
+*   **0037:** Fixed a resource linking error by correcting the `textViewStyle` attribute in `themes.xml` and added a decorative Kuromi image to the main screen.
 *   **0036:** Fixed several deprecation warnings in `MainActivity.kt`. Updated the handling of the back button to use the new `OnBackPressedDispatcher` and modernized the locale/language setting logic to use the `AppCompatDelegate.setApplicationLocales` API, removing all related deprecated methods.
 *   **0035:** Added a back arrow to the settings page (`SettingsFragment`). This allows users to easily navigate back to the previous screen from the settings menu.
 *   **0034:** Fixed a UI display issue on the settings page (`SettingsFragment`). The background of the settings menu was previously transparent, causing text to overlap with the UI elements underneath. The issue has been resolved by programmatically setting a background color that respects the current application theme (light/dark), ensuring clear visibility.

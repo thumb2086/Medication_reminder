@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Kuromi Theme Colors -->
+    <color name="kuromi_pink">#F5B9D2</color>
+    <color name="kuromi_purple">#D6B6F0</color>
+    <color name="kuromi_dark_grey">#4A4458</color>
+    <color name="kuromi_light_background">#FFFBFE</color>
+    <color name="kuromi_text_on_pink">#000000</color>
+    <color name="kuromi_text_on_purple">#000000</color>
+    <color name="kuromi_text_on_dark">#FFFFFF</color>
+
+    <!-- Accent Colors -->
+    <color name="accent_pink">#FFC0CB</color>
+    <color name="accent_blue">#ADD8E6</color>
+
+    <!-- Original colors to avoid breaking references -->
     <color name="purple_200">#FFBB86FC</color>
     <color name="purple_500">#FF6200EE</color>
     <color name="purple_700">#FF3700B3</color>
@@ -8,26 +22,27 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
-    <color name="primary">#6750A4</color>
-    <color name="colorPrimary">#6750A4</color>
-    <color name="onPrimary">#FFFFFF</color>
+    <!-- Theme colors -->
+    <color name="primary">@color/kuromi_pink</color>
+    <color name="colorPrimary">@color/kuromi_pink</color>
+    <color name="onPrimary">@color/kuromi_text_on_pink</color>
     <color name="primaryContainer">#EADDFF</color>
     <color name="onPrimaryContainer">#21005D</color>
-    <color name="secondary">#625B71</color>
-    <color name="onSecondary">#FFFFFF</color>
+    <color name="secondary">@color/kuromi_purple</color>
+    <color name="onSecondary">@color/kuromi_text_on_purple</color>
     <color name="secondaryContainer">#E8DEF8</color>
     <color name="onSecondaryContainer">#1D192B</color>
-    <color name="tertiary">#7D5260</color>
-    <color name="onTertiary">#FFFFFF</color>
+    <color name="tertiary">@color/kuromi_dark_grey</color>
+    <color name="onTertiary">@color/kuromi_text_on_dark</color>
     <color name="tertiaryContainer">#FFD8E4</color>
     <color name="onTertiaryContainer">#31111D</color>
     <color name="error">#B3261E</color>
     <color name="onError">#FFFFFF</color>
     <color name="errorContainer">#F9DEDC</color>
     <color name="onErrorContainer">#410E0B</color>
-    <color name="background">#FFFBFE</color>
+    <color name="background">@color/kuromi_light_background</color>
     <color name="onBackground">#1C1B1F</color>
-    <color name="surface">#FFFBFE</color>
+    <color name="surface">@color/kuromi_light_background</color>
     <color name="onSurface">#1C1B1F</color>
     <color name="surfaceVariant">#E7E0EC</color>
     <color name="onSurfaceVariant">#49454F</color>

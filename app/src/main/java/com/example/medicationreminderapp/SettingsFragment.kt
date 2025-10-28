@@ -14,11 +14,14 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.preferences, rootKey)
 
-        // Set initial summary for theme and language preferences
+        // Set initial summary for theme, language, and accent color preferences
         findPreference<ListPreference>("theme")?.let {
             it.summary = it.entry
         }
         findPreference<ListPreference>("language")?.let {
+            it.summary = it.entry
+        }
+        findPreference<ListPreference>("accent_color")?.let {
             it.summary = it.entry
         }
     }
@@ -29,14 +32,20 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         requireContext().theme.resolveAttribute(com.google.android.material.R.attr.colorSurface, typedValue, true)
         view.setBackgroundColor(typedValue.data)
 
-        // Show the back arrow
-        (activity as? AppCompatActivity)?.supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        // Show the back arrow and set title
+        (activity as? AppCompatActivity)?.supportActionBar?.run {
+            setDisplayHomeAsUpEnabled(true)
+            title = getString(R.string.appearance_settings)
+        }
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
-        // Hide the back arrow
-        (activity as? AppCompatActivity)?.supportActionBar?.setDisplayHomeAsUpEnabled(false)
+        // Hide the back arrow and reset title
+        (activity as? AppCompatActivity)?.supportActionBar?.run {
+            setDisplayHomeAsUpEnabled(false)
+            title = getString(R.string.app_name)
+        }
     }
 
     override fun onResume() {
@@ -67,6 +76,12 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                     languagePreference.summary = languagePreference.entry
                     val languageValue = sharedPreferences.getString(key, "system")
                     (activity as? MainActivity)?.setLocale(languageValue)
+                }
+            }
+            "accent_color" -> {
+                findPreference<ListPreference>(key)?.let { accentColorPreference ->
+                    accentColorPreference.summary = accentColorPreference.entry
+                    activity?.recreate()
                 }
             }
         }

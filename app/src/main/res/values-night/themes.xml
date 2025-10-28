@@ -33,5 +33,37 @@
         <item name="colorOutline">@color/outline</item>
         <!-- Status bar color. -->
         <item name="android:statusBarColor">?attr/colorPrimary</item>
+
+        <!-- Larger font sizes -->
+        <item name="android:textViewStyle">@style/ReallyLargeTextViewStyle</item>
+        <item name="textAppearanceBodyLarge">@style/Theme.MedicationReminderApp.TextAppearance.BodyLarge</item>
+        <item name="textAppearanceTitleLarge">@style/Theme.MedicationReminderApp.TextAppearance.TitleLarge</item>
+        <item name="textAppearanceHeadlineLarge">@style/Theme.MedicationReminderApp.TextAppearance.HeadlineLarge</item>
     </style>
+
+    <style name="ReallyLargeTextViewStyle" parent="Widget.MaterialComponents.TextView">
+        <item name="android:textSize">22sp</item>
+    </style>
+
+    <style name="Theme.MedicationReminderApp.TextAppearance.BodyLarge" parent="TextAppearance.Material3.BodyLarge">
+        <item name="android:textSize">20sp</item>
+    </style>
+
+    <style name="Theme.MedicationReminderApp.TextAppearance.TitleLarge" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:textSize">24sp</item>
+    </style>
+
+    <style name="Theme.MedicationReminderApp.TextAppearance.HeadlineLarge" parent="TextAppearance.Material3.HeadlineLarge">
+        <item name="android:textSize">28sp</item>
+    </style>
+
+    <!-- Accent Color Themes -->
+    <style name="Theme.MedicationReminderApp.Pink" parent="Theme.MedicationReminderApp">
+        <item name="colorSecondary">@color/accent_pink</item>
+    </style>
+
+    <style name="Theme.MedicationReminderApp.Blue" parent="Theme.MedicationReminderApp">
+        <item name="colorSecondary">@color/accent_blue</item>
+    </style>
+
 </resources>

@@ -25,6 +25,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.os.LocaleListCompat
 import androidx.fragment.app.commit
 import androidx.lifecycle.ViewModelProvider
+import androidx.preference.PreferenceManager
 import com.example.medicationreminderapp.adapter.ViewPagerAdapter
 import com.example.medicationreminderapp.databinding.ActivityMainBinding
 import com.google.android.material.tabs.TabLayoutMediator
@@ -50,6 +51,9 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Apply accent color theme before calling super.onCreate
+        applyAccentColorTheme()
+
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -65,6 +69,29 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         setupViewPagerAndTabs()
         requestAppPermissions()
         observeViewModel()
+
+        // Listen for fragment changes to manage the back button
+        supportFragmentManager.addOnBackStackChangedListener {
+            if (supportFragmentManager.fragments.lastOrNull() is SettingsFragment) {
+                supportActionBar?.setDisplayHomeAsUpEnabled(true)
+                binding.toolbar.setNavigationOnClickListener {
+                    onBackPressedDispatcher.onBackPressed()
+                }
+            } else {
+                supportActionBar?.setDisplayHomeAsUpEnabled(false)
+                binding.toolbar.setNavigationOnClickListener(null)
+            }
+        }
+    }
+
+    private fun applyAccentColorTheme() {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        val accentColor = prefs.getString("accent_color", "default")
+        when (accentColor) {
+            "pink" -> setTheme(R.style.Theme_MedicationReminderApp_Pink)
+            "blue" -> setTheme(R.style.Theme_MedicationReminderApp_Blue)
+            else -> setTheme(R.style.Theme_MedicationReminderApp)
+        }
     }
 
     private fun observeViewModel() {

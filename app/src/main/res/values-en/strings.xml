@@ -182,4 +182,19 @@
         <item>en</item>
     </string-array>
 
+    <string name="accent_color">Accent Color</string>
+    <string name="accent_color_default">Default</string>
+    <string name="accent_color_pink">Pink</string>
+    <string name="accent_color_blue">Blue</string>
+    <string-array name="accent_color_entries">
+        <item>@string/accent_color_default</item>
+        <item>@string/accent_color_pink</item>
+        <item>@string/accent_color_blue</item>
+    </string-array>
+    <string-array name="accent_color_values">
+        <item>default</item>
+        <item>pink</item>
+        <item>blue</item>
+    </string-array>
+
 </resources>
