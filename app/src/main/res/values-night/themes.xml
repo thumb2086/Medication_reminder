@@ -66,4 +66,16 @@
         <item name="colorSecondary">@color/accent_blue</item>
     </style>
 
+    <style name="Theme.MedicationReminderApp.Green" parent="Theme.MedicationReminderApp">
+        <item name="colorSecondary">@color/accent_green</item>
+    </style>
+
+    <style name="Theme.MedicationReminderApp.Purple" parent="Theme.MedicationReminderApp">
+        <item name="colorSecondary">@color/accent_purple</item>
+    </style>
+
+    <style name="Theme.MedicationReminderApp.Orange" parent="Theme.MedicationReminderApp">
+        <item name="colorSecondary">@color/accent_orange</item>
+    </style>
+
 </resources>

@@ -17,6 +17,7 @@ The core design of this project is to keep complex logic processing within the A
 *   **Reliable Alarm Reminders:**
     *   The app sends precise local notifications for each medication time you set.
     *   Alarms remain effective even if the app is not in the foreground or the phone is rebooted.
+    *   Notifications include "Taken" and "Snooze" actions for quick interaction.
 *   **Smart Pillbox Integration:**
     *   **Guided Filling:** When adding medications, the app guides you through the process one by one. After setting up each medication, the pillbox automatically rotates to the corresponding compartment, allowing you to place the medication directly and confirm with a button on the pillbox, achieving a seamless hardware-software experience.
     *   Scan for and connect to the smart pillbox.
@@ -28,6 +29,7 @@ The core design of this project is to keep complex logic processing within the A
 *   **Settings:**
     *   The settings page can be accessed via the settings icon on the toolbar.
     *   Supports light, dark, and system-following theme switching.
+    *   **Engineering Mode:** A switch in the settings allows developers to enable engineering mode, which can be used to trigger special debugging functions on the pillbox.
 
 ## Instructions for Use
 
@@ -73,17 +75,34 @@ All commands are sent by writing to the **Write Characteristic**.
         - `[5]`: `Minute`
         - `[6]`: `Second`
 
-2.  **Request Status:**
+2.  **Send Wi-Fi Credentials:**
+    - **Opcode:** `0x12`
+    - **Purpose:** Send Wi-Fi SSID and password to the pillbox.
+    - **Format (Variable Length):**
+        - `[0]`: `0x12`
+        - `[1]`: `SSID Length (S)`
+        - `[2...2+S-1]`: `SSID`
+        - `[2+S]`: `Password Length (P)`
+        - `[3+S...3+S+P-1]`: `Password`
+
+3.  **Set Engineering Mode:**
+    - **Opcode:** `0x13`
+    - **Purpose:** Enable or disable engineering mode on the pillbox.
+    - **Format (2 bytes):**
+        - `[0]`: `0x13`
+        - `[1]`: `Enable (0x01 for true, 0x00 for false)`
+
+4.  **Request Status:**
     - **Opcode:** `0x20`
     - **Purpose:** Actively query the pillbox for its current status (e.g., whether each compartment contains medication).
     - **Format (1 byte):** `[0]: 0x20`
 
-3.  **Request Instant Environment Data:**
+5.  **Request Instant Environment Data:**
     - **Opcode:** `0x30`
     - **Purpose:** Actively request the current real-time temperature and humidity data from the pillbox.
     - **Format (1 byte):** `[0]: 0x30`
 
-4.  **Request Historic Environment Data:**
+6.  **Request Historic Environment Data:**
     - **Opcode:** `0x31`
     - **Purpose:** Request the pillbox to start transmitting all its stored historical temperature and humidity data.
     - **Format (1 byte):** `[0]: 0x31`
@@ -176,7 +195,11 @@ This project adopts a modern Android app architecture with a single Activity and
 
 *   `AlarmScheduler.kt`: A helper class responsible for setting and canceling system alarms (`AlarmManager`).
 
-*   `AlarmReceiver.kt`: A `BroadcastReceiver` that, when an alarm is triggered, is responsible for creating and displaying a "Time to take your medication!" notification.
+*   `AlarmReceiver.kt`: A `BroadcastReceiver` that, when an alarm is triggered, is responsible for creating and displaying a "Time to take your medication!" notification with "Taken" and "Snooze" actions.
+
+*   `SnoozeReceiver.kt`: A `BroadcastReceiver` that handles the "Snooze" action from a medication reminder notification, postponing the reminder for a short period.
+
+*   `MedicationTakenReceiver.kt`: A `BroadcastReceiver` that handles the "Taken" action from a medication reminder notification, marking the medication as taken and updating the medication history.
 
 *   `BootReceiver.kt`: A `BroadcastReceiver` that automatically reads all saved medication reminders and resets the alarms when the device is rebooted.
 
@@ -190,6 +213,10 @@ This project adopts a modern Android app architecture with a single Activity and
 
 ## Recent Updates
 
+*   **0042:** Added snooze and "taken" actions to medication reminder notifications, allowing users to interact with reminders directly from the notification. This is handled by the new `SnoozeReceiver` and `MedicationTakenReceiver`.
+*   **0041:** Fixed an issue where the back arrow was not appearing on the settings page.
+*   **0040:** Fixed an issue where the back arrow was not appearing on the settings page.
+*   **0039:** Added a Wi-Fi configuration screen, allowing users to send Wi-Fi credentials (SSID and password) to the ESP32 via a new Bluetooth protocol (opcode 0x12). The SSID input field now includes a dropdown menu with previously entered SSIDs for convenience.
 *   **0038:** Fixed accessibility warnings by adding a `contentDescription` to the Kuromi image and replacing "..." with the standard ellipsis character (`…`).
 *   **0037:** Fixed a resource linking error by correcting the `textViewStyle` attribute in `themes.xml` and added a decorative Kuromi image to the main screen.
 *   **0036:** Fixed several deprecation warnings in `MainActivity.kt`. Updated the handling of the back button to use the new `OnBackPressedDispatcher` and modernized the locale/language setting logic to use the `AppCompatDelegate.setApplicationLocales` API, removing all related deprecated methods.

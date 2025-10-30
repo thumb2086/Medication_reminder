@@ -4,10 +4,10 @@ import android.content.SharedPreferences
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.View
-import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.app.AppCompatDelegate
+import android.widget.Toast
 import androidx.preference.ListPreference
 import androidx.preference.PreferenceFragmentCompat
+import androidx.preference.SwitchPreferenceCompat
 
 class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedPreferenceChangeListener {
 
@@ -31,31 +31,18 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         val typedValue = TypedValue()
         requireContext().theme.resolveAttribute(com.google.android.material.R.attr.colorSurface, typedValue, true)
         view.setBackgroundColor(typedValue.data)
-
-        // Show the back arrow and set title
-        (activity as? AppCompatActivity)?.supportActionBar?.run {
-            setDisplayHomeAsUpEnabled(true)
-            title = getString(R.string.appearance_settings)
-        }
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        // Hide the back arrow and reset title
-        (activity as? AppCompatActivity)?.supportActionBar?.run {
-            setDisplayHomeAsUpEnabled(false)
-            title = getString(R.string.app_name)
-        }
     }
 
     override fun onResume() {
         super.onResume()
         preferenceScreen.sharedPreferences?.registerOnSharedPreferenceChangeListener(this)
+        activity?.title = getString(R.string.title_settings)
     }
 
     override fun onPause() {
         super.onPause()
         preferenceScreen.sharedPreferences?.unregisterOnSharedPreferenceChangeListener(this)
+        activity?.title = getString(R.string.app_name)
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences, key: String?) {
@@ -64,11 +51,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                 findPreference<ListPreference>(key)?.let { themePreference ->
                     themePreference.summary = themePreference.entry
                     val themeValue = sharedPreferences.getString(key, "system")
-                    when (themeValue) {
-                        "light" -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
-                        "dark" -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
-                        else -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
-                    }
+                    ThemeUtils.setTheme(requireActivity(), themeValue)
                 }
             }
             "language" -> {
@@ -82,6 +65,20 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                 findPreference<ListPreference>(key)?.let { accentColorPreference ->
                     accentColorPreference.summary = accentColorPreference.entry
                     activity?.recreate()
+                }
+            }
+            "engineering_mode" -> {
+                val isEnabled = sharedPreferences.getBoolean(key, false)
+                (activity as? MainActivity)?.bluetoothLeManager?.let { bleManager ->
+                    if (bleManager.isConnected()) {
+                        bleManager.setEngineeringMode(isEnabled)
+                        val status = if (isEnabled) "啟用" else "停用"
+                        Toast.makeText(requireContext(), "工程模式已$status", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(requireContext(), "請先連接藥盒", Toast.LENGTH_SHORT).show()
+                        // Revert the switch state if not connected
+                        findPreference<SwitchPreferenceCompat>(key)?.isChecked = !isEnabled
+                    }
                 }
             }
         }

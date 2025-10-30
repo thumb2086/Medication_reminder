@@ -235,6 +235,10 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
     fun disconnect() {
         gatt?.disconnect()
     }
+
+    fun isConnected(): Boolean {
+        return gatt != null
+    }
     
     private fun sendCommand(command: ByteArray) {
         commandQueue.add(command)
@@ -276,6 +280,26 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
             now.get(java.util.Calendar.HOUR_OF_DAY).toByte(),
             now.get(java.util.Calendar.MINUTE).toByte(),
             now.get(java.util.Calendar.SECOND).toByte()
+        )
+        sendCommand(command)
+    }
+
+    fun sendWifiCredentials(ssid: String, pass: String) {
+        val ssidBytes = ssid.toByteArray(Charsets.UTF_8)
+        val passBytes = pass.toByteArray(Charsets.UTF_8)
+        val command = ByteArray(3 + ssidBytes.size + passBytes.size)
+        command[0] = 0x12.toByte()
+        command[1] = ssidBytes.size.toByte()
+        System.arraycopy(ssidBytes, 0, command, 2, ssidBytes.size)
+        command[2 + ssidBytes.size] = passBytes.size.toByte()
+        System.arraycopy(passBytes, 0, command, 3 + ssidBytes.size, passBytes.size)
+        sendCommand(command)
+    }
+
+    fun setEngineeringMode(enable: Boolean) {
+        val command = byteArrayOf(
+            0x13.toByte(),
+            if (enable) 0x01.toByte() else 0x00.toByte()
         )
         sendCommand(command)
     }

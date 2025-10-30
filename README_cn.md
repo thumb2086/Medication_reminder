@@ -17,6 +17,7 @@
 *   **可靠的鬧鐘提醒:**
     *   在您設定的每個服藥時間，App 都會發送精確的本地通知。
     *   即使 App 未在前景執行，或手機重新開機，鬧鐘依然有效。
+    *   通知中包含「已服用」和「稍後提醒」操作，方便快速互動。
 *   **藍牙智能藥盒整合:**
     *   **引導式放藥 (Guided Filling):** 新增藥物時，App 會引導您逐一完成。每設定完一筆藥物，藥盒會自動旋轉到對應藥倉，讓您直接放入藥物，並透過藥盒上的按鈕確認，實現軟硬體結合的流暢體驗。
     *   掃描並連接到智能藥盒。
@@ -29,6 +30,7 @@
     *   可透過工具列上的設定圖示進入設定頁面。
     *   支援亮色、暗色和跟隨系統主題的切換。
     *   支援在「繁體中文」和「English」之間切換語言。
+    *   **工程模式:** 在設定中提供開關，讓開發者可以啟用工程模式，用以觸發藥盒的特殊除錯功能。
 
 ## 使用說明
 
@@ -74,17 +76,34 @@
         - `[5]`: `分`
         - `[6]`: `秒`
 
-2.  **請求藥盒狀態 (Request Status):**
+2.  **傳送 Wi-Fi 憑證 (Send Wi-Fi Credentials):**
+    - **指令碼:** `0x12`
+    - **用途:** 將 Wi-Fi 的 SSID 和密碼傳送給藥盒。
+    - **格式 (可變長度):**
+        - `[0]`: `0x12`
+        - `[1]`: `SSID 長度 (S)`
+        - `[2...2+S-1]`: `SSID`
+        - `[2+S]`: `密碼長度 (P)`
+        - `[3+S...3+S+P-1]`: `密碼`
+
+3.  **設定工程模式 (Set Engineering Mode):**
+    - **指令碼:** `0x13`
+    - **用途:** 啟用或停用藥盒的工程模式。
+    - **格式 (2 bytes):**
+        - `[0]`: `0x13`
+        - `[1]`: `啟用 (0x01 為 true, 0x00 為 false)`
+
+4.  **請求藥盒狀態 (Request Status):**
     - **指令碼:** `0x20`
     - **用途:** 主動向藥盒查詢其當前狀態（例如各藥倉是否有藥）。
     - **格式 (1 byte):** `[0]: 0x20`
 
-3.  **請求即時環境數據 (Request Instant Environment Data):**
+5.  **請求即時環境數據 (Request Instant Environment Data):**
     - **指令碼:** `0x30`
     - **用途:** 主動向藥盒請求目前的即時溫濕度數據。
     - **格式 (1 byte):** `[0]: 0x30`
 
-4.  **請求歷史環境數據 (Request Historic Environment Data):**
+6.  **請求歷史環境數據 (Request Historic Environment Data):**
     - **指令碼:** `0x31`
     - **用途:** 請求藥盒開始傳輸其儲存的所有歷史溫濕度數據。
     - **格式 (1 byte):** `[0]: 0x31`
@@ -177,7 +196,11 @@
 
 *   `AlarmScheduler.kt`: 負責設定和取消系統鬧鐘 (`AlarmManager`) 的輔助類別。
 
-*   `AlarmReceiver.kt`: 一個 `BroadcastReceiver`，當鬧鐘觸發時，負責建立並顯示「該吃藥了！」的通知。
+*   `AlarmReceiver.kt`: 一個 `BroadcastReceiver`，當鬧鐘觸發時，負責建立並顯示「該吃藥了！」的通知，並附帶「已服用」和「稍後提醒」的操作按鈕。
+
+*   `SnoozeReceiver.kt`: 一個 `BroadcastReceiver`，處理來自藥物提醒通知的「稍後提醒」操作，將提醒延後一小段時間。
+
+*   `MedicationTakenReceiver.kt`: 一個 `BroadcastReceiver`，處理來自藥物提醒通知的「已服用」操作，將藥物標記為已服用並更新服藥紀錄。
 
 *   `BootReceiver.kt`: 一個 `BroadcastReceiver`，在設備重新啟動時，會自動讀取所有已儲存的藥物提醒，並重新設定鬧鐘。
 
@@ -191,6 +214,9 @@
 
 ## 最近更新
 
+*   **0044:** 為藥物提醒通知新增「稍後提醒」與「已服用」操作，讓使用者能直接從通知中心進行互動。此功能由新的 `SnoozeReceiver` 和 `MedicationTakenReceiver` 處理。
+*   **0043:** 修正了 `WiFiConfigFragment` 的背景透明問題，確保介面清晰可見。
+*   **0042:** 新增 Wi-Fi 設定介面，讓使用者可以輸入 Wi-Fi 的 SSID 和密碼，並透過新的藍牙協定 (指令碼 0x12) 將憑證傳送給 ESP32。SSID 輸入框現在會提供之前輸入過的紀錄，方便使用者操作。
 *   **0041:** 修正了無障礙功能警告，為酷洛米圖片加上 `contentDescription`，並將 "..." 替換為標準的省略號字元 (`…`)。
 *   **0040:** 修正了 `themes.xml` 中的資源連結錯誤，並在主畫面上加入酷洛米圖案作為裝飾。
 *   **0039:** 修正了 `MainActivity.kt` 中的多個棄用警告。更新了返回按鈕的處理方式以使用新的 `OnBackPressedDispatcher`，並將地區/語言設定邏輯現代化為使用 `AppCompatDelegate.setApplicationLocales` API，移除了所有相關的已棄用方法。
@@ -212,16 +238,16 @@
 *   **0023:** 在服藥紀錄頁面新增了視覺標示功能。現在，當天所有藥物都按時服用後，日曆上對應的日期下方會顯示一個綠色圓點，讓使用者可以更直觀地追蹤自己的服藥狀況。
 *   **0022:** 簡化了版本號碼的設定，並在藥物清單為空時顯示提示訊息。移除了 `app/build.gradle.kts` 中複雜的 Git 版本控制，改為直接從 `config.gradle.kts` 讀取版本資訊。同時，更新了藥物列表頁面，當沒有提醒事項時，會顯示「無提醒」的文字，改善了使用者體驗。
 *   **0021:** 清理了 `SettingsFragment.kt` 中的警告，移除了無用的 `import` 並以更安全的 `let` 區塊取代了不必要的安全呼叫。
-*   **0.020:** Restored missing settings features, including the settings icon, theme switching, and accent color adjustment. Users can now access the settings page from the toolbar and customize the app's appearance again.
-*   **0019:** Resolved accessibility warnings in `fragment_reminder_settings.xml` and cleaned up unused parameters in `MainViewModel.kt`.
-*   **0018:** Resolved XML resource parsing errors and multiple unused code warnings in Kotlin files that appeared in the IDE, and ensured project state stability through a Gradle sync.
-*   **0017:** Resolved XML resource parsing errors and multiple unused code warnings in Kotlin files that appeared in the IDE, and ensured project state stability through a Gradle sync.
-*   **0016:** Restored the ability to edit and delete medication reminders and reintegrated the alarm scheduling function. Now, alarms are not only enabled when set but are also automatically reset after the device reboots.
-*   **0015:** Fixed a UI issue where the medication list would not update immediately after adding a new medication. The UI update is now correctly triggered by ensuring that `LiveData` receives a new list instance instead of just modifying the existing one.
-*   **0014:** Handled outdated warnings in the IDE regarding `MedicationListAdapter.kt` and `ReminderSettingsFragment.kt` and refreshed the project state with a Gradle sync.
-*   **0013:** Cleaned up all warnings in the project, including unused imports, parameters, and namespace declarations, and fixed string resource conflicts.
-*   **0012:** Cleaned up all warnings in the project, including unused imports, parameters, and namespace declarations, and fixed string resource conflicts.
-*   **0011:** Fixed a resource linking error caused by a missing `androidx.preference:preference-ktx` dependency.
-*   **0010:** Added a settings page and a medication list page, and restored the theme setting function.
-*   **0009:** Optimized the validation of the medication reminder form to provide clearer error messages.
-*   **0008:** Fixed a critical build error caused by an incomplete Gradle version directory.
+*   **0020:** 恢復了遺失的設定功能，包括設定圖示、主題切換和強調色調整。使用者現在可以從工具列再次存取設定頁面並自訂應用程式的外觀。
+*   **0019:** 解決了 `fragment_reminder_settings.xml` 中的無障礙警告，並清除了 `MainViewModel.kt` 中未使用的參數。
+*   **0018:** 解決了 IDE 中出現的 XML 資源解析錯誤和 Kotlin 檔案中的多個未使用程式碼警告，並透過 Gradle 同步確保了專案狀態的穩定性。
+*   **0017:** 解決了 IDE 中出現的 XML 資源解析錯誤和 Kotlin 檔案中的多個未使用程式碼警告，並透過 Gradle 同步確保了專案狀態的穩定性。
+*   **0016:** 恢復了編輯和刪除藥物提醒的功能，並重新整合了鬧鐘排程功能。現在，鬧鐘不僅在設定時啟用，還會在裝置重新啟動後自動重設。
+*   **0015:** 修正了新增藥物後，藥物列表不會立即更新的 UI 問題。現在透過確保 `LiveData` 接收到新的列表實例而非僅修改現有實例來正確觸發 UI 更新。
+*   **0014:** 處理了 IDE 中關於 `MedicationListAdapter.kt` 和 `ReminderSettingsFragment.kt` 的過時警告，並透過 Gradle 同步刷新了專案狀態。
+*   **0013:** 清理了專案中的所有警告，包括未使用的匯入、參數和命名空間宣告，並修正了字串資源衝突。
+*   **0012:** 清理了專案中的所有警告，包括未使用的匯入、參數和命名空間宣告，並修正了字串資源衝突。
+*   **0011:** 修正了因缺少 `androidx.preference:preference-ktx` 依賴項而導致的資源連結錯誤。
+*   **0010:** 新增了設定頁面和藥物列表頁面，並恢復了主題設定功能。
+*   **0009:** 優化了藥物提醒表單的驗證，以提供更清晰的錯誤訊息。
+*   **0008:** 修正了因 Gradle 版本目錄不完整而導致的嚴重建置錯誤。

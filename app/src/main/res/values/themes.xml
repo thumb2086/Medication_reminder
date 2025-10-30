@@ -60,11 +60,28 @@
 
     <!-- Accent Color Themes -->
     <style name="Theme.MedicationReminderApp.Pink" parent="Theme.MedicationReminderApp">
+        <item name="colorPrimary">@color/accent_pink</item>
         <item name="colorSecondary">@color/accent_pink</item>
     </style>
 
     <style name="Theme.MedicationReminderApp.Blue" parent="Theme.MedicationReminderApp">
+        <item name="colorPrimary">@color/accent_blue</item>
         <item name="colorSecondary">@color/accent_blue</item>
+    </style>
+
+    <style name="Theme.MedicationReminderApp.Green" parent="Theme.MedicationReminderApp">
+        <item name="colorPrimary">@color/accent_green</item>
+        <item name="colorSecondary">@color/accent_green</item>
+    </style>
+
+    <style name="Theme.MedicationReminderApp.Purple" parent="Theme.MedicationReminderApp">
+        <item name="colorPrimary">@color/accent_purple</item>
+        <item name="colorSecondary">@color/accent_purple</item>
+    </style>
+
+    <style name="Theme.MedicationReminderApp.Orange" parent="Theme.MedicationReminderApp">
+        <item name="colorPrimary">@color/accent_orange</item>
+        <item name="colorSecondary">@color/accent_orange</item>
     </style>
 
 </resources>

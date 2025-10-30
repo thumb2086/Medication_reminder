@@ -148,6 +148,7 @@
     <string name="environment_monitor">環境監測</string>
 
     <!-- Settings -->
+    <string name="title_settings">設定</string>
     <string name="appearance_settings">外觀設定</string>
     <string name="theme">主題</string>
     <string-array name="theme_entries">
@@ -179,17 +180,37 @@
     <string name="accent_color_default">預設</string>
     <string name="accent_color_pink">粉色</string>
     <string name="accent_color_blue">藍色</string>
+    <string name="accent_color_green">綠色</string>
+    <string name="accent_color_purple">紫色</string>
+    <string name="accent_color_orange">橘色</string>
     <string-array name="accent_color_entries">
         <item>@string/accent_color_default</item>
         <item>@string/accent_color_pink</item>
         <item>@string/accent_color_blue</item>
+        <item>@string/accent_color_green</item>
+        <item>@string/accent_color_purple</item>
+        <item>@string/accent_color_orange</item>
     </string-array>
     <string-array name="accent_color_values">
         <item>default</item>
         <item>pink</item>
         <item>blue</item>
+        <item>green</item>
+        <item>purple</item>
+        <item>orange</item>
     </string-array>
 
     <string name="kuromi_image_description">酷洛米圖片</string>
+
+    <!-- Wi-Fi Settings -->
+    <string name="wifi_settings">Wi-Fi 設定</string>
+    <string name="wifi_ssid">Wi-Fi 名稱 (SSID)</string>
+    <string name="wifi_password">Wi-Fi 密碼</string>
+    <string name="send_wifi_credentials">傳送 Wi-Fi 憑證</string>
+
+    <!-- Engineering Mode -->
+    <string name="developer_settings">開發者設定</string>
+    <string name="engineering_mode">工程模式</string>
+    <string name="engineering_mode_summary">啟用後將會開啟額外的除錯功能</string>
 
 </resources>

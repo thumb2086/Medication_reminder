@@ -29,4 +29,14 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory app:title="@string/developer_settings">
+
+        <SwitchPreferenceCompat
+            app:key="engineering_mode"
+            app:title="@string/engineering_mode"
+            app:summary="@string/engineering_mode_summary"
+            app:defaultValue="false" />
+
+    </PreferenceCategory>
+
 </PreferenceScreen>

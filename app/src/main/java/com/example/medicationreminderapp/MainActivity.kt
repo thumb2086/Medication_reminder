@@ -17,6 +17,7 @@ import android.provider.Settings
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -34,9 +35,9 @@ import java.util.*
 
 class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
 
-    private lateinit var binding: ActivityMainBinding
+    internal lateinit var binding: ActivityMainBinding
     private lateinit var viewModel: MainViewModel
-    private lateinit var bluetoothLeManager: BluetoothLeManager
+    lateinit var bluetoothLeManager: BluetoothLeManager
     private var alarmManager: AlarmManager? = null
 
     private val requestNotificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
@@ -69,18 +70,15 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         setupViewPagerAndTabs()
         requestAppPermissions()
         observeViewModel()
+        setupBackButton()
+    }
 
-        // Listen for fragment changes to manage the back button
+    private fun setupBackButton() {
         supportFragmentManager.addOnBackStackChangedListener {
-            if (supportFragmentManager.fragments.lastOrNull() is SettingsFragment) {
-                supportActionBar?.setDisplayHomeAsUpEnabled(true)
-                binding.toolbar.setNavigationOnClickListener {
-                    onBackPressedDispatcher.onBackPressed()
-                }
-            } else {
-                supportActionBar?.setDisplayHomeAsUpEnabled(false)
-                binding.toolbar.setNavigationOnClickListener(null)
-            }
+            val isFragmentOnBackStack = supportFragmentManager.backStackEntryCount > 0
+            supportActionBar?.setDisplayHomeAsUpEnabled(isFragmentOnBackStack)
+            binding.tabLayout.visibility = if (isFragmentOnBackStack) View.GONE else View.VISIBLE
+            binding.viewPager.visibility = if (isFragmentOnBackStack) View.GONE else View.VISIBLE
         }
     }
 
@@ -90,6 +88,9 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         when (accentColor) {
             "pink" -> setTheme(R.style.Theme_MedicationReminderApp_Pink)
             "blue" -> setTheme(R.style.Theme_MedicationReminderApp_Blue)
+            "green" -> setTheme(R.style.Theme_MedicationReminderApp_Green)
+            "purple" -> setTheme(R.style.Theme_MedicationReminderApp_Purple)
+            "orange" -> setTheme(R.style.Theme_MedicationReminderApp_Orange)
             else -> setTheme(R.style.Theme_MedicationReminderApp)
         }
     }
@@ -134,6 +135,13 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
             R.id.action_settings -> {
                 supportFragmentManager.commit {
                     replace(R.id.fragment_container, SettingsFragment())
+                    addToBackStack(null)
+                }
+                true
+            }
+            R.id.action_wifi_settings -> {
+                supportFragmentManager.commit {
+                    replace(R.id.fragment_container, WiFiConfigFragment())
                     addToBackStack(null)
                 }
                 true
