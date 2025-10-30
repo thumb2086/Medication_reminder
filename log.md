@@ -2,11 +2,13 @@
 
 ## Bug Fixes
 
+*   **0048:** 修正了 `strings.xml` 中因缺少輔助顏色的英文翻譯而導致的編譯錯誤，並同步更新了 `accent_color_entries` 和 `accent_color_values` 陣列。
 *   **0046:** 修正了 `SettingsFragment` 中因缺少 `title_settings` 字串資源而導致的 `Unresolved reference` 錯誤。
 *   **0015:** 修正了服藥正確率未更新及服藥紀錄頁面時間顯示不清楚的問題。在 `MedicationTakenReceiver` 和 `MainViewModel` 中實作了正確的服藥率計算邏輯，並修正了 `fragment_history.xml` 中的文字顏色，確保其在淺色主題下可見。
 
 ## 最近更新
 
+*   **0049:** 清理了專案中的多個警告，包括刪除未使用的 `ThemeUtils.kt`、將 `SharedPreferences.edit()` 替換為 KTX 擴充函式，以及修正 `fragment_wifi_config.xml` 中的無障礙功能警告。
 *   **0047:** 新增了「工程模式」，並定義了新的藍牙協定 (`0x13`)，讓 App 可以通知藥盒進入或離開工程模式。此功能可透過設定頁面中的開關進行控制。
 *   **0045:** 為設定頁面與 Wi-Fi 設定頁面新增了返回按鈕，並將返回按鈕的邏輯集中到 `MainActivity` 中管理，確保了 UI 的一致性與可預測性。
 *   **0044:** 為藥物提醒通知新增「稍後提醒」與「已服用」操作，讓使用者能直接從通知中心進行互動。此功能由新的 `SnoozeReceiver` 和 `MedicationTakenReceiver` 處理。

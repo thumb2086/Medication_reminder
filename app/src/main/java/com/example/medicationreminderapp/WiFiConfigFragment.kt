@@ -9,6 +9,7 @@ import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.edit
 import androidx.fragment.app.Fragment
 import com.example.medicationreminderapp.databinding.FragmentWifiConfigBinding
 
@@ -79,9 +80,8 @@ class WiFiConfigFragment : Fragment() {
         val sharedPref = activity?.getSharedPreferences("wifi_history", Context.MODE_PRIVATE) ?: return
         val ssidHistory = sharedPref.getStringSet("ssid_set", mutableSetOf())?.toMutableSet() ?: mutableSetOf()
         ssidHistory.add(ssid)
-        with(sharedPref.edit()) {
+        sharedPref.edit {
             putStringSet("ssid_set", ssidHistory)
-            apply()
         }
     }
 
