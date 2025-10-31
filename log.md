@@ -2,6 +2,7 @@
 
 ## Bug Fixes
 
+*   **0051:** 修正了 App 與 ESP32 的連線問題、輔助顏色設定不一致，以及主頁面出現多餘標題列的問題。同時也解決了 `AndroidManifest.xml` 中的屬性警告。
 *   **0050:** 修正了因刪除 `ThemeUtils.kt` 後，`SettingsFragment` 中出現 `Unresolved reference` 的編譯錯誤。
 *   **0048:** 修正了 `strings.xml` 中因缺少輔助顏色的英文翻譯而導致的編譯錯誤，並同步更新了 `accent_color_entries` 和 `accent_color_values` 陣列。
 *   **0046:** 修正了 `SettingsFragment` 中因缺少 `title_settings` 字串資源而導致的 `Unresolved reference` 錯誤。
