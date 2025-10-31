@@ -1,6 +1,6 @@
 <resources>
     <!-- Base application theme. -->
-    <style name="Theme.MedicationReminderApp" parent="Theme.Material3.Dark.NoActionBar">
+    <style name="Theme.MedicationReminderApp" parent="Theme.Material3.Dark">
         <!-- Primary brand color. -->
         <item name="colorPrimary">@color/primary</item>
         <item name="colorOnPrimary">@color/onPrimary</item>
@@ -41,6 +41,11 @@
         <item name="textAppearanceHeadlineLarge">@style/Theme.MedicationReminderApp.TextAppearance.HeadlineLarge</item>
     </style>
 
+    <style name="Theme.MedicationReminderApp.NoActionBar" parent="Theme.MedicationReminderApp">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+
     <style name="ReallyLargeTextViewStyle" parent="Widget.MaterialComponents.TextView">
         <item name="android:textSize">22sp</item>
     </style>
@@ -58,23 +63,23 @@
     </style>
 
     <!-- Accent Color Themes -->
-    <style name="Theme.MedicationReminderApp.Pink" parent="Theme.MedicationReminderApp">
+    <style name="Theme.MedicationReminderApp.Pink" parent="Theme.MedicationReminderApp.NoActionBar">
         <item name="colorSecondary">@color/accent_pink</item>
     </style>
 
-    <style name="Theme.MedicationReminderApp.Blue" parent="Theme.MedicationReminderApp">
+    <style name="Theme.MedicationReminderApp.Blue" parent="Theme.MedicationReminderApp.NoActionBar">
         <item name="colorSecondary">@color/accent_blue</item>
     </style>
 
-    <style name="Theme.MedicationReminderApp.Green" parent="Theme.MedicationReminderApp">
+    <style name="Theme.MedicationReminderApp.Green" parent="Theme.MedicationReminderApp.NoActionBar">
         <item name="colorSecondary">@color/accent_green</item>
     </style>
 
-    <style name="Theme.MedicationReminderApp.Purple" parent="Theme.MedicationReminderApp">
+    <style name="Theme.MedicationReminderApp.Purple" parent="Theme.MedicationReminderApp.NoActionBar">
         <item name="colorSecondary">@color/accent_purple</item>
     </style>
 
-    <style name="Theme.MedicationReminderApp.Orange" parent="Theme.MedicationReminderApp">
+    <style name="Theme.MedicationReminderApp.Orange" parent="Theme.MedicationReminderApp.NoActionBar">
         <item name="colorSecondary">@color/accent_orange</item>
     </style>
 

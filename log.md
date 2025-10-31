@@ -2,6 +2,7 @@
 
 ## Bug Fixes
 
+*   **0050:** 修正了因刪除 `ThemeUtils.kt` 後，`SettingsFragment` 中出現 `Unresolved reference` 的編譯錯誤。
 *   **0048:** 修正了 `strings.xml` 中因缺少輔助顏色的英文翻譯而導致的編譯錯誤，並同步更新了 `accent_color_entries` 和 `accent_color_values` 陣列。
 *   **0046:** 修正了 `SettingsFragment` 中因缺少 `title_settings` 字串資源而導致的 `Unresolved reference` 錯誤。
 *   **0015:** 修正了服藥正確率未更新及服藥紀錄頁面時間顯示不清楚的問題。在 `MedicationTakenReceiver` 和 `MainViewModel` 中實作了正確的服藥率計算邏輯，並修正了 `fragment_history.xml` 中的文字顏色，確保其在淺色主題下可見。

@@ -53,7 +53,7 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
 
 
     companion object {
-        private const val DEVICE_NAME = "ESP32_Medication_Box"
+        private const val DEVICE_NAME = "SmartMedBox"
         private val SERVICE_UUID = UUID.fromString("4fafc201-1fb5-459e-8fcc-c5c9c331914b")
         private val WRITE_CHARACTERISTIC_UUID = UUID.fromString("beb5483e-36e1-4688-b7f5-ea07361b26a8")
         private val NOTIFY_CHARACTERISTIC_UUID = UUID.fromString("c8c7c599-809c-43a5-b825-1038aa349e5d")

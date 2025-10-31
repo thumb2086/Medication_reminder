@@ -91,7 +91,7 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
             "green" -> setTheme(R.style.Theme_MedicationReminderApp_Green)
             "purple" -> setTheme(R.style.Theme_MedicationReminderApp_Purple)
             "orange" -> setTheme(R.style.Theme_MedicationReminderApp_Orange)
-            else -> setTheme(R.style.Theme_MedicationReminderApp)
+            else -> setTheme(R.style.Theme_MedicationReminderApp_NoActionBar)
         }
     }
 
