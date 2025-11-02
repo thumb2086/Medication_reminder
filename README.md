@@ -209,6 +209,7 @@ This project adopts a modern Android app architecture with a single Activity and
 `POST_NOTIFICATIONS`, `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`, `ACCESS_FINE_LOCATION`, `SCHEDULE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED`, `VIBRATE`
 
 ## Bug Fixes
+*   **0065:** Fixed `Apostrophe not preceded by \\` Linter errors in `strings.xml` by enclosing all strings containing an apostrophe in double quotes `""`.
 *   **0064:** Fixed `String.format string doesn't match the XML format string` Linter errors in `strings.xml` and `values-en/strings.xml` by correcting improper escape characters (`\`) and single quote usage.
 *   **0063:** Fixed UI issues with the toolbar and status bar:
     *   **Text Color:** Removed the hardcoded `colorOnPrimary` from the accent color themes in `themes.xml` to allow the system to automatically select the best text color based on the background color, resolving legibility issues with certain colors (like pink).

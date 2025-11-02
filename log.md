@@ -4,6 +4,7 @@
 *   **0060:** 新增了角色更換功能，讓使用者可以在「酷洛米」和「櫻桃小丸子」之間進行選擇。角色圖片會顯示在「提醒設定」頁面的最下方。
 
 ## Bug Fixes
+*   **0065:** 修正了 `strings.xml` 中因單引號使用不當而引起的 `Apostrophe not preceded by \\` Linter 錯誤。透過將所有包含單引號的字串用雙引號 `""` 包起來，解決了這個問題。
 *   **0064:** 修正了 `strings.xml` 和 `values-en/strings.xml` 中因不正確的跳脫字元 (`\`) 和單引號用法而導致的 `String.format string doesn't match the XML format string` Linter 錯誤。
 *   **0063:** 修正了工具列與狀態列的 UI 顯示問題：
     *   **文字顏色**：移除了在 `themes.xml` 中為不同輔助顏色主題寫死的 `colorOnPrimary`，讓系統能根據背景顏色自動選擇最佳的文字顏色，解決了在某些顏色 (如粉紅色) 下，工具列文字不易辨識的問題。
