@@ -25,11 +25,12 @@
     *   接收藥盒的狀態更新，例如：哪個藥倉的藥物已被取出、藥倉堵塞、感應器錯誤等。
 *   **數據監測與追蹤:**
     *   在「環境監測」頁面，當藍牙連接時，透過 **即時折線圖** 視覺化呈現藥盒回傳的溫濕度數據；未連接時，則会顯示提示訊息。當使用者下拉刷新時，App 會從藥盒同步離線期間的 **歷史溫濕度數據**，並完整呈現在圖表上。
+*   **服藥紀錄:** 
     *   在「服藥紀錄」頁面，透過月曆視覺化呈現每日服藥記錄，並計算顯示過去 30 天的服藥依從率。
 *   **設定:**
     *   可透過工具列上的設定圖示進入設定頁面。
     *   支援亮色、暗色和跟隨系統主題的切換。
-    *   支援在「繁體中文」和「English」之間切換語言。
+    *   支援 **角色選擇**，允許使用者在「酷洛米」和「櫻桃小丸子」之間切換主頁面顯示的角色圖片。
     *   **工程模式:** 在設定中提供開關，讓開發者可以啟用工程模式，用以觸發藥盒的特殊除錯功能。
 
 ## 使用說明
@@ -208,12 +209,33 @@
 
 `POST_NOTIFICATIONS`, `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`, `ACCESS_FINE_LOCATION`, `SCHEDULE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED`, `VIBRATE`
 
-## Bug Fixes
-
+## Bug 修復
+*   **0063:** 修正了工具列與狀態列的 UI 顯示問題：
+    *   **文字顏色**：移除了在 `themes.xml` 中為不同輔助顏色主題寫死的 `colorOnPrimary`，讓系統能根據背景顏色自動選擇最佳的文字顏色，解決了在某些顏色 (如粉紅色) 下，工具列文字不易辨識的問題。
+    *   **沉浸式效果**：在 `MainActivity.kt` 中呼叫 `WindowCompat.setDecorFitsSystemWindows(window, false)`，實現了真正的 Edge-to-Edge 效果，讓 App 內容能延伸至系統列，解決了狀態列背景未填滿的問題。
+*   **0062:** 修正了多個 UI 和功能上的錯誤：
+    *   **編譯錯誤：** 透過在 `themes.xml` 中直接設定 `preferenceCategoryTitleTextColor`，取代了先前複雜且容易出錯的 `preferenceTheme`，解決了 `Android resource linking failed` 的編譯問題。
+    *   **返回 UI 異常：** 在 `SettingsFragment.kt` 的 `onPause` 方法中，主動呼叫 `updateUiForFragment(false)`，強制 `MainActivity` 在返回時重新整理 UI，確保了狀態列的沉浸式效果不會消失。
+    *   **工程模式同步：** 在 `MainActivity.kt` 的 `onDeviceConnected` 方法中，增加了在藍牙連線成功後，讀取並同步「工程模式」狀態到藥盒的邏輯，確保了兩邊狀態的一致性。
+*   **0061:** 修正了 UI 顯示問題和設定按鈕的功能異常。
+    *   **狀態列問題：** 透過修改 `themes.xml` 和 `values-night/themes.xml`，將 `statusBarColor` 設為透明並啟用 `windowDrawsSystemBarBackgrounds`，實現了沉浸式 (Edge-to-Edge) 效果，解決了狀態列背景未填滿和顏色不正確的問題。
+    *   **設定按鈕無效：** 取消了 `MainActivity.kt` 中 `onOptionsItemSelected` 函式裡對設定頁面 (`SettingsFragment`) 和 Wi-Fi 設定頁面 (`WiFiConfigFragment`) 導覽邏輯的註解，恢復了設定按鈕的正常功能。
+*   **0059:** 修正了狀態列遮擋工具列標題的問題。透過在 `activity_main.xml` 的 `AppBarLayout` 中加上 `android:fitsSystemWindows="true"` 屬性，確保了工具列會為狀態列預留出正確的空間，解決了內容重疊的問題。
+*   **0058:** 修正了當輔助顏色設為「預設」時，工具列顏色不正確的問題。透過將 `colors.xml` 和 `values-night/colors.xml` 中的 `primary` 和 `colorPrimary` 顏色改回 Material Design 的預設值，確保了在未選擇特殊輔助顏色時，App 會顯示正確的預設主題顏色。
+*   **0057:** 修正了 `MainActivity.kt` 中因 `activity_main.xml` 佈局變更而導致的編譯錯誤。透過註解對已移除元件 (`kuromiImage` 和 `fragment_container`) 的參考，解決了 `Unresolved reference` 的問題，讓專案能重新建置。
+*   **0056:** 復原了 0055 號的 Bug 修復，以解決 `AndroidManifest.xml` 的資源連結失敗問題。
+*   **0055:** 再次修正了圖片遮擋輸入欄位的 UI 問題。透過在 `MainActivity.kt` 中監聽 `ViewPager2` 的頁面切換事件，確保只有在非 `ReminderSettingsFragment` 的頁面，酷洛米圖片才會顯示。
+*   **0054:** 修正了 `ReminderSettingsFragment` 在挖孔螢幕上顯示異常，以及圖片遮擋輸入欄位的 UI 問題。透過在 `MainActivity.kt` 中動態調整圖片可見性，確保了在進入 `ReminderSettingsFragment` 時，圖片會被隱藏，避免遮擋。
+*   **0053:** 修正了輔助顏色在暗色模式下無法正確同步的問題。透過在 `values-night/themes.xml` 中為所有輔助顏色主題加上 `colorPrimary`，並在 `activity_main.xml` 中將 `MaterialToolbar` 的背景顏色設定為 `?attr/colorPrimary`，確保了 Toolbar 顏色能隨著主題動態變更。
+*   **0052:** 為提醒設定頁面新增了中斷藍牙連線的功能，並在 `drawable` 目錄中新增了 `ic_bluetooth_disabled.xml` 圖示。
 *   **0015:** 修正了服藥正確率未更新及服藥紀錄頁面時間顯示不清楚的問題。在 `MedicationTakenReceiver` 和 `MainViewModel` 中實作了正確的服藥率計算邏輯，並修正了 `fragment_history.xml` 中的文字顏色，確保其在淺色主題下可見。
 
 ## 最近更新
 
+*   **0060:** 新增了角色更換功能，讓使用者可以在「酷洛米」和「櫻桃小丸子」之間進行選擇。角色圖片會顯示在「提醒設定」頁面的最下方。
+*   **0049:** 清理了專案中的多個警告，包括刪除未使用的 `ThemeUtils.kt`、將 `SharedPreferences.edit()` 替換為 KTX 擴充函式，以及修正 `fragment_wifi_config.xml` 中的無障礙功能警告。
+*   **0047:** 新增了「工程模式」，並定義了新的藍牙協定 (`0x13`)，讓 App 可以通知藥盒進入或離開工程模式。此功能可透過設定頁面中的開關進行控制。
+*   **0045:** 為設定頁面與 Wi-Fi 設定頁面新增了返回按鈕，並將返回按鈕的邏輯集中到 `MainActivity` 中管理，確保了 UI 的一致性與可預測性。
 *   **0044:** 為藥物提醒通知新增「稍後提醒」與「已服用」操作，讓使用者能直接從通知中心進行互動。此功能由新的 `SnoozeReceiver` 和 `MedicationTakenReceiver` 處理。
 *   **0043:** 修正了 `WiFiConfigFragment` 的背景透明問題，確保介面清晰可見。
 *   **0042:** 新增 Wi-Fi 設定介面，讓使用者可以輸入 Wi-Fi 的 SSID 和密碼，並透過新的藍牙協定 (指令碼 0x12) 將憑證傳送給 ESP32。SSID 輸入框現在會提供之前輸入過的紀錄，方便使用者操作。
@@ -221,7 +243,7 @@
 *   **0040:** 修正了 `themes.xml` 中的資源連結錯誤，並在主畫面上加入酷洛米圖案作為裝飾。
 *   **0039:** 修正了 `MainActivity.kt` 中的多個棄用警告。更新了返回按鈕的處理方式以使用新的 `OnBackPressedDispatcher`，並將地區/語言設定邏輯現代化為使用 `AppCompatDelegate.setApplicationLocales` API，移除了所有相關的已棄用方法。
 *   **0038:** 在設定頁面 (`SettingsFragment`) 新增了返回箭頭。讓使用者可以輕鬆地從設定選單返回到上一個畫面。
-*   **0037:** 修正了設定頁面 (`SettingsFragment`) 的 UI 顯示問題。先前設定選單的背景是透明的，導致文字與下方的 UI 元件重疊。此問題已透過以編程方式設定一個遵循當前應用程式主題 (亮色/暗色) 的背景顏色來解決，確保了畫面的清晰可見度。
+*   **0.037:** 修正了設定頁面 (`SettingsFragment`) 的 UI 顯示問題。先前設定選單的背景是透明的，導致文字與下方的 UI 元件重疊。此問題已透過以編程方式設定一個遵循當前應用程式主題 (亮色/暗色) 的背景顏色來解決，確保了畫面的清晰可見度。
 *   **0036:** 修正了設定圖示在亮色模式下不可見的問題，並將設定頁面中的「主題設定」和「語言設定」合併為一個「外觀」分類，以簡化介面。
 *   **0035:** 在設定頁面中新增了語言切換功能，讓使用者可以手動切換應用程式的顯示語言 (繁體中文、英文或跟隨系統)。
 *   **0034:** 為應用程式新增英文本地化，以支援英語系使用者。

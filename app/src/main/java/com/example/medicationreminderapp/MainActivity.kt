@@ -24,9 +24,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
 import androidx.core.os.LocaleListCompat
+import androidx.core.view.WindowCompat
 import androidx.fragment.app.commit
 import androidx.lifecycle.ViewModelProvider
 import androidx.preference.PreferenceManager
+import androidx.viewpager2.widget.ViewPager2
 import com.example.medicationreminderapp.adapter.ViewPagerAdapter
 import com.example.medicationreminderapp.databinding.ActivityMainBinding
 import com.google.android.material.tabs.TabLayoutMediator
@@ -52,10 +54,10 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Apply accent color theme before calling super.onCreate
+        super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         applyAccentColorTheme()
 
-        super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
@@ -70,29 +72,44 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         setupViewPagerAndTabs()
         requestAppPermissions()
         observeViewModel()
-        setupBackButton()
+        setupFragmentNavigation()
     }
 
-    private fun setupBackButton() {
+    private fun setupFragmentNavigation() {
         supportFragmentManager.addOnBackStackChangedListener {
             val isFragmentOnBackStack = supportFragmentManager.backStackEntryCount > 0
-            supportActionBar?.setDisplayHomeAsUpEnabled(isFragmentOnBackStack)
-            binding.tabLayout.visibility = if (isFragmentOnBackStack) View.GONE else View.VISIBLE
-            binding.viewPager.visibility = if (isFragmentOnBackStack) View.GONE else View.VISIBLE
+            updateUiForFragment(isFragmentOnBackStack)
         }
+        binding.viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+            override fun onPageSelected(position: Int) {
+                // Position 0 is ReminderSettingsFragment
+                updateUiForFragment(position == 0)
+            }
+        })
+        // Initial check
+        updateUiForFragment(binding.viewPager.currentItem == 0)
+    }
+
+    fun updateUiForFragment(isReminderSettings: Boolean) {
+        val isFragmentOnBackStack = supportFragmentManager.backStackEntryCount > 0
+
+        supportActionBar?.setDisplayHomeAsUpEnabled(isFragmentOnBackStack)
+        binding.tabLayout.visibility = if (isFragmentOnBackStack) View.GONE else View.VISIBLE
+        binding.viewPager.visibility = if (isFragmentOnBackStack) View.GONE else View.VISIBLE
     }
 
     private fun applyAccentColorTheme() {
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
         val accentColor = prefs.getString("accent_color", "default")
-        when (accentColor) {
-            "pink" -> setTheme(R.style.Theme_MedicationReminderApp_Pink)
-            "blue" -> setTheme(R.style.Theme_MedicationReminderApp_Blue)
-            "green" -> setTheme(R.style.Theme_MedicationReminderApp_Green)
-            "purple" -> setTheme(R.style.Theme_MedicationReminderApp_Purple)
-            "orange" -> setTheme(R.style.Theme_MedicationReminderApp_Orange)
-            else -> setTheme(R.style.Theme_MedicationReminderApp_NoActionBar)
+        val themeResId = when (accentColor) {
+            "pink" -> R.style.Theme_MedicationReminderApp_Pink
+            "blue" -> R.style.Theme_MedicationReminderApp_Blue
+            "green" -> R.style.Theme_MedicationReminderApp_Green
+            "purple" -> R.style.Theme_MedicationReminderApp_Purple
+            "orange" -> R.style.Theme_MedicationReminderApp_Orange
+            else -> R.style.Theme_MedicationReminderApp
         }
+        setTheme(themeResId)
     }
 
     private fun observeViewModel() {
@@ -207,6 +224,11 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         runOnUiThread {
             Handler(Looper.getMainLooper()).postDelayed({ bluetoothLeManager.requestStatus() }, 500)
             Handler(Looper.getMainLooper()).postDelayed({ bluetoothLeManager.syncTime() }, 1000)
+            Handler(Looper.getMainLooper()).postDelayed({ 
+                val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+                val isEngineeringMode = prefs.getBoolean("engineering_mode", false)
+                bluetoothLeManager.setEngineeringMode(isEngineeringMode)
+            }, 1500)
         }
     }
 

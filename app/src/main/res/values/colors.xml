@@ -26,13 +26,13 @@
     <color name="white">#FFFFFFFF</color>
 
     <!-- Theme colors -->
-    <color name="primary">@color/kuromi_pink</color>
-    <color name="colorPrimary">@color/kuromi_pink</color>
-    <color name="onPrimary">@color/kuromi_text_on_pink</color>
+    <color name="primary">@color/purple_500</color>
+    <color name="colorPrimary">@color/purple_500</color>
+    <color name="onPrimary">@color/white</color>
     <color name="primaryContainer">#EADDFF</color>
     <color name="onPrimaryContainer">#21005D</color>
-    <color name="secondary">@color/kuromi_purple</color>
-    <color name="onSecondary">@color/kuromi_text_on_purple</color>
+    <color name="secondary">@color/purple_700</color>
+    <color name="onSecondary">@color/white</color>
     <color name="secondaryContainer">#E8DEF8</color>
     <color name="onSecondaryContainer">#1D192B</color>
     <color name="tertiary">@color/kuromi_dark_grey</color>

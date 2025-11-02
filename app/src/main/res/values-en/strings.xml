@@ -135,6 +135,7 @@
 
     <!-- New Strings for Fragment Architecture -->
     <string name="connect_box">Connect Pillbox</string>
+    <string name="disconnect_box">Disconnect Pillbox</string>
     <string name="disconnected">Disconnected</string>
     <string name="how_many_meds_prompt">How many medications to add?</string>
     <string name="medication_name">Medication Name</string>
@@ -205,6 +206,18 @@
         <item>green</item>
         <item>purple</item>
         <item>orange</item>
+    </string-array>
+
+    <string name="character">Character</string>
+    <string name="character_kuromi">Kuromi</string>
+    <string name="character_chibi_maruko_chan">Chibi Maruko-chan</string>
+    <string-array name="character_entries">
+        <item>@string/character_kuromi</item>
+        <item>@string/character_chibi_maruko_chan</item>
+    </string-array>
+    <string-array name="character_values">
+        <item>kuromi</item>
+        <item>chibi_maruko_chan</item>
     </string-array>
 
     <string name="kuromi_image_description">Kuromi image</string>

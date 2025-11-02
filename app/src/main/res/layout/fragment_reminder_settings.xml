@@ -5,7 +5,10 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".ReminderSettingsFragment"
-    android:background="?attr/colorSurface">
+    android:background="?attr/colorSurface"
+    android:clipToPadding="false"
+    android:fitsSystemWindows="true"
+    android:paddingBottom="?attr/actionBarSize">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -35,6 +38,14 @@
                     android:text="@string/connect_box"
                     app:icon="@drawable/ic_bluetooth"
                     style="@style/Widget.MaterialComponents.Button.TextButton"/>
+                
+                <Button
+                    android:id="@+id/disconnectButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/disconnect_box"
+                    app:icon="@drawable/ic_bluetooth_disabled"
+                    style="@style/Widget.MaterialComponents.Button.TextButton" />
 
                 <TextView
                     android:id="@+id/bleStatusTextView"
@@ -110,6 +121,15 @@
                 android:text="@string/delete_reminder"
                 app:icon="@drawable/ic_delete"/>
         </LinearLayout>
+        
+        <ImageView
+            android:id="@+id/kuromi_image"
+            android:layout_width="150dp"
+            android:layout_height="150dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="32dp"
+            android:src="@drawable/kuromi"
+            android:contentDescription="@string/kuromi_image_description" />
 
     </LinearLayout>
 </ScrollView>
