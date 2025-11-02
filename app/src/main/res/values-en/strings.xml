@@ -59,38 +59,31 @@
     <string name="set_all_medication_times">Please set all necessary medication times</string>
     <string name="slot_occupied_title">Slot Occupied</string>
     <string name="slot_occupied_message">Slot #%d is occupied by another medication, please choose another slot.</string>
-    <string name="medication_added_to_slot">Medication \'%s\' added to slot #%d</string>
+    <string name="medication_added_to_slot">Medication '%s' added to slot #%d</string>
 
     <!-- Medication Info & Management -->
     <string name="edit_reminder">Edit Reminder</string>
     <string name="delete_reminder">Delete Reminder</string>
     <string name="low_stock_warning_title">Low Stock Warning</string>
-    <string name="low_stock_warning_message">Medication \'%s\' is running low, only %d pills left. Please refill!</string>
+    <string name="low_stock_warning_message">Medication '%s' is running low, only %d pills left. Please refill!</string>
     <string name="reminders_synced_to_box">Reminders synced to pillbox</string>
     <string name="no_medication_reminders">No Reminders</string>
     <string name="no_medication_to_modify">No medication to modify or delete</string>
     <string name="select_medication_to_edit">Select medication to edit</string>
     <string name="select_medication_to_delete">Select medication to delete</string>
-    <string name="editing_medication">Editing \'%s\', please modify and save again</string>
+    <string name="editing_medication">Editing '%s', please modify and save again</string>
     <string name="confirm_delete_title">Confirm Deletion</string>
-    <string name="confirm_delete_message">Are you sure you want to delete the reminder for \'%s\'?</string>
-    <string name="medication_deleted">\'%s\' has been deleted</string>
-    <string name="medication_updated">Medication \'%s\' has been updated</string>
+    <string name="confirm_delete_message">Are you sure you want to delete the reminder for '%s'?</string>
+    <string name="medication_deleted">'%s' has been deleted</string>
+    <string name="medication_updated">Medication '%s' has been updated</string>
     <string name="medication_info_header">— Medication %d —</string>
-    <string name="medication_info_name">Name: %s (Slot: #%d)\
-</string>
-    <string name="medication_info_dosage">Dosage: %s\
-</string>
-    <string name="medication_info_stock">Stock: %d / %d pills\
-</string>
-    <string name="medication_info_date_range">Date Range: %s to %s\
-</string>
-    <string name="medication_info_times">Medication Times:\
-</string>
-    <string name="medication_info_time_entry">  — %s: %s\
-</string>
-    <string name="medication_info_notes">Notes: %s\
-</string>
+    <string name="medication_info_name">Name: %s (Slot: #%d)\n</string>
+    <string name="medication_info_dosage">Dosage: %s\n</string>
+    <string name="medication_info_stock">Stock: %d / %d pills\n</string>
+    <string name="medication_info_date_range">Date Range: %s to %s\n</string>
+    <string name="medication_info_times">Medication Times:\n</string>
+    <string name="medication_info_time_entry">  — %s: %s\n</string>
+    <string name="medication_info_notes">Notes: %s\n</string>
     <string name="time_label_morning">Morning</string>
     <string name="time_label_noon">Noon</string>
     <string name="time_label_evening">Evening</string>

@@ -210,6 +210,7 @@
 `POST_NOTIFICATIONS`, `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`, `ACCESS_FINE_LOCATION`, `SCHEDULE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED`, `VIBRATE`
 
 ## Bug 修復
+*   **0064:** 修正了 `strings.xml` 和 `values-en/strings.xml` 中因不正確的跳脫字元 (`\`) 和單引號用法而導致的 `String.format string doesn't match the XML format string` Linter 錯誤。
 *   **0063:** 修正了工具列與狀態列的 UI 顯示問題：
     *   **文字顏色**：移除了在 `themes.xml` 中為不同輔助顏色主題寫死的 `colorOnPrimary`，讓系統能根據背景顏色自動選擇最佳的文字顏色，解決了在某些顏色 (如粉紅色) 下，工具列文字不易辨識的問題。
     *   **沉浸式效果**：在 `MainActivity.kt` 中呼叫 `WindowCompat.setDecorFitsSystemWindows(window, false)`，實現了真正的 Edge-to-Edge 效果，讓 App 內容能延伸至系統列，解決了狀態列背景未填滿的問題。
