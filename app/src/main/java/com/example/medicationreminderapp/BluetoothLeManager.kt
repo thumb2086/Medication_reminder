@@ -233,6 +233,7 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
     }
 
     fun disconnect() {
+        listener.onDeviceDisconnected()
         gatt?.disconnect()
     }
 

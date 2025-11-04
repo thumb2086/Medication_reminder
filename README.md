@@ -29,7 +29,7 @@ The core design of this project is to keep complex logic processing within the A
 *   **Settings:**
     *   The settings page can be accessed via the settings icon on the toolbar.
     *   Supports light, dark, and system-following theme switching.
-    *   **Character Theme:** The app's theme color is tied to the character selection. Choosing "Kuromi" switches the theme color to purple, while choosing "Chibi Maruko-chan" switches it to pink, adding a fun, interactive element.
+    *   **Character Theme:** The app's theme color is tied to the character selection. Choosing "Kuromi" switches the theme color to purple, "My Melody" to pink, and "Cinnamoroll" to blue, adding a fun, interactive element.
     *   **Engineering Mode:** A switch in the settings allows developers to enable engineering mode, which can be used to trigger special debugging functions on the pillbox.
 
 ## Instructions for Use
@@ -210,6 +210,26 @@ This project adopts a modern Android app architecture with a single Activity and
 
 ## Recent Updates
 
+*   **0080:** Fixed a critical bug caused by title centering and restored the original title position.
+    *   **Problem Analysis**: It was found that in version `0078`, `supportActionBar?.setDisplayShowTitleEnabled(false)` was added to center the title, but this unexpectedly caused `SettingsFragment` and `WiFiConfigFragment` to not display correctly.
+    *   **Emergency Fix**: Reverted the related changes in `MainActivity.kt` and `activity_main.xml` to restore normal page display.
+    *   **UI Fix**: Modified the `updateUiForFragment` function in `MainActivity.kt` to ensure the back button only appears when navigating to a deeper page, resolving the issue of the back button appearing on the main screen.
+*   **0079:** Cleaned up multiple warnings in `MainActivity.kt`, including unused `import`s and unused function parameters.
+*   **0078:** Fixed the issue of the toolbar title not being centered.
+    *   **Strategy Adjustment**: Removed the `app:title` attribute from `MaterialToolbar` and instead added a `TextView` within `MaterialToolbar` with `android:layout_gravity` set to `center` to achieve title centering.
+    *   **Code Cleanup**: Added `supportActionBar?.setDisplayShowTitleEnabled(false)` in `MainActivity.kt` to hide the default title and avoid overlap with the custom title.
+*   **0077:** Fixed the issue of the back button color being incorrect on the settings page.
+    *   In the `Widget.App.Toolbar` style in `themes.xml`, added the `colorControlNormal` attribute and set it to `?attr/colorOnPrimary` to ensure the back button's color is consistent with other icons and text on the toolbar.
+*   **0076:** Thoroughly resolved the issue of incorrect text and icon colors in the toolbar under character themes.
+    *   **Strategy Adjustment**: Abandoned the complex approach of dynamically setting status bar colors in `MainActivity.kt` and instead applied a separate theme named `Widget.App.Toolbar` directly to `MaterialToolbar` in `activity_main.xml`.
+    *   **Theme Fix**: Defined the `Widget.App.Toolbar` style in `themes.xml` and set its `titleTextColor` and `actionMenuTextColor` to `?attr/colorOnPrimary`, allowing it to correctly inherit the `colorOnPrimary` defined in the character themes (black for light themes, white for dark themes), ensuring that text and icons on the toolbar are clearly visible in all situations.
+*   **0075:** Re-fixed the issue of incorrect text and icon colors in the toolbar, ensuring they are clearly visible in all themes.
+    *   **Light Theme**: Explicitly set `android:titleTextColor` and `android:actionMenuTextColor` to black for all character themes in `values/themes.xml` to completely resolve the issue of incorrect text color on a light background.
+    *   **Dark Theme**: Also explicitly set `android:titleTextColor` and `android:actionMenuTextColor` to white for all character themes in `values-night/themes.xml` to ensure good contrast in dark mode.
+*   **0074:** Fixed the issue of incorrect text and icon colors on the toolbar and status bar in light themes (e.g., character themes), and corrected the calendar text color in dark mode.
+    *   **Light Theme**: Explicitly set `colorOnPrimary` to black for all character themes in `themes.xml` to ensure toolbar text is clearly visible on a light background.
+    *   **Dark Theme**: Modified `fragment_history.xml` to change the calendar's text color to `?android:attr/textColorPrimary`, allowing it to adjust automatically with the theme.
+    *   **Status Bar Icons**: Added logic to `MainActivity.kt` to dynamically determine the theme color's brightness and use `WindowInsetsControllerCompat` to set the status bar icon colors, ensuring good contrast in any theme.
 *   **0073:** Completely refactored the app's color architecture and modernized the UI to improve readability and ease of use for elderly users.
     *   **Color Refactoring**: Centralized all color definitions in `values/colors.xml` and created separate color sets for light and dark modes. Also added a "Cinnamoroll" character theme and ensured all character themes display correctly in different modes.
     *   **Improved Readability**: Comprehensively adjusted text colors to ensure sufficient contrast against any background. Additionally, enlarged the text within the app to make content easier to read.
@@ -274,7 +294,7 @@ This project adopts a modern Android app architecture with a single Activity and
 *   **0031:** Cleaned up all duplicate and empty files in the `app/src/main/java/com/example/medicationreminderapp/ui/` directory.
 *   **0030:** Implemented the "App actively requests temperature/humidity data" feature in the Bluetooth protocol and provided a UI for users to trigger this action.
 *   **0029:** Fixed multiple build errors and warnings in `app/build.gradle.kts`. Handled incorrect string quotes for `buildConfigField` and replaced the deprecated `exec` method with the more modern `ProcessBuilder` to ensure the stability of the Gradle build script.
-*   **0028:** Fixed a build failure caused by removing the seemingly unused `requestStatus()` and `syncTime()` methods from `BluetoothLeManager`. These two methods have been re-added to ensure `MainActivity` can call them normally.
+*   **0-028:** Fixed a build failure caused by removing the seemingly unused `requestStatus()` and `syncTime()` methods from `BluetoothLeManager`. These two methods have been re-added to ensure `MainActivity` can call them normally.
 *   **0027:** Removed the unused `sendJson` method from `BluetoothLeManager.kt`, further cleaning up the Bluetooth communication code.
 *   **0026:** Cleaned up multiple "unused declaration" warnings in the project, including removing old methods in the Bluetooth module replaced by JSON commands, removing unused properties in `HistoryFragment.kt`, and clearing the content of duplicate and useless files in the `ui` package, significantly improving code quality.
 *   **0025:** Removed the unused `frequency` field and its related string resource from the `Medication` data class, making the code more concise.

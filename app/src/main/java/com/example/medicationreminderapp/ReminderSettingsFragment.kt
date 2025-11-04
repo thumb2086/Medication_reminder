@@ -77,11 +77,12 @@ class ReminderSettingsFragment : Fragment() {
     }
 
     private fun setupObservers() {
-        viewModel.bleStatus.observe(viewLifecycleOwner) { status ->
-            val isConnected = status.contains("Connected")
-            binding.bleStatusTextView.text = status
+        viewModel.isBleConnected.observe(viewLifecycleOwner) { isConnected ->
             binding.connectButton.visibility = if (isConnected) View.GONE else View.VISIBLE
             binding.disconnectButton.visibility = if (isConnected) View.VISIBLE else View.GONE
+        }
+        viewModel.bleStatus.observe(viewLifecycleOwner) { status ->
+            binding.bleStatusTextView.text = status
         }
         viewModel.medicationList.observe(viewLifecycleOwner) {
             setupMedicationCountSpinner()

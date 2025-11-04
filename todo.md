@@ -1,7 +1,7 @@
-- [x] **Fix Warnings in MainActivity.kt**
-    - [x] Remove unused import directive.
-    - [x] Remove unused "view" parameter.
-    - [x] Remove unused "isReminderSettings" parameter.
+- [x] **Fix Critical Bug & UI Issues**
+    - [x] Revert changes in `MainActivity.kt` to fix the blank page issue.
+    - [x] Revert changes in `activity_main.xml` to restore the original title position.
+    - [x] Modify `updateUiForFragment` in `MainActivity.kt` to correctly show/hide the back button.
 - [x] **Finalize & Document**
     - [x] Clear `todo.md`.
     - [x] Update `log.md`.

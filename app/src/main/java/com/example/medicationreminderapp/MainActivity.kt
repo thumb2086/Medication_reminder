@@ -94,11 +94,11 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         binding.viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
                 // Position 0 is ReminderSettingsFragment
-                updateUiForFragment(position == 0)
+                updateUiForFragment(false)
             }
         })
         // Initial check
-        updateUiForFragment(binding.viewPager.currentItem == 0)
+        updateUiForFragment(false)
     }
 
     fun updateUiForFragment(isFragmentOnBackStack: Boolean) {

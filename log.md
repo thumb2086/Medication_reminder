@@ -1,6 +1,10 @@
 # 更新日誌
 
 ## Bug Fixes
+*   **0080:** 修正了因為標題置中而導致的嚴重錯誤，並還原了標題的原始位置。
+    *   **問題分析**: 經查，在 `0078` 版中，為了將標題置中而加入了 `supportActionBar?.setDisplayShowTitleEnabled(false)`，但這個修改卻意外地導致 `SettingsFragment` 和 `WiFiConfigFragment` 無法正常顯示。
+    *   **緊急修復**: 還原了 `MainActivity.kt` 和 `activity_main.xml` 的相關修改，讓頁面恢復正常顯示。
+    *   **UI 修正**: 修改了 `MainActivity.kt` 中的 `updateUiForFragment` 函式，確保返回按鈕只在進入下一層頁面時才會顯示，解決了主畫面出現返回按鈕的問題。
 *   **0079:** 清理了 `MainActivity.kt` 中的多個警告，包括未使用的 `import` 和未使用的函式參數。
 *   **0078:** 修正了工具列標題沒有置中的問題。
     *   **策略調整**: 移除了 `MaterialToolbar` 的 `app:title` 屬性，改為在 `MaterialToolbar` 中加入一個 `TextView`，並設定其 `android:layout_gravity` 為 `center`，以達到標題置中的效果。

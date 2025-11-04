@@ -46,6 +46,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onRefreshEnvironmentData() {
         historicDataBuffer.clear()
+        _historicSensorData.value = emptyList() // Clear the UI
         requestBleAction.value = BleAction.REQUEST_HISTORIC_ENV_DATA
     }
 
