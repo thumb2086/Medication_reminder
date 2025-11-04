@@ -1,3 +1,7 @@
+- [x] **Fix Toolbar Title Alignment**
+    - [x] Adjust the `paddingTop` of the title `TextView` to align it with the settings icon.
+- [x] **Fix Toolbar Title**
+    - [x] Fix the UI issue where the title was being cut off by changing `padding` to `layout_marginBottom`.
 - [x] **Fix Critical Bug & UI Issues**
     - [x] Revert changes in `MainActivity.kt` to fix the blank page issue.
     - [x] Revert changes in `activity_main.xml` to restore the original title position.

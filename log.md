@@ -1,6 +1,11 @@
 # 更新日誌
 
 ## Bug Fixes
+*   **0082:** 修正了工具列標題的垂直對齊問題。
+    *   **UI 修正**: 透過在 `activity_main.xml` 中，為標題的 `TextView` 加入 `paddingTop` 屬性，成功地將標題向下移動，使其與右側的設定圖示在視覺上對齊。
+*   **0081:** 修正了工具列標題的顯示問題。
+    *   **問題分析**: 在 `activity_main.xml` 中，直接為標題的 `TextView` 設定 `padding` 會導致其高度計算錯誤，進而發生內容被截斷的問題。
+    *   **UI 修正**: 將 `padding` 改為 `layout_marginBottom`，在不影響 `TextView` 高度的前提下，調整了標題的垂直位置，使其在視覺上更置中。
 *   **0080:** 修正了因為標題置中而導致的嚴重錯誤，並還原了標題的原始位置。
     *   **問題分析**: 經查，在 `0078` 版中，為了將標題置中而加入了 `supportActionBar?.setDisplayShowTitleEnabled(false)`，但這個修改卻意外地導致 `SettingsFragment` 和 `WiFiConfigFragment` 無法正常顯示。
     *   **緊急修復**: 還原了 `MainActivity.kt` 和 `activity_main.xml` 的相關修改，讓頁面恢復正常顯示。
