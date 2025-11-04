@@ -24,7 +24,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
 import androidx.core.os.LocaleListCompat
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.fragment.app.commit
 import androidx.lifecycle.ViewModelProvider
 import androidx.preference.PreferenceManager
@@ -56,11 +59,19 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        applyAccentColorTheme()
+        applyCharacterTheme()
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
+        supportActionBar?.setDisplayShowTitleEnabled(false)
+
+        // Handle window insets to avoid UI overlapping with system bars
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            binding.appBarLayout.updatePadding(top = systemBars.top)
+            insets
+        }
 
         // ViewModel is shared between Activity and Fragments
         viewModel = ViewModelProvider(this)[MainViewModel::class.java]
@@ -90,23 +101,18 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         updateUiForFragment(binding.viewPager.currentItem == 0)
     }
 
-    fun updateUiForFragment(isReminderSettings: Boolean) {
-        val isFragmentOnBackStack = supportFragmentManager.backStackEntryCount > 0
-
+    fun updateUiForFragment(isFragmentOnBackStack: Boolean) {
         supportActionBar?.setDisplayHomeAsUpEnabled(isFragmentOnBackStack)
         binding.tabLayout.visibility = if (isFragmentOnBackStack) View.GONE else View.VISIBLE
         binding.viewPager.visibility = if (isFragmentOnBackStack) View.GONE else View.VISIBLE
     }
 
-    private fun applyAccentColorTheme() {
+    private fun applyCharacterTheme() {
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
-        val accentColor = prefs.getString("accent_color", "default")
-        val themeResId = when (accentColor) {
-            "pink" -> R.style.Theme_MedicationReminderApp_Pink
-            "blue" -> R.style.Theme_MedicationReminderApp_Blue
-            "green" -> R.style.Theme_MedicationReminderApp_Green
-            "purple" -> R.style.Theme_MedicationReminderApp_Purple
-            "orange" -> R.style.Theme_MedicationReminderApp_Orange
+        val character = prefs.getString("character", "kuromi")
+        val themeResId = when (character) {
+            "kuromi" -> R.style.Theme_MedicationReminderApp_Kuromi
+            "maruko" -> R.style.Theme_MedicationReminderApp_MyMelody
             else -> R.style.Theme_MedicationReminderApp
         }
         setTheme(themeResId)

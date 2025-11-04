@@ -1,0 +1,8 @@
+- [x] **Fix Warnings in MainActivity.kt**
+    - [x] Remove unused import directive.
+    - [x] Remove unused "view" parameter.
+    - [x] Remove unused "isReminderSettings" parameter.
+- [x] **Finalize & Document**
+    - [x] Clear `todo.md`.
+    - [x] Update `log.md`.
+    - [x] Update `README.md` and `README_cn.md`.

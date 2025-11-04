@@ -29,7 +29,7 @@ The core design of this project is to keep complex logic processing within the A
 *   **Settings:**
     *   The settings page can be accessed via the settings icon on the toolbar.
     *   Supports light, dark, and system-following theme switching.
-    *   Supports **Character Selection**, allowing users to choose between Kuromi and Chibi Maruko-chan for the display on the main page.
+    *   **Character Theme:** The app's theme color is tied to the character selection. Choosing "Kuromi" switches the theme color to purple, while choosing "Chibi Maruko-chan" switches it to pink, adding a fun, interactive element.
     *   **Engineering Mode:** A switch in the settings allows developers to enable engineering mode, which can be used to trigger special debugging functions on the pillbox.
 
 ## Instructions for Use
@@ -197,7 +197,7 @@ This project adopts a modern Android app architecture with a single Activity and
 *   `AlarmScheduler.kt`: A helper class responsible for setting and canceling system alarms (`AlarmManager`).
 
 *   `AlarmReceiver.kt`: A `BroadcastReceiver` that, when an alarm is triggered, is responsible for creating and displaying a "Time to take your medication!" notification with "Taken" and "Snooze" actions.
-
+	
 *   `SnoozeReceiver.kt`: A `BroadcastReceiver` that handles the "Snooze" action from a medication reminder notification, postponing the reminder for a short period.
 
 *   `MedicationTakenReceiver.kt`: A `BroadcastReceiver` that handles the "Taken" action from a medication reminder notification, marking the medication as taken and updating the medication history.
@@ -208,7 +208,31 @@ This project adopts a modern Android app architecture with a single Activity and
 
 `POST_NOTIFICATIONS`, `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`, `ACCESS_FINE_LOCATION`, `SCHEDULE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED`, `VIBRATE`
 
-## Bug Fixes
+## Recent Updates
+
+*   **0073:** Completely refactored the app's color architecture and modernized the UI to improve readability and ease of use for elderly users.
+    *   **Color Refactoring**: Centralized all color definitions in `values/colors.xml` and created separate color sets for light and dark modes. Also added a "Cinnamoroll" character theme and ensured all character themes display correctly in different modes.
+    *   **Improved Readability**: Comprehensively adjusted text colors to ensure sufficient contrast against any background. Additionally, enlarged the text within the app to make content easier to read.
+    *   **UI Modernization**: Adopted the Material 3 design style and updated all themes to give the app a more modern visual appearance.
+*   **0072:** Completely redesigned the app's UI and resolved the resulting `Android resource linking failed` build error.
+    *   **Theme and Color:** Simplified `themes.xml` and `colors.xml`, removing all accent color themes and defining a clearer, higher-contrast color set to unify the app's visual style.
+    *   **Code Cleanup:** Removed unused code related to the old accent color themes from `MainActivity.kt` and `SettingsFragment.kt`.
+    *   **Resource Fix:** Corrected an issue in `drawable/ic_slot_filled.xml` that referenced a deleted color, ensuring the project builds successfully.
+*   **0071:** Fixed an issue where the text and icon colors on the Toolbar and status bar were incorrect in light themes (e.g., the Chibi Maruko-chan pink theme).
+    *   By explicitly specifying `colorOnPrimary` as black in the theme and dynamically adjusting the status bar icons' light/dark appearance using `WindowInsetsController`, this ensures that all text and system icons have good contrast and readability against any light-colored background.
+*   **0070:** Fixed an immersive UI issue on devices with display cutouts where the status bar background would not fill correctly.
+    *   By enabling `windowLayoutInDisplayCutoutMode` in the app's theme and precisely applying the system insets padding only to the `AppBarLayout`, this completely resolves the issue of the status bar background not extending on devices with cutouts or notches, achieving a perfectly consistent immersive experience across all screen types.
+*   **0069:** Integrated the accent color with the character selection feature and resolved the immersive status bar display issue.
+    *   **Feature Integration**: In the settings page, the app's theme color is now bound to the character selection. Choosing "Kuromi" sets the theme color to purple, while choosing "Chibi Maruko-chan" sets it to pink, simplifying the settings and adding an element of fun.
+    *   **Immersive UI Fix**: By adjusting the layout in `activity_main.xml` and modifying the `WindowInsetsListener` in `MainActivity.kt`, the issue of the App Bar not filling the status bar has been resolved, achieving a true Edge-to-Edge immersive experience.
+*   **0068:** Completely redesigned the app's UI and resolved the resulting `Android resource linking failed` build error.
+    *   **Theme and Color:** Simplified `themes.xml` and `colors.xml`, removing all accent color themes and defining a clearer, higher-contrast color set to unify the app's visual style.
+    *   **Code Cleanup:** Removed unused code related to the old accent color themes from `MainActivity.kt` and `SettingsFragment.kt`.
+    *   **Resource Fix:** Corrected an issue in `drawable/ic_slot_filled.xml` that referenced a deleted color, ensuring the project builds successfully.
+*   **0067:** Fixed an `Unresolved reference: WindowInsetsCompat` compilation error in `MainActivity.kt` by adding the missing import.
+*   **0066:** Fixed the toolbar and status bar UI issues again:
+    *   **Text Color:** Explicitly set a contrasting `colorOnPrimary` for each accent color theme in `themes.xml` to ensure toolbar text and icons are always legible.
+    *   **Immersive Mode:** Implemented a `OnApplyWindowInsetsListener` for the `AppBarLayout` in `MainActivity.kt` to correctly handle system insets and apply proper padding, finally achieving a true Edge-to-Edge effect.
 *   **0065:** Fixed `Apostrophe not preceded by \\` Linter errors in `strings.xml` by enclosing all strings containing an apostrophe in double quotes `""`.
 *   **0064:** Fixed `String.format string doesn't match the XML format string` Linter errors in `strings.xml` and `values-en/strings.xml` by correcting improper escape characters (`\`) and single quote usage.
 *   **0063:** Fixed UI issues with the toolbar and status bar:
@@ -230,9 +254,6 @@ This project adopts a modern Android app architecture with a single Activity and
 *   **0053:** Fixed an issue where the accent color was not correctly synchronized in dark mode. Ensured the Toolbar color changes dynamically with the theme by adding `colorPrimary` to all accent color themes in `values-night/themes.xml` and setting the `MaterialToolbar`'s background color to `?attr/colorPrimary` in `activity_main.xml`.
 *   **0052:** Added a disconnect button to the reminder settings page and a new `ic_bluetooth_disabled.xml` icon to the `drawable` directory.
 *   **0015:** Fixed an issue where the medication adherence rate was not updating and the time display on the medication history page was unclear. Implemented correct adherence calculation logic in `MedicationTakenReceiver` and `MainViewModel`, and corrected the text color in `fragment_history.xml` to ensure it is visible in the light theme.
-
-## Recent Updates
-
 *   **0060:** Added a character selection feature, allowing users to choose between 'Kuromi' and 'Chibi Maruko-chan'. The character image is now displayed at the bottom of the 'Reminder Settings' page.
 *   **0049:** Cleaned up multiple warnings in the project, including deleting the unused `ThemeUtils.kt`, replacing `SharedPreferences.edit()` with KTX extension functions, and fixing an accessibility warning in `fragment_wifi_config.xml`.
 *   **0047:** Added "Engineering Mode" and defined a new Bluetooth protocol (`0x13`) for the App to notify the pillbox about mode switching. This feature can be controlled via a switch on the settings page.
@@ -249,7 +270,7 @@ This project adopts a modern Android app architecture with a single Activity and
 *   **0035:** Added a language switching feature to the settings page, allowing users to manually switch the app\'s display language (Traditional Chinese, English, or follow the system).
 *   **0034:** Added English localization to the application to support English-speaking users.
 *   **0033:** Implemented historical temperature and humidity data synchronization. Extended the Bluetooth protocol to allow the app to sync all historical temperature and humidity data recorded during the offline period from the pillbox upon connection and display it completely on the chart.
-*   **0032:** Fixed multiple compilation errors and warnings in the project, including a `SwipeRefreshLayout` dependency issue, an error in `MainActivity.kt`, and cleaned up unused code.
+*   **0032:** Fixed multiple compilation errors and warnings in the.project, including a `SwipeRefreshLayout` dependency issue, an error in `MainActivity.kt`, and cleaned up unused code.
 *   **0031:** Cleaned up all duplicate and empty files in the `app/src/main/java/com/example/medicationreminderapp/ui/` directory.
 *   **0030:** Implemented the "App actively requests temperature/humidity data" feature in the Bluetooth protocol and provided a UI for users to trigger this action.
 *   **0029:** Fixed multiple build errors and warnings in `app/build.gradle.kts`. Handled incorrect string quotes for `buildConfigField` and replaced the deprecated `exec` method with the more modern `ProcessBuilder` to ensure the stability of the Gradle build script.

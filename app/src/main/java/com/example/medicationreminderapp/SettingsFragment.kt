@@ -15,14 +15,14 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.preferences, rootKey)
 
-        // Set initial summary for theme, language, and accent color preferences
+        // Set initial summary for theme, language, and character preferences
         findPreference<ListPreference>("theme")?.let {
             it.summary = it.entry
         }
         findPreference<ListPreference>("language")?.let {
             it.summary = it.entry
         }
-        findPreference<ListPreference>("accent_color")?.let {
+        findPreference<ListPreference>("character")?.let {
             it.summary = it.entry
         }
     }
@@ -67,9 +67,9 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                     (activity as? MainActivity)?.setLocale(languageValue)
                 }
             }
-            "accent_color" -> {
-                findPreference<ListPreference>(key)?.let { accentColorPreference ->
-                    accentColorPreference.summary = accentColorPreference.entry
+            "character" -> {
+                findPreference<ListPreference>(key)?.let { characterPreference ->
+                    characterPreference.summary = characterPreference.entry
                     activity?.recreate()
                 }
             }

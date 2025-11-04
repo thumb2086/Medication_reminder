@@ -1,91 +1,70 @@
 <resources>
     <!-- Base application theme. -->
-    <style name="Theme.MedicationReminderApp" parent="Theme.Material3.Dark.NoActionBar">
+    <style name="Theme.MedicationReminderApp" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Text sizes -->
+        <item name="android:textSize">20sp</item>
+
         <!-- Primary brand color. -->
-        <item name="colorPrimary">@color/primary</item>
-        <item name="colorOnPrimary">@color/onPrimary</item>
-        <item name="colorPrimaryContainer">@color/primaryContainer</item>
-        <item name="colorOnPrimaryContainer">@color/onPrimaryContainer</item>
+        <item name="colorPrimary">@color/primary_dark</item>
+        <item name="colorOnPrimary">@color/onPrimary_dark</item>
+        <item name="colorPrimaryContainer">@color/primaryContainer_dark</item>
+        <item name="colorOnPrimaryContainer">@color/onPrimaryContainer_dark</item>
         <!-- Secondary brand color. -->
-        <item name="colorSecondary">@color/secondary</item>
-        <item name="colorOnSecondary">@color/onSecondary</item>
-        <item name="colorSecondaryContainer">@color/secondaryContainer</item>
-        <item name="colorOnSecondaryContainer">@color/onSecondaryContainer</item>
+        <item name="colorSecondary">@color/secondary_dark</item>
+        <item name="colorOnSecondary">@color/onSecondary_dark</item>
+        <item name="colorSecondaryContainer">@color/secondaryContainer_dark</item>
+        <item name="colorOnSecondaryContainer">@color/onSecondaryContainer_dark</item>
         <!-- Tertiary brand color. -->
-        <item name="colorTertiary">@color/tertiary</item>
-        <item name="colorOnTertiary">@color/onTertiary</item>
-        <item name="colorTertiaryContainer">@color/tertiaryContainer</item>
-        <item name="colorOnTertiaryContainer">@color/onTertiaryContainer</item>
+        <item name="colorTertiary">@color/tertiary_dark</item>
+        <item name="colorOnTertiary">@color/onTertiary_dark</item>
+        <item name="colorTertiaryContainer">@color/tertiaryContainer_dark</item>
+        <item name="colorOnTertiaryContainer">@color/onTertiaryContainer_dark</item>
         <!-- Error color. -->
-        <item name="colorError">@color/error</item>
-        <item name="colorOnError">@color/onError</item>
-        <item name="colorErrorContainer">@color/errorContainer</item>
-        <item name="colorOnErrorContainer">@color/onErrorContainer</item>
+        <item name="colorError">@color/error_dark</item>
+        <item name="colorOnError">@color/onError_dark</item>
+        <item name="colorErrorContainer">@color/errorContainer_dark</item>
+        <item name="colorOnErrorContainer">@color/onErrorContainer_dark</item>
         <!-- Background color. -->
-        <item name="android:colorBackground">@color/background</item>
-        <item name="colorOnBackground">@color/onBackground</item>
+        <item name="android:colorBackground">@color/background_dark</item>
+        <item name="colorOnBackground">@color/onBackground_dark</item>
         <!-- Surface color. -->
-        <item name="colorSurface">@color/surface</item>
-        <item name="colorOnSurface">@color/onSurface</item>
-        <item name="colorSurfaceVariant">@color/surfaceVariant</item>
-        <item name="colorOnSurfaceVariant">@color/onSurfaceVariant</item>
+        <item name="colorSurface">@color/surface_dark</item>
+        <item name="colorOnSurface">@color/onSurface_dark</item>
+        <item name="colorSurfaceVariant">@color/surfaceVariant_dark</item>
+        <item name="colorOnSurfaceVariant">@color/onSurfaceVariant_dark</item>
         <!-- Outline color. -->
-        <item name="colorOutline">@color/outline</item>
+        <item name="colorOutline">@color/outline_dark</item>
         <!-- Status bar color. -->
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
-
-        <!-- Larger font sizes -->
-        <item name="android:textViewStyle">@style/ReallyLargeTextViewStyle</item>
-        <item name="textAppearanceBodyLarge">@style/Theme.MedicationReminderApp.TextAppearance.BodyLarge</item>
-        <item name="textAppearanceTitleLarge">@style/Theme.MedicationReminderApp.TextAppearance.TitleLarge</item>
-        <item name="textAppearanceHeadlineLarge">@style/Theme.MedicationReminderApp.TextAppearance.HeadlineLarge</item>
-
-        <!-- Preference Title Color -->
-        <item name="preferenceCategoryTitleTextColor">?attr/colorPrimary</item>
-
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
     </style>
 
-    <style name="ReallyLargeTextViewStyle" parent="Widget.MaterialComponents.TextView">
-        <item name="android:textSize">22sp</item>
+    <!-- Character Themes -->
+    <style name="Theme.MedicationReminderApp.Kuromi" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/primary_kuromi</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorPrimaryContainer">@color/primaryContainer_kuromi</item>
+        <item name="colorOnPrimaryContainer">@color/onPrimaryContainer_kuromi</item>
+        <item name="android:actionMenuTextColor">#FFFFFF</item>
+        <item name="android:titleTextColor">#FFFFFF</item>
     </style>
 
-    <style name="Theme.MedicationReminderApp.TextAppearance.BodyLarge" parent="TextAppearance.Material3.BodyLarge">
-        <item name="android:textSize">20sp</item>
+    <style name="Theme.MedicationReminderApp.MyMelody" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/primary_mymelody</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorPrimaryContainer">@color/primaryContainer_mymelody</item>
+        <item name="colorOnPrimaryContainer">@color/onPrimaryContainer_mymelody</item>
+        <item name="android:actionMenuTextColor">#FFFFFF</item>
+        <item name="android:titleTextColor">#FFFFFF</item>
     </style>
 
-    <style name="Theme.MedicationReminderApp.TextAppearance.TitleLarge" parent="TextAppearance.Material3.TitleLarge">
-        <item name="android:textSize">24sp</item>
+    <style name="Theme.MedicationReminderApp.Cinnamoroll" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/primary_cinnamoroll</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorPrimaryContainer">@color/primaryContainer_cinnamoroll</item>
+        <item name="colorOnPrimaryContainer">@color/onPrimaryContainer_cinnamoroll</item>
+        <item name="android:actionMenuTextColor">#FFFFFF</item>
+        <item name="android:titleTextColor">#FFFFFF</item>
     </style>
-
-    <style name="Theme.MedicationReminderApp.TextAppearance.HeadlineLarge" parent="TextAppearance.Material3.HeadlineLarge">
-        <item name="android:textSize">28sp</item>
-    </style>
-
-    <!-- Accent Color Themes -->
-    <style name="Theme.MedicationReminderApp.Pink" parent="Theme.MedicationReminderApp">
-        <item name="colorPrimary">@color/accent_pink</item>
-        <item name="colorSecondary">@color/accent_pink</item>
-    </style>
-
-    <style name="Theme.MedicationReminderApp.Blue" parent="Theme.MedicationReminderApp">
-        <item name="colorPrimary">@color/accent_blue</item>
-        <item name="colorSecondary">@color/accent_blue</item>
-    </style>
-
-    <style name="Theme.MedicationReminderApp.Green" parent="Theme.MedicationReminderApp">
-        <item name="colorPrimary">@color/accent_green</item>
-        <item name="colorSecondary">@color/accent_green</item>
-    </style>
-
-    <style name="Theme.MedicationReminderApp.Purple" parent="Theme.MedicationReminderApp">
-        <item name="colorPrimary">@color/accent_purple</item>
-        <item name="colorSecondary">@color/accent_purple</item>
-    </style>
-
-    <style name="Theme.MedicationReminderApp.Orange" parent="Theme.MedicationReminderApp">
-        <item name="colorPrimary">@color/accent_orange</item>
-        <item name="colorSecondary">@color/accent_orange</item>
-    </style>
-
 </resources>

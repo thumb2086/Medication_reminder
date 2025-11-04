@@ -30,7 +30,7 @@
 *   **設定:**
     *   可透過工具列上的設定圖示進入設定頁面。
     *   支援亮色、暗色和跟隨系統主題的切換。
-    *   支援 **角色選擇**，允許使用者在「酷洛米」和「櫻桃小丸子」之間切換主頁面顯示的角色圖片。
+    *   **角色主題**: 將 App 的主題顏色與角色選擇功能綁定。選擇「酷洛米」會將主題色切換為紫色，選擇「櫻桃小丸子」則會切換為粉紅色，增添使用樂趣。
     *   **工程模式:** 在設定中提供開關，讓開發者可以啟用工程模式，用以觸發藥盒的特殊除錯功能。
 
 ## 使用說明
@@ -209,7 +209,26 @@
 
 `POST_NOTIFICATIONS`, `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`, `ACCESS_FINE_LOCATION`, `SCHEDULE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED`, `VIBRATE`
 
-## Bug 修復
+## 最近更新
+*   **0072:** 徹底重新設計了 App 的 UI，並解決了因此產生的 `Android resource linking failed` 建置錯誤。
+    *   **主題與顏色**：簡化了 `themes.xml` 和 `colors.xml`，移除了所有 accent color 主題，並定義了一組更清晰、對比度更高的顏色，統一了 App 的視覺風格。
+    *   **程式碼清理**：移除了 `MainActivity.kt` 和 `SettingsFragment.kt` 中與舊 accent color 主題相關的無用程式碼。
+    *   **資源修復**：修正了 `drawable/ic_slot_filled.xml` 中使用到已刪除顏色的問題，確保了專案能成功建置。
+*   **0071:** 修正了在淺色主題下（如櫻桃小丸子的粉色主題），Toolbar 和狀態列上的文字與圖示顏色不正確的問題。
+    *   透過在主題中明確指定 `colorOnPrimary` 為黑色，並使用 `WindowInsetsController` 動態調整狀態列圖示的明暗，確保了在任何淺色背景下，所有文字和系統圖示都具有良好的對比度和可讀性。
+*   **0070:** 修正了在挖孔螢幕上，狀態列背景無法正確填滿的沉浸式 UI 問題。
+    *   透過在 App 主題中啟用 `windowLayoutInDisplayCutoutMode`，並精確地將系統邊襯區 (insets) 的 `padding` 只套用在 `AppBarLayout` 上，徹底解決了在有挖孔或劉海的裝置上，狀態列背景無法延伸的問題，實現了在所有螢幕類型上都一致的完美沉浸式體驗。
+*   **0069:** 將輔助顏色功能與角色選擇功能綁定，並徹底解決了狀態列的沉浸式顯示問題。
+    *   **功能整合**: 在設定頁面中，將「角色選擇」與 App 的主題顏色進行綁定。選擇「酷洛米」會將主題色切換為紫色，選擇「櫻桃小丸子」則會切換為粉紅色，簡化了設定選項，並增加了互動的趣味性。
+    *   **沉浸式 UI 修復**: 透過調整 `activity_main.xml` 的佈局方式，將背景顏色設定在 `AppBarLayout` 上，並修改 `MainActivity.kt` 中的 `WindowInsetsListener`，成功解決了 App Bar 無法填滿狀態列的問題，實現了真正的 Edge-to-Edge 沉浸式體驗。
+*   **0068:** 徹底重新設計了 App 的 UI，並解決了因此產生的 `Android resource linking failed` 建置錯誤。
+    *   **主題與顏色**：簡化了 `themes.xml` 和 `colors.xml`，移除了所有 accent color 主題，並定義了一組更清晰、對比度更高的顏色，統一了 App 的視覺風格。
+    *   **程式碼清理**：移除了 `MainActivity.kt` 和 `SettingsFragment.kt` 中與舊 accent color 主題相關的無用程式碼。
+    *   **資源修復**：修正了 `drawable/ic_slot_filled.xml` 中使用到已刪除顏色的問題，確保了專案能成功建置。
+*   **0067:** 修正了 `MainActivity.kt` 中因缺少 `WindowInsetsCompat` 的匯入而導致的 `Unresolved reference` 編譯錯誤。
+*   **0066:** 再次修正了工具列與狀態列的 UI 顯示問題：
+    *   **文字顏色**：在 `themes.xml` 中，為每個輔助顏色主題明確地指定了與之對比的 `colorOnPrimary`，確保工具列上的文字和圖示在任何主題下都清晰可見。
+    *   **沉浸式效果**：在 `MainActivity.kt` 中，為 `AppBarLayout` 加入了 `OnApplyWindowInsetsListener`，使其能夠正確處理系統邊襯區 (insets)，並動態調整 `padding`，從而完美解決了狀態列背景無法填滿的問題。
 *   **0065:** 修正了 `strings.xml` 中因單引號使用不當而引起的 `Apostrophe not preceded by \\` Linter 錯誤。透過將所有包含單引號的字串用雙引號 `""` 包起來，解決了這個問題。
 *   **0064:** 修正了 `strings.xml` 和 `values-en/strings.xml` 中因不正確的跳脫字元 (`\`) 和單引號用法而導致的 `String.format string doesn't match the XML format string` Linter 錯誤。
 *   **0063:** 修正了工具列與狀態列的 UI 顯示問題：
@@ -224,7 +243,7 @@
     *   **設定按鈕無效：** 取消了 `MainActivity.kt` 中 `onOptionsItemSelected` 函式裡對設定頁面 (`SettingsFragment`) 和 Wi-Fi 設定頁面 (`WiFiConfigFragment`) 導覽邏輯的註解，恢復了設定按鈕的正常功能。
 *   **0059:** 修正了狀態列遮擋工具列標題的問題。透過在 `activity_main.xml` 的 `AppBarLayout` 中加上 `android:fitsSystemWindows="true"` 屬性，確保了工具列會為狀態列預留出正確的空間，解決了內容重疊的問題。
 *   **0058:** 修正了當輔助顏色設為「預設」時，工具列顏色不正確的問題。透過將 `colors.xml` 和 `values-night/colors.xml` 中的 `primary` 和 `colorPrimary` 顏色改回 Material Design 的預設值，確保了在未選擇特殊輔助顏色時，App 會顯示正確的預設主題顏色。
-*   **0057:** 修正了 `MainActivity.kt` 中因 `activity_main.xml` 佈局變更而導致的編譯錯誤。透過註解對已移除元件 (`kuromiImage` 和 `fragment_container`) 的參考，解決了 `Unresolved reference` 的問題，讓專案能重新建置。
+*   **0057:** 修正了 `MainActivity.kt` 中因 `activity_main.xml` 佈局變更而導致的編譯錯誤。透過註解對已移除元件 (`kuromiImage` 和 `fragment_container`) の參考，解決了 `Unresolved reference` 的問題，讓專案能重新建置。
 *   **0056:** 復原了 0055 號的 Bug 修復，以解決 `AndroidManifest.xml` 的資源連結失敗問題。
 *   **0055:** 再次修正了圖片遮擋輸入欄位的 UI 問題。透過在 `MainActivity.kt` 中監聽 `ViewPager2` 的頁面切換事件，確保只有在非 `ReminderSettingsFragment` 的頁面，酷洛米圖片才會顯示。
 *   **0054:** 修正了 `ReminderSettingsFragment` 在挖孔螢幕上顯示異常，以及圖片遮擋輸入欄位的 UI 問題。透過在 `MainActivity.kt` 中動態調整圖片可見性，確保了在進入 `ReminderSettingsFragment` 時，圖片會被隱藏，避免遮擋。
