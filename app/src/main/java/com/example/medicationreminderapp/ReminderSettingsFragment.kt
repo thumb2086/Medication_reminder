@@ -3,6 +3,7 @@ package com.example.medicationreminderapp
 import android.app.AlertDialog
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -11,6 +12,7 @@ import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.preference.PreferenceManager
 import com.example.medicationreminderapp.databinding.FragmentReminderSettingsBinding
 import com.example.medicationreminderapp.databinding.MedicationInputItemBinding
 import com.google.android.material.chip.Chip
@@ -38,6 +40,13 @@ class ReminderSettingsFragment : Fragment() {
     private val medicationCards = mutableListOf<Pair<MedicationInputItemBinding, MedicationCardState>>()
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     private lateinit var alarmScheduler: AlarmScheduler
+    private lateinit var sharedPreferences: SharedPreferences
+
+    private val preferenceChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == "character") {
+            updateCharacterImage()
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -45,19 +54,34 @@ class ReminderSettingsFragment : Fragment() {
     ): View {
         _binding = FragmentReminderSettingsBinding.inflate(inflater, container, false)
         alarmScheduler = AlarmScheduler(requireContext())
+        sharedPreferences = PreferenceManager.getDefaultSharedPreferences(requireContext())
+        sharedPreferences.registerOnSharedPreferenceChangeListener(preferenceChangeListener)
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        updateCharacterImage()
         setupObservers()
         setupListeners()
     }
 
+    private fun updateCharacterImage() {
+        val character = sharedPreferences.getString("character", "kuromi")
+        val imageRes = when (character) {
+            "chibi_maruko_chan" -> R.drawable.chibi_maruko_chan
+            else -> R.drawable.kuromi
+        }
+        binding.kuromiImage.setImageResource(imageRes)
+    }
+
     private fun setupObservers() {
         viewModel.bleStatus.observe(viewLifecycleOwner) { status ->
+            val isConnected = status.contains("Connected")
             binding.bleStatusTextView.text = status
+            binding.connectButton.visibility = if (isConnected) View.GONE else View.VISIBLE
+            binding.disconnectButton.visibility = if (isConnected) View.VISIBLE else View.GONE
         }
         viewModel.medicationList.observe(viewLifecycleOwner) {
             setupMedicationCountSpinner()
@@ -68,6 +92,10 @@ class ReminderSettingsFragment : Fragment() {
     private fun setupListeners() {
         binding.connectButton.setOnClickListener {
             (activity as? MainActivity)?.requestBluetoothPermissionsAndScan()
+        }
+
+        binding.disconnectButton.setOnClickListener {
+            (activity as? MainActivity)?.bluetoothLeManager?.disconnect()
         }
 
         binding.addReminderButton.setOnClickListener {
@@ -403,6 +431,7 @@ class ReminderSettingsFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        sharedPreferences.unregisterOnSharedPreferenceChangeListener(preferenceChangeListener)
         _binding = null
     }
 }

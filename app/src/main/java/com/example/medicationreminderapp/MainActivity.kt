@@ -17,12 +17,18 @@ import android.provider.Settings
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
+import androidx.core.os.LocaleListCompat
+import androidx.core.view.WindowCompat
 import androidx.fragment.app.commit
 import androidx.lifecycle.ViewModelProvider
+import androidx.preference.PreferenceManager
+import androidx.viewpager2.widget.ViewPager2
 import com.example.medicationreminderapp.adapter.ViewPagerAdapter
 import com.example.medicationreminderapp.databinding.ActivityMainBinding
 import com.google.android.material.tabs.TabLayoutMediator
@@ -31,9 +37,9 @@ import java.util.*
 
 class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
 
-    private lateinit var binding: ActivityMainBinding
+    internal lateinit var binding: ActivityMainBinding
     private lateinit var viewModel: MainViewModel
-    private lateinit var bluetoothLeManager: BluetoothLeManager
+    lateinit var bluetoothLeManager: BluetoothLeManager
     private var alarmManager: AlarmManager? = null
 
     private val requestNotificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
@@ -49,6 +55,9 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        applyAccentColorTheme()
+
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
@@ -63,6 +72,44 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         setupViewPagerAndTabs()
         requestAppPermissions()
         observeViewModel()
+        setupFragmentNavigation()
+    }
+
+    private fun setupFragmentNavigation() {
+        supportFragmentManager.addOnBackStackChangedListener {
+            val isFragmentOnBackStack = supportFragmentManager.backStackEntryCount > 0
+            updateUiForFragment(isFragmentOnBackStack)
+        }
+        binding.viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+            override fun onPageSelected(position: Int) {
+                // Position 0 is ReminderSettingsFragment
+                updateUiForFragment(position == 0)
+            }
+        })
+        // Initial check
+        updateUiForFragment(binding.viewPager.currentItem == 0)
+    }
+
+    fun updateUiForFragment(isReminderSettings: Boolean) {
+        val isFragmentOnBackStack = supportFragmentManager.backStackEntryCount > 0
+
+        supportActionBar?.setDisplayHomeAsUpEnabled(isFragmentOnBackStack)
+        binding.tabLayout.visibility = if (isFragmentOnBackStack) View.GONE else View.VISIBLE
+        binding.viewPager.visibility = if (isFragmentOnBackStack) View.GONE else View.VISIBLE
+    }
+
+    private fun applyAccentColorTheme() {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        val accentColor = prefs.getString("accent_color", "default")
+        val themeResId = when (accentColor) {
+            "pink" -> R.style.Theme_MedicationReminderApp_Pink
+            "blue" -> R.style.Theme_MedicationReminderApp_Blue
+            "green" -> R.style.Theme_MedicationReminderApp_Green
+            "purple" -> R.style.Theme_MedicationReminderApp_Purple
+            "orange" -> R.style.Theme_MedicationReminderApp_Orange
+            else -> R.style.Theme_MedicationReminderApp
+        }
+        setTheme(themeResId)
     }
 
     private fun observeViewModel() {
@@ -98,9 +145,20 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
+            android.R.id.home -> {
+                onBackPressedDispatcher.onBackPressed()
+                true
+            }
             R.id.action_settings -> {
                 supportFragmentManager.commit {
                     replace(R.id.fragment_container, SettingsFragment())
+                    addToBackStack(null)
+                }
+                true
+            }
+            R.id.action_wifi_settings -> {
+                supportFragmentManager.commit {
+                    replace(R.id.fragment_container, WiFiConfigFragment())
                     addToBackStack(null)
                 }
                 true
@@ -146,6 +204,15 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         }
     }
 
+    fun setLocale(languageCode: String?) {
+        val locales = if (languageCode == "system" || languageCode.isNullOrEmpty()) {
+            LocaleListCompat.getEmptyLocaleList()
+        } else {
+            LocaleListCompat.forLanguageTags(languageCode)
+        }
+        AppCompatDelegate.setApplicationLocales(locales)
+    }
+
     // --- BluetoothLeManager.BleListener Callbacks ---
 
     override fun onStatusUpdate(message: String) {
@@ -157,6 +224,11 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         runOnUiThread {
             Handler(Looper.getMainLooper()).postDelayed({ bluetoothLeManager.requestStatus() }, 500)
             Handler(Looper.getMainLooper()).postDelayed({ bluetoothLeManager.syncTime() }, 1000)
+            Handler(Looper.getMainLooper()).postDelayed({ 
+                val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+                val isEngineeringMode = prefs.getBoolean("engineering_mode", false)
+                bluetoothLeManager.setEngineeringMode(isEngineeringMode)
+            }, 1500)
         }
     }
 

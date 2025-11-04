@@ -9,8 +9,8 @@ extra["branchConfigs"] = mapOf(
         "appName" to "藥到叮嚀",
         "enableLogging" to false,
         "versionCode" to 111,
-        "versionName" to "1.1.1",
-        "archivesBaseName" to "藥到叮嚀-v1.1.2"
+        "versionName" to "1.1.3",
+        "archivesBaseName" to "藥到叮嚀-v1.1.3"
     ),
     "beta" to mapOf(
         "applicationId" to "com.example.medicationreminderapp.beta",
@@ -19,8 +19,8 @@ extra["branchConfigs"] = mapOf(
         "appName" to "藥到叮嚀 (Beta)",
         "enableLogging" to true,
         "versionCode" to 11,
-        "versionName" to "0.1.1",
-        "archivesBaseName" to "藥到叮嚀-v0.1.2-beta"
+        "versionName" to "0.1.3",
+        "archivesBaseName" to "藥到叮嚀-v0.1.3-beta"
     ),
     "alpha" to mapOf(
         "applicationId" to "com.example.medicationreminderapp.alpha",
@@ -29,7 +29,7 @@ extra["branchConfigs"] = mapOf(
         "appName" to "藥到叮嚀 (Alpha)",
         "enableLogging" to true,
         "versionCode" to 1,
-        "versionName" to "0.0.5",
-        "archivesBaseName" to "藥到叮嚀-v0.0.5-alpha"
+        "versionName" to "0.0.6",
+        "archivesBaseName" to "藥到叮嚀-v0.0.6-alpha"
     )
 )
