@@ -1,4 +1,4 @@
-// **BluetoothLeManager.kt (V8.5 - Inline suppression)**
+// **BluetoothLeManager.kt (V8.8 - Engineering Mode Sync)**
 package com.example.medicationreminderapp
 
 import android.annotation.SuppressLint
@@ -17,6 +17,7 @@ import android.content.Context
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.widget.Toast
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.UUID
@@ -32,6 +33,7 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
         fun onMedicationTaken(slotNumber: Int)
         fun onBoxStatusUpdate(slotMask: Byte)
         fun onTimeSyncAcknowledged()
+        fun onEngineeringModeUpdate(isEngineeringMode: Boolean) // New callback
         fun onSensorData(temperature: Float, humidity: Float)
         fun onHistoricSensorData(timestamp: Long, temperature: Float, humidity: Float)
         fun onHistoricDataComplete()
@@ -50,7 +52,6 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
     private val handler = Handler(Looper.getMainLooper())
     private val commandQueue = ConcurrentLinkedQueue<ByteArray>()
     private var isCommandInProgress = false
-
 
     companion object {
         private const val DEVICE_NAME = "SmartMedBox"
@@ -146,7 +147,7 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
                     listener.onStatusUpdate("寫入命令失敗")
                     commandQueue.clear()
                 }
-            }, 150) // 增加延遲以等待 ESP32 處理
+            }, 150)
         }
 
         @Deprecated("Used for Android versions prior to 13 (TIRAMISU)")
@@ -164,34 +165,38 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
             if (data.isEmpty()) return
             when (data[0].toInt() and 0xFF) {
                 0x80 -> { if (data.size > 1) listener.onBoxStatusUpdate(data[1]) }
-                0x81 -> {
-                    if (data.size > 1) listener.onMedicationTaken(data[1].toInt())
-                }
+                0x81 -> { if (data.size > 1) listener.onMedicationTaken(data[1].toInt()) }
                 0x82 -> { listener.onTimeSyncAcknowledged() }
-                0x90 -> { // Instantaneous sensor data
-                    if (data.size > 4) {
-                        val temp = data[1] + data[2] / 100f
-                        val hum = data[3] + data[4] / 100f
+                0x83 -> { // New: Engineering mode status report
+                    if (data.size > 1) listener.onEngineeringModeUpdate(data[1].toInt() == 0x01)
+                }
+                0x90 -> {
+                    if (data.size >= 5) {
+                        val buffer = ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN)
+                        val temp = buffer.getShort(1) / 100.0f
+                        val hum = buffer.getShort(3) / 100.0f
                         listener.onSensorData(temp, hum)
                     }
                 }
-                0x91 -> { // Historic sensor data point
-                    if (data.size > 8) {
-                        val buffer = ByteBuffer.wrap(data, 1, 4).order(ByteOrder.LITTLE_ENDIAN)
-                        val timestamp = buffer.int.toLong()
-                        val temp = data[5] + data[6] / 100f
-                        val hum = data[7] + data[8] / 100f
+                0x91 -> {
+                    if (data.size < 9 || (data.size - 1) % 8 != 0) return
+                    val numRecords = (data.size - 1) / 8
+                    if (numRecords > 5) return
+
+                    val buffer = ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN)
+                    for (i in 0 until numRecords) {
+                        val offset = 1 + i * 8
+                        val timestamp = buffer.getInt(offset).toLong()
+                        val temp = buffer.getShort(offset + 4) / 100.0f
+                        val hum = buffer.getShort(offset + 6) / 100.0f
                         listener.onHistoricSensorData(timestamp, temp, hum)
                     }
                 }
-                0x92 -> { listener.onHistoricDataComplete() } // End of historic data
-                0xEE -> { // Error report
-                    if (data.size > 1) listener.onError(data[1].toInt())
-                }
+                0x92 -> { listener.onHistoricDataComplete() }
+                0xEE -> { if (data.size > 1) listener.onError(data[1].toInt()) }
             }
         }
     }
-
 
     private val scanCallback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
@@ -240,7 +245,7 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
     fun isConnected(): Boolean {
         return gatt != null
     }
-    
+
     private fun sendCommand(command: ByteArray) {
         commandQueue.add(command)
         if (!isCommandInProgress) {
@@ -266,7 +271,7 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
                     gatt?.writeCharacteristic(writeCharacteristic!!)
                 }
             }
-        } else { // 修正後的 else 區塊位置
+        } else {
              isCommandInProgress = false
         }
     }
@@ -298,11 +303,15 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
     }
 
     fun setEngineeringMode(enable: Boolean) {
-        val command = byteArrayOf(
-            0x13.toByte(),
-            if (enable) 0x01.toByte() else 0x00.toByte()
-        )
+        val command = byteArrayOf(0x13.toByte(), if (enable) 0x01.toByte() else 0x00.toByte())
         sendCommand(command)
+        // Provide immediate feedback, but final state is confirmed by onEngineeringModeUpdate
+        Toast.makeText(context, "工程模式狀態已發送", Toast.LENGTH_SHORT).show()
+    }
+    
+    // New method
+    fun requestEngineeringModeStatus() {
+        sendCommand(byteArrayOf(0x14.toByte()))
     }
 
     fun requestStatus() {

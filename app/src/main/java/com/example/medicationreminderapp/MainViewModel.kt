@@ -21,6 +21,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // LiveData for UI state
     val isBleConnected = MutableLiveData<Boolean>(false)
     val bleStatus = MutableLiveData<String>("Disconnected")
+    val isEngineeringMode = MutableLiveData<Boolean>(false) // New LiveData for engineering mode
 
     // LiveData for Sensor Data
     private val _historicSensorData = MutableLiveData<List<SensorDataPoint>>(emptyList())

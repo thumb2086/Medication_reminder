@@ -6,6 +6,7 @@ import android.app.AlertDialog
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.media.RingtoneManager
@@ -23,6 +24,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import androidx.core.os.LocaleListCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -44,6 +46,7 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
     private lateinit var viewModel: MainViewModel
     lateinit var bluetoothLeManager: BluetoothLeManager
     private var alarmManager: AlarmManager? = null
+    private lateinit var prefs: SharedPreferences
 
     private val requestNotificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         if (!isGranted) { Toast.makeText(this, getString(R.string.notification_permission_denied), Toast.LENGTH_LONG).show() }
@@ -58,6 +61,7 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        prefs = PreferenceManager.getDefaultSharedPreferences(this)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         applyCharacterTheme()
 
@@ -66,16 +70,13 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayShowTitleEnabled(false)
 
-        // Handle window insets to avoid UI overlapping with system bars
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             binding.appBarLayout.updatePadding(top = systemBars.top)
             insets
         }
 
-        // ViewModel is shared between Activity and Fragments
         viewModel = ViewModelProvider(this)[MainViewModel::class.java]
-
         alarmManager = getSystemService(ALARM_SERVICE) as? AlarmManager
         bluetoothLeManager = BluetoothLeManager(this, this)
 
@@ -93,11 +94,9 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         }
         binding.viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
-                // Position 0 is ReminderSettingsFragment
                 updateUiForFragment(false)
             }
         })
-        // Initial check
         updateUiForFragment(false)
     }
 
@@ -108,7 +107,6 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
     }
 
     private fun applyCharacterTheme() {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
         val character = prefs.getString("character", "kuromi")
         val themeResId = when (character) {
             "kuromi" -> R.style.Theme_MedicationReminderApp_Kuromi
@@ -179,14 +177,12 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
     }
 
     private fun requestAppPermissions() {
-        // Request Notification Permission (Android 13+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
 
-        // Request Exact Alarm Permission (Android 12+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (alarmManager?.canScheduleExactAlarms() == false) {
                 startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
@@ -228,13 +224,13 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
     override fun onDeviceConnected() {
         viewModel.isBleConnected.value = true
         runOnUiThread {
+            // v20.0: Connection logic changed to sync with firmware
+            // 1. Request box status
             Handler(Looper.getMainLooper()).postDelayed({ bluetoothLeManager.requestStatus() }, 500)
+            // 2. Sync time
             Handler(Looper.getMainLooper()).postDelayed({ bluetoothLeManager.syncTime() }, 1000)
-            Handler(Looper.getMainLooper()).postDelayed({ 
-                val prefs = PreferenceManager.getDefaultSharedPreferences(this)
-                val isEngineeringMode = prefs.getBoolean("engineering_mode", false)
-                bluetoothLeManager.setEngineeringMode(isEngineeringMode)
-            }, 1500)
+            // 3. Request current engineering mode status from the box
+            Handler(Looper.getMainLooper()).postDelayed({ bluetoothLeManager.requestEngineeringModeStatus() }, 1500)
         }
     }
 
@@ -254,6 +250,22 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
             val currentTime = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
             val message = getString(R.string.time_sync_success, currentTime)
             Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    // New callback implementation
+    override fun onEngineeringModeUpdate(isEngineeringMode: Boolean) {
+        runOnUiThread {
+            // Update ViewModel to notify UI (e.g., SettingsFragment)
+            viewModel.isEngineeringMode.value = isEngineeringMode
+            
+            // Persist the received state to local preferences using KTX extension
+            prefs.edit { 
+                putBoolean("engineering_mode", isEngineeringMode)
+            }
+            
+            val status = if (isEngineeringMode) "啟用" else "關閉"
+            Toast.makeText(this, "藥盒回報：工程模式已 $status", Toast.LENGTH_LONG).show()
         }
     }
 

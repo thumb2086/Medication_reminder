@@ -91,8 +91,6 @@ class EnvironmentFragment : Fragment() {
             if (isConnected) {
                 binding.lineChart.visibility = View.VISIBLE
                 binding.notConnectedTextView.visibility = View.GONE
-                // Automatically refresh data on connect
-                viewModel.onRefreshEnvironmentData()
             } else {
                 binding.lineChart.visibility = View.GONE
                 binding.notConnectedTextView.visibility = View.VISIBLE

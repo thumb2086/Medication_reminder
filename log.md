@@ -1,6 +1,25 @@
 # 更新日誌
 
 ## Bug Fixes
+*   **0087:** 修正了 `MainActivity.kt` 中因未使用 KTX 擴充函式而產生的 `SharedPreferences.edit` 警告。
+
+## 功能更新
+*   **0086:** 實現了 App 與藥盒之間工程模式狀態的雙向同步。
+    *   **協定擴充:** 新增了 `0x14`（請求工程模式狀態）和 `0x83`（回報工程模式狀態）兩個藍牙指令。
+    *   **邏輯優化:** App 在連接成功後，會主動向藥盒請求其當前的工程模式狀態，而不是單向地覆寫它。
+    *   **UI 同步:** 設定畫面的「工程模式」開關現在能夠真實反映藥盒的狀態。使用者操作開關時，App 會發送指令，並等待藥盒的狀態回報來更新 UI，確保了狀態的最終一致性。
+*   **0085:** 優化了藍牙協定與 App 的數據處理邏輯。
+    *   **協定優化:** 將歷史數據回報 (`0x91`) 的格式從單筆更新為批次處理，一次最多可傳輸五筆數據，大幅提高了數據同步效率。
+    *   **程式碼修改:** 更新了 `BluetoothLeManager.kt` 中的 `handleIncomingData` 函式，使其能夠解析新的批次數據格式。
+    *   **文件更新:** 同步更新了 `README.md` 和 `README_cn.md` 中的藍牙協定文件。
+    *   **重要提示:** 此項協定變更需要 ESP32 韌體同步更新。
+*   **0084:** 調整了歷史溫濕度數據的同步時機。
+    *   **邏輯修改**: 移除了在 `EnvironmentFragment` 中，每當藍牙連線成功就自動請求歷史數據 (`0x31`) 的邏輯。
+    *   **使用者體驗改善**: 現在，歷史數據的同步將只在使用者於「環境監測」頁面執行下拉刷新手勢時觸發，避免了不必要的自動數據傳輸，給予使用者更大的控制權。
+*   **0083:** 優化了 App 與 ESP32 之間的藍牙數據協定。
+    *   **協定變更**: 將溫濕度數據的傳輸方式，從原本將整數與小數部分拆分的作法，改為更高效、標準的 2-byte 帶正負號整數（原始數值乘以 100）。此修改同時應用於即時數據（`0x90`）和歷史數據（`0x91`）的解析邏輯中，提高了數據處理的穩定性與效率。
+
+## Bug Fixes
 *   **0082:** 修正了工具列標題的垂直對齊問題。
     *   **UI 修正**: 透過在 `activity_main.xml` 中，為標題的 `TextView` 加入 `paddingTop` 屬性，成功地將標題向下移動，使其與右側的設定圖示在視覺上對齊。
 *   **0081:** 修正了工具列標題的顯示問題。
@@ -8,7 +27,7 @@
     *   **UI 修正**: 將 `padding` 改為 `layout_marginBottom`，在不影響 `TextView` 高度的前提下，調整了標題的垂直位置，使其在視覺上更置中。
 *   **0080:** 修正了因為標題置中而導致的嚴重錯誤，並還原了標題的原始位置。
     *   **問題分析**: 經查，在 `0078` 版中，為了將標題置中而加入了 `supportActionBar?.setDisplayShowTitleEnabled(false)`，但這個修改卻意外地導致 `SettingsFragment` 和 `WiFiConfigFragment` 無法正常顯示。
-    *   **緊急修復**: 還原了 `MainActivity.kt` 和 `activity_main.xml` 的相關修改，讓頁面恢復正常顯示。
+    *   **緊急修復**: 還原了 `MainActivity.kt` 和 `activity_main.xml` の相關修改，讓頁面恢復正常顯示。
     *   **UI 修正**: 修改了 `MainActivity.kt` 中的 `updateUiForFragment` 函式，確保返回按鈕只在進入下一層頁面時才會顯示，解決了主畫面出現返回按鈕的問題。
 *   **0079:** 清理了 `MainActivity.kt` 中的多個警告，包括未使用的 `import` 和未使用的函式參數。
 *   **0078:** 修正了工具列標題沒有置中的問題。
@@ -64,7 +83,6 @@
 *   **0062:** 修正了多個 UI 和功能上的錯誤：
     *   **編譯錯誤：** 透過在 `themes.xml` 中直接設定 `preferenceCategoryTitleTextColor`，取代了先前複雜且容易出錯的 `preferenceTheme`，解決了 `Android resource linking failed` 的編譯問題。
     *   **返回 UI 異常：** 在 `SettingsFragment.kt` 的 `onPause` 方法中，主動呼叫 `updateUiForFragment(false)`，強制 `MainActivity` 在返回時重新整理 UI，確保了狀態列的沉浸式效果不會消失。
-    *   **工程模式同步：** 在 `MainActivity.kt` の `onDeviceConnected` 方法中，增加了在藍牙連線成功後，讀取並同步「工程模式」狀態到藥盒的邏輯，確保了兩邊狀態的一致性。
 *   **0061:** 修正了 UI 顯示問題和設定按鈕的功能異常。
     *   **狀態列問題：** 透過修改 `themes.xml` 和 `values-night/themes.xml`，將 `statusBarColor` 設為透明並啟用 `windowDrawsSystemBarBackgrounds`，實現了沉浸式 (Edge-to-Edge) 效果，解決了狀態列背景未填滿和顏色不正確的問題。
     *   **設定按鈕無效：** 取消了 `MainActivity.kt` 中 `onOptionsItemSelected` 函式裡對設定頁面 (`SettingsFragment`) 和 Wi-Fi 設定頁面 (`WiFiConfigFragment`) 導覽邏輯的註解，恢復了設定按鈕的正常功能。
