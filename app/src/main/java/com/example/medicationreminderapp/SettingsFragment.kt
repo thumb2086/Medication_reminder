@@ -7,9 +7,13 @@ import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.preference.ListPreference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
+import kotlinx.coroutines.launch
 
 class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedPreferenceChangeListener {
 
@@ -30,13 +34,17 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         view.setBackgroundColor(typedValue.data)
 
         // Observe the engineering mode status from the ViewModel
-        viewModel.isEngineeringMode.observe(viewLifecycleOwner) { isEnabled ->
-            findPreference<SwitchPreferenceCompat>("engineering_mode")?.let {
-                // Stop listening to changes to prevent feedback loop
-                preferenceScreen.sharedPreferences?.unregisterOnSharedPreferenceChangeListener(this)
-                it.isChecked = isEnabled
-                // Re-register listener
-                preferenceScreen.sharedPreferences?.registerOnSharedPreferenceChangeListener(this)
+        viewLifecycleOwner.lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.isEngineeringMode.collect { isEnabled ->
+                    findPreference<SwitchPreferenceCompat>("engineering_mode")?.let {
+                        // Stop listening to changes to prevent feedback loop
+                        preferenceScreen.sharedPreferences?.unregisterOnSharedPreferenceChangeListener(this@SettingsFragment)
+                        it.isChecked = isEnabled
+                        // Re-register listener
+                        preferenceScreen.sharedPreferences?.registerOnSharedPreferenceChangeListener(this@SettingsFragment)
+                    }
+                }
             }
         }
     }

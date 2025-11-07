@@ -8,12 +8,16 @@ import android.view.ViewGroup
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.example.medicationreminderapp.databinding.FragmentEnvironmentBinding
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.formatter.ValueFormatter
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -86,31 +90,42 @@ class EnvironmentFragment : Fragment() {
     }
 
     private fun setupObservers() {
-        viewModel.isBleConnected.observe(viewLifecycleOwner) { isConnected ->
-            binding.swipeRefreshLayout.isEnabled = isConnected
-            if (isConnected) {
-                binding.lineChart.visibility = View.VISIBLE
-                binding.notConnectedTextView.visibility = View.GONE
-            } else {
-                binding.lineChart.visibility = View.GONE
-                binding.notConnectedTextView.visibility = View.VISIBLE
-                clearChartData()
-            }
-        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.isBleConnected.collect { isConnected ->
+                        binding.swipeRefreshLayout.isEnabled = isConnected
+                        if (isConnected) {
+                            binding.lineChart.visibility = View.VISIBLE
+                            binding.notConnectedTextView.visibility = View.GONE
+                        } else {
+                            binding.lineChart.visibility = View.GONE
+                            binding.notConnectedTextView.visibility = View.VISIBLE
+                            clearChartData()
+                        }
+                    }
+                }
 
-        viewModel.historicSensorData.observe(viewLifecycleOwner) { dataPoints ->
-            if (dataPoints.isNotEmpty()) {
-                updateChart(dataPoints)
-            } else {
-                clearChartData()
-            }
-            if (binding.swipeRefreshLayout.isRefreshing) {
-                binding.swipeRefreshLayout.isRefreshing = false
-            }
-        }
-        viewModel.bleStatus.observe(viewLifecycleOwner) {
-            if (it == "Historic data sync complete" && binding.swipeRefreshLayout.isRefreshing) {
-                binding.swipeRefreshLayout.isRefreshing = false
+                launch {
+                    viewModel.historicSensorData.collect { dataPoints ->
+                        if (dataPoints.isNotEmpty()) {
+                            updateChart(dataPoints)
+                        } else {
+                            clearChartData()
+                        }
+                        if (binding.swipeRefreshLayout.isRefreshing) {
+                            binding.swipeRefreshLayout.isRefreshing = false
+                        }
+                    }
+                }
+
+                launch {
+                    viewModel.bleStatus.collect {
+                        if (it == "Historic data sync complete" && binding.swipeRefreshLayout.isRefreshing) {
+                            binding.swipeRefreshLayout.isRefreshing = false
+                        }
+                    }
+                }
             }
         }
     }

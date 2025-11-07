@@ -12,10 +12,14 @@ import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.preference.PreferenceManager
 import com.example.medicationreminderapp.databinding.FragmentReminderSettingsBinding
 import com.example.medicationreminderapp.databinding.MedicationInputItemBinding
 import com.google.android.material.chip.Chip
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -77,16 +81,28 @@ class ReminderSettingsFragment : Fragment() {
     }
 
     private fun setupObservers() {
-        viewModel.isBleConnected.observe(viewLifecycleOwner) { isConnected ->
-            binding.connectButton.visibility = if (isConnected) View.GONE else View.VISIBLE
-            binding.disconnectButton.visibility = if (isConnected) View.VISIBLE else View.GONE
-        }
-        viewModel.bleStatus.observe(viewLifecycleOwner) { status ->
-            binding.bleStatusTextView.text = status
-        }
-        viewModel.medicationList.observe(viewLifecycleOwner) {
-            setupMedicationCountSpinner()
-            updateAllSlotSpinners()
+        viewLifecycleOwner.lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.isBleConnected.collect { isConnected ->
+                        binding.connectButton.visibility = if (isConnected) View.GONE else View.VISIBLE
+                        binding.disconnectButton.visibility = if (isConnected) View.VISIBLE else View.GONE
+                    }
+                }
+
+                launch {
+                    viewModel.bleStatus.collect { status ->
+                        binding.bleStatusTextView.text = status
+                    }
+                }
+
+                launch {
+                    viewModel.medicationList.collect { 
+                        setupMedicationCountSpinner()
+                        updateAllSlotSpinners()
+                    }
+                }
+            }
         }
     }
 
@@ -120,7 +136,7 @@ class ReminderSettingsFragment : Fragment() {
     }
 
     private fun showMedicationSelectionDialog(isForEdit: Boolean) {
-        val medications = viewModel.medicationList.value ?: emptyList()
+        val medications = viewModel.medicationList.value
         if (medications.isEmpty()) {
             Toast.makeText(requireContext(), getString(R.string.no_medication_to_modify), Toast.LENGTH_SHORT).show()
             return
@@ -187,9 +203,9 @@ class ReminderSettingsFragment : Fragment() {
     private fun getAvailableSlots(): List<Int> {
         val allSlots = (1..8).toSet()
         val occupiedSlots = viewModel.medicationList.value
-            ?.map { it.slotNumber }
-            ?.filter { it != editingMedication?.slotNumber }
-            ?.toSet() ?: emptySet()
+            .map { it.slotNumber }
+            .filter { it != editingMedication?.slotNumber }
+            .toSet()
         return (allSlots - occupiedSlots).toList().sorted()
     }
 
@@ -379,7 +395,6 @@ class ReminderSettingsFragment : Fragment() {
         val endDate = cardState.endDate
         val times = cardState.times
         val dosage = cardBinding.dosageSlider.value
-        val notes = cardBinding.notesEditText.text.toString()
 
         if (name.isBlank() || slot == null || startDate == null || endDate == null) {
             Toast.makeText(requireContext(), getString(R.string.please_fill_all_fields), Toast.LENGTH_LONG).show()
@@ -403,10 +418,6 @@ class ReminderSettingsFragment : Fragment() {
         val totalPills = days * dosesPerDay * pillsPerDose
 
         val timesMap = times.values.mapIndexed { index, calendar -> index to calendar.timeInMillis }.toMap()
-
-        if (notes.isNotBlank()) {
-            viewModel.notesMap.value?.put(name, notes)
-        }
 
         return Medication(
             id = medicationId,

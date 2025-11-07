@@ -8,11 +8,15 @@ import android.widget.TextView
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.example.medicationreminderapp.databinding.FragmentHistoryBinding
 import com.kizitonwose.calendar.core.CalendarDay
 import com.kizitonwose.calendar.core.DayPosition
 import com.kizitonwose.calendar.view.MonthDayBinder
 import com.kizitonwose.calendar.view.ViewContainer
+import kotlinx.coroutines.launch
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 
@@ -47,30 +51,37 @@ class HistoryFragment : Fragment() {
     }
 
     private fun setupObservers() {
-        viewModel.dailyStatusMap.observe(viewLifecycleOwner) { statusMap ->
-            binding.calendarView.dayBinder = object : MonthDayBinder<DayViewContainer> {
-                override fun create(view: View) = DayViewContainer(view)
-                override fun bind(container: DayViewContainer, data: CalendarDay) {
-                    val textView = container.view.findViewById<TextView>(R.id.calendarDayText)
-                    textView.text = data.date.dayOfMonth.toString()
-                    val dotView = container.view.findViewById<View>(R.id.dotView)
+        viewLifecycleOwner.lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.dailyStatusMap.collect { statusMap ->
+                        binding.calendarView.dayBinder = object : MonthDayBinder<DayViewContainer> {
+                            override fun create(view: View) = DayViewContainer(view)
+                            override fun bind(container: DayViewContainer, data: CalendarDay) {
+                                val textView = container.view.findViewById<TextView>(R.id.calendarDayText)
+                                textView.text = data.date.dayOfMonth.toString()
+                                val dotView = container.view.findViewById<View>(R.id.dotView)
 
-                    if (data.position == DayPosition.MonthDate) {
-                        val dateStr = formatter.format(data.date)
-                        dotView.isVisible = statusMap[dateStr] == MainViewModel.STATUS_ALL_TAKEN
-                    } else {
-                        dotView.isVisible = false
+                                if (data.position == DayPosition.MonthDate) {
+                                    val dateStr = formatter.format(data.date)
+                                    dotView.isVisible = statusMap[dateStr] == MainViewModel.STATUS_ALL_TAKEN
+                                } else {
+                                    dotView.isVisible = false
+                                }
+                            }
+                        }
+                    }
+                }
+
+                launch {
+                    viewModel.complianceRate.collect { rate ->
+                        val percentage = (rate * 100).toInt()
+                        binding.complianceRateTextView.text = getString(R.string.compliance_rate_format, percentage)
                     }
                 }
             }
         }
-
-        viewModel.complianceRate.observe(viewLifecycleOwner) { rate ->
-            val percentage = (rate * 100).toInt()
-            binding.complianceRateTextView.text = getString(R.string.compliance_rate_format, percentage)
-        }
     }
-
 
     override fun onDestroyView() {
         super.onDestroyView()

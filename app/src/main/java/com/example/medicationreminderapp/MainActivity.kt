@@ -21,6 +21,7 @@ import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
@@ -31,20 +32,25 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.fragment.app.commit
-import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.preference.PreferenceManager
 import androidx.viewpager2.widget.ViewPager2
 import com.example.medicationreminderapp.adapter.ViewPagerAdapter
 import com.example.medicationreminderapp.databinding.ActivityMainBinding
 import com.google.android.material.tabs.TabLayoutMediator
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
 
     internal lateinit var binding: ActivityMainBinding
-    private lateinit var viewModel: MainViewModel
-    lateinit var bluetoothLeManager: BluetoothLeManager
+    private val viewModel: MainViewModel by viewModels()
+    @Inject lateinit var bluetoothLeManager: BluetoothLeManager
     private var alarmManager: AlarmManager? = null
     private lateinit var prefs: SharedPreferences
 
@@ -76,9 +82,8 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
             insets
         }
 
-        viewModel = ViewModelProvider(this)[MainViewModel::class.java]
         alarmManager = getSystemService(ALARM_SERVICE) as? AlarmManager
-        bluetoothLeManager = BluetoothLeManager(this, this)
+        bluetoothLeManager.listener = this
 
         createNotificationChannel()
         setupViewPagerAndTabs()
@@ -117,14 +122,24 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
     }
 
     private fun observeViewModel() {
-        viewModel.requestBleAction.observe(this) { action ->
-            if (viewModel.isBleConnected.value != true) {
-                Toast.makeText(this, "Bluetooth not connected", Toast.LENGTH_SHORT).show()
-                return@observe
-            }
-            when (action) {
-                MainViewModel.BleAction.REQUEST_ENV_DATA -> bluetoothLeManager.requestEnvironmentData()
-                MainViewModel.BleAction.REQUEST_HISTORIC_ENV_DATA -> bluetoothLeManager.requestHistoricEnvironmentData()
+        lifecycleScope.launch {
+            repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.bleStatus.collect { status ->
+                        viewModel.setBleStatus(status)
+                    }
+                }
+
+                viewModel.requestBleAction.observe(this@MainActivity) { action ->
+                    if (viewModel.isBleConnected.value) {
+                        when (action) {
+                            MainViewModel.BleAction.REQUEST_ENV_DATA -> bluetoothLeManager.requestEnvironmentData()
+                            MainViewModel.BleAction.REQUEST_HISTORIC_ENV_DATA -> bluetoothLeManager.requestHistoricEnvironmentData()
+                        }
+                    } else {
+                        Toast.makeText(this@MainActivity, "Bluetooth not connected", Toast.LENGTH_SHORT).show()
+                    }
+                }
             }
         }
     }
@@ -218,24 +233,26 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
     // --- BluetoothLeManager.BleListener Callbacks ---
 
     override fun onStatusUpdate(message: String) {
-        runOnUiThread { viewModel.bleStatus.value = message }
+        viewModel.setBleStatus(message)
     }
 
     override fun onDeviceConnected() {
-        viewModel.isBleConnected.value = true
+        viewModel.setBleConnectionState(true)
         runOnUiThread {
-            // v20.0: Connection logic changed to sync with firmware
-            // 1. Request box status
             Handler(Looper.getMainLooper()).postDelayed({ bluetoothLeManager.requestStatus() }, 500)
-            // 2. Sync time
             Handler(Looper.getMainLooper()).postDelayed({ bluetoothLeManager.syncTime() }, 1000)
-            // 3. Request current engineering mode status from the box
             Handler(Looper.getMainLooper()).postDelayed({ bluetoothLeManager.requestEngineeringModeStatus() }, 1500)
         }
     }
 
     override fun onDeviceDisconnected() {
-        viewModel.isBleConnected.value = false
+         viewModel.setBleConnectionState(false)
+    }
+    
+    override fun onProtocolVersionReported(version: Int) {
+        runOnUiThread {
+            Toast.makeText(this, "藥盒協定版本: $version", Toast.LENGTH_LONG).show()
+        }
     }
 
     override fun onMedicationTaken(slotNumber: Int) {
@@ -253,24 +270,17 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         }
     }
     
-    // New callback implementation
     override fun onEngineeringModeUpdate(isEngineeringMode: Boolean) {
+        viewModel.setEngineeringMode(isEngineeringMode)
         runOnUiThread {
-            // Update ViewModel to notify UI (e.g., SettingsFragment)
-            viewModel.isEngineeringMode.value = isEngineeringMode
-            
-            // Persist the received state to local preferences using KTX extension
-            prefs.edit { 
-                putBoolean("engineering_mode", isEngineeringMode)
-            }
-            
+            prefs.edit { putBoolean("engineering_mode", isEngineeringMode) }
             val status = if (isEngineeringMode) "啟用" else "關閉"
             Toast.makeText(this, "藥盒回報：工程模式已 $status", Toast.LENGTH_LONG).show()
         }
     }
 
     override fun onSensorData(temperature: Float, humidity: Float) {
-        runOnUiThread { viewModel.onNewSensorData(temperature, humidity) }
+        viewModel.onNewSensorData(temperature, humidity)
     }
 
     override fun onHistoricSensorData(timestamp: Long, temperature: Float, humidity: Float) {

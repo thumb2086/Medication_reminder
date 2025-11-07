@@ -1,9 +1,24 @@
 # 更新日誌
 
-## Bug Fixes
-*   **0087:** 修正了 `MainActivity.kt` 中因未使用 KTX 擴充函式而產生的 `SharedPreferences.edit` 警告。
+## 架構優化
+*   **0090:** **導入 Hilt 實現依賴注入。**
+    *   **重構範圍:** 為 `MainViewModel` 和 `BluetoothLeManager` 導入 Hilt 依賴注入。
+    *   **程式碼修改:**
+        *   在 `build.gradle.kts` 中設定 Hilt。
+        *   建立 `MedicationReminderApplication` 並在 `AndroidManifest.xml` 中註冊。
+        *   為 `MainActivity` 和 `MainViewModel` 加上 Hilt 註解。
+        *   建立 `AppModule` 來提供 `BluetoothLeManager` 的實例。
+    *   **優點:** 降低了元件之間的耦合度，提高了程式碼的可測試性和可維護性。
+*   **0089:** **將 `MainViewModel` 中的 `LiveData` 重構為 `StateFlow`。**
+    *   **重構範圍:** `isBleConnected`, `bleStatus`, `isEngineeringMode`, `historicSensorData`, `medicationList`, `dailyStatusMap`, `notesMap`, and `complianceRate`。
+    *   **UI 層更新:** 同步更新了 `MainActivity` 和所有相關的 Fragment (`EnvironmentFragment`, `HistoryFragment`, `MedicationListFragment`, `ReminderSettingsFragment`, `SettingsFragment`)，改為使用 `lifecycleScope.launch` 和 `repeatOnLifecycle` 來收集 `StateFlow` 的更新。
+    *   **優點:** 提高了 UI 狀態管理的可預測性、線程安全性，並為未來導入更複雜的非同步數據流操作打下了基礎。
 
 ## 功能更新
+*   **0088:** **引入藍牙協定版本控制並規劃未來優化方向。**
+    *   **協定版本化:** 新增了 `0x01`（請求協定版本）和 `0x71`（回報協定版本）指令。App 現在會主動查詢藥盒的協定版本，並根據版本號動態選擇數據解析邏輯（例如，`0x91` 的單筆或批次解析），實現了向下兼容。
+    *   **文件更新:** 在 `README.md` 和 `README_cn.md` 中新增了「通訊協定版本化」章節，並加入了「未來優化方向」的規劃，涵蓋架構、程式碼品質、UI/UX 和穩定性四個方面。
+*   **0087:** 修正了 `MainActivity.kt` 中因未使用 KTX 擴充函式而產生的 `SharedPreferences.edit` 警告。
 *   **0086:** 實現了 App 與藥盒之間工程模式狀態的雙向同步。
     *   **協定擴充:** 新增了 `0x14`（請求工程模式狀態）和 `0x83`（回報工程模式狀態）兩個藍牙指令。
     *   **邏輯優化:** App 在連接成功後，會主動向藥盒請求其當前的工程模式狀態，而不是單向地覆寫它。

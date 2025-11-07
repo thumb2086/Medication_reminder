@@ -1,4 +1,4 @@
-// **BluetoothLeManager.kt (V8.8 - Engineering Mode Sync)**
+// **BluetoothLeManager.kt (V8.9 - Protocol Versioning)**
 package com.example.medicationreminderapp
 
 import android.annotation.SuppressLint
@@ -18,22 +18,29 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.UUID
 import java.util.concurrent.ConcurrentLinkedQueue
+import javax.inject.Inject
+import javax.inject.Singleton
 
 @SuppressLint("MissingPermission")
-class BluetoothLeManager(private val context: Context, private val listener: BleListener) {
+@Singleton
+class BluetoothLeManager @Inject constructor(@ApplicationContext private val context: Context) {
+
+    var listener: BleListener? = null
 
     interface BleListener {
         fun onStatusUpdate(message: String)
         fun onDeviceConnected()
         fun onDeviceDisconnected()
+        fun onProtocolVersionReported(version: Int) // New callback
         fun onMedicationTaken(slotNumber: Int)
         fun onBoxStatusUpdate(slotMask: Byte)
         fun onTimeSyncAcknowledged()
-        fun onEngineeringModeUpdate(isEngineeringMode: Boolean) // New callback
+        fun onEngineeringModeUpdate(isEngineeringMode: Boolean)
         fun onSensorData(temperature: Float, humidity: Float)
         fun onHistoricSensorData(timestamp: Long, temperature: Float, humidity: Float)
         fun onHistoricDataComplete()
@@ -52,6 +59,7 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
     private val handler = Handler(Looper.getMainLooper())
     private val commandQueue = ConcurrentLinkedQueue<ByteArray>()
     private var isCommandInProgress = false
+    private var protocolVersion: Int = 1 // Default to legacy protocol version
 
     companion object {
         private const val DEVICE_NAME = "SmartMedBox"
@@ -66,22 +74,24 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
             val deviceAddress = gatt.device.address
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
-                    listener.onStatusUpdate("已連接至 $deviceAddress，正在搜尋服務...")
+                    listener?.onStatusUpdate("已連接至 $deviceAddress，正在搜尋服務...")
                     handler.post { gatt.discoverServices() }
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                     this@BluetoothLeManager.gatt?.close()
                     this@BluetoothLeManager.gatt = null
                     isCommandInProgress = false
                     commandQueue.clear()
-                    listener.onDeviceDisconnected()
+                    protocolVersion = 1 // Reset on disconnect
+                    listener?.onDeviceDisconnected()
                 }
             } else {
                 gatt.close()
                 this@BluetoothLeManager.gatt = null
                 isCommandInProgress = false
                 commandQueue.clear()
-                listener.onStatusUpdate("連接失敗，狀態碼: $status")
-                listener.onDeviceDisconnected()
+                protocolVersion = 1 // Reset on disconnect
+                listener?.onStatusUpdate("連接失敗，狀態碼: $status")
+                listener?.onDeviceDisconnected()
             }
         }
 
@@ -89,21 +99,21 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 val service = gatt.getService(SERVICE_UUID)
                 if (service == null) {
-                    listener.onStatusUpdate("找不到指定的服務 UUID")
+                    listener?.onStatusUpdate("找不到指定的服務 UUID")
                     disconnect()
                     return
                 }
                 writeCharacteristic = service.getCharacteristic(WRITE_CHARACTERISTIC_UUID)
                 notifyCharacteristic = service.getCharacteristic(NOTIFY_CHARACTERISTIC_UUID)
                 if (writeCharacteristic == null || notifyCharacteristic == null) {
-                    listener.onStatusUpdate("找不到指定的特徵 UUID")
+                    listener?.onStatusUpdate("找不到指定的特徵 UUID")
                     disconnect()
                     return
                 }
-                listener.onStatusUpdate("服務和特徵已找到，正在啟用通知...")
+                listener?.onStatusUpdate("服務和特徵已找到，正在啟用通知...")
                 enableNotifications()
             } else {
-                listener.onStatusUpdate("服務搜尋失敗，狀態碼: $status")
+                listener?.onStatusUpdate("服務搜尋失敗，狀態碼: $status")
                 disconnect()
             }
         }
@@ -130,10 +140,12 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
 
         override fun onDescriptorWrite(gatt: BluetoothGatt?, descriptor: BluetoothGattDescriptor?, status: Int) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                listener.onStatusUpdate("通知已成功啟用")
-                listener.onDeviceConnected()
+                listener?.onStatusUpdate("通知已成功啟用")
+                listener?.onDeviceConnected()
+                // Connection is established, now query for protocol version
+                requestProtocolVersion()
             } else {
-                listener.onStatusUpdate("啟用通知失敗，狀態碼: $status")
+                listener?.onStatusUpdate("啟用通知失敗，狀態碼: $status")
                 disconnect()
             }
         }
@@ -144,7 +156,7 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
                 if (status == BluetoothGatt.GATT_SUCCESS) {
                     processNextCommand()
                 } else {
-                    listener.onStatusUpdate("寫入命令失敗")
+                    listener?.onStatusUpdate("寫入命令失敗")
                     commandQueue.clear()
                 }
             }, 150)
@@ -164,36 +176,53 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
         private fun handleIncomingData(data: ByteArray) {
             if (data.isEmpty()) return
             when (data[0].toInt() and 0xFF) {
-                0x80 -> { if (data.size > 1) listener.onBoxStatusUpdate(data[1]) }
-                0x81 -> { if (data.size > 1) listener.onMedicationTaken(data[1].toInt()) }
-                0x82 -> { listener.onTimeSyncAcknowledged() }
-                0x83 -> { // New: Engineering mode status report
-                    if (data.size > 1) listener.onEngineeringModeUpdate(data[1].toInt() == 0x01)
+                0x71 -> { // New: Protocol version report
+                    if (data.size > 1) {
+                        protocolVersion = data[1].toInt()
+                        listener?.onProtocolVersionReported(protocolVersion)
+                    }
+                }
+                0x80 -> { if (data.size > 1) listener?.onBoxStatusUpdate(data[1]) }
+                0x81 -> { if (data.size > 1) listener?.onMedicationTaken(data[1].toInt()) }
+                0x82 -> { listener?.onTimeSyncAcknowledged() }
+                0x83 -> { 
+                    if (data.size > 1) listener?.onEngineeringModeUpdate(data[1].toInt() == 0x01)
                 }
                 0x90 -> {
                     if (data.size >= 5) {
                         val buffer = ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN)
                         val temp = buffer.getShort(1) / 100.0f
                         val hum = buffer.getShort(3) / 100.0f
-                        listener.onSensorData(temp, hum)
+                        listener?.onSensorData(temp, hum)
                     }
                 }
                 0x91 -> {
-                    if (data.size < 9 || (data.size - 1) % 8 != 0) return
-                    val numRecords = (data.size - 1) / 8
-                    if (numRecords > 5) return
+                    if (protocolVersion >= 2) {
+                        // Protocol V2: Batch processing
+                        if (data.size < 9 || (data.size - 1) % 8 != 0) return
+                        val numRecords = (data.size - 1) / 8
+                        if (numRecords > 5) return
 
-                    val buffer = ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN)
-                    for (i in 0 until numRecords) {
-                        val offset = 1 + i * 8
-                        val timestamp = buffer.getInt(offset).toLong()
-                        val temp = buffer.getShort(offset + 4) / 100.0f
-                        val hum = buffer.getShort(offset + 6) / 100.0f
-                        listener.onHistoricSensorData(timestamp, temp, hum)
+                        val buffer = ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN)
+                        for (i in 0 until numRecords) {
+                            val offset = 1 + i * 8
+                            val timestamp = buffer.getInt(offset).toLong()
+                            val temp = buffer.getShort(offset + 4) / 100.0f
+                            val hum = buffer.getShort(offset + 6) / 100.0f
+                            listener?.onHistoricSensorData(timestamp, temp, hum)
+                        }
+                    } else {
+                        // Protocol V1: Single record processing
+                        if (data.size < 9) return
+                        val buffer = ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN)
+                        val timestamp = buffer.getInt(1).toLong()
+                        val temp = buffer.getShort(5) / 100.0f
+                        val hum = buffer.getShort(7) / 100.0f
+                        listener?.onHistoricSensorData(timestamp, temp, hum)
                     }
                 }
-                0x92 -> { listener.onHistoricDataComplete() }
-                0xEE -> { if (data.size > 1) listener.onError(data[1].toInt()) }
+                0x92 -> { listener?.onHistoricDataComplete() }
+                0xEE -> { if (data.size > 1) listener?.onError(data[1].toInt()) }
             }
         }
     }
@@ -202,24 +231,24 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
         override fun onScanResult(callbackType: Int, result: ScanResult) {
             if (result.device.name == DEVICE_NAME) {
                 stopScan()
-                listener.onStatusUpdate("找到藥盒，正在連接...")
+                listener?.onStatusUpdate("找到藥盒，正在連接...")
                 connect(result.device)
             }
         }
         override fun onScanFailed(errorCode: Int) {
             isScanning = false
-            listener.onStatusUpdate("掃描失敗，錯誤碼: $errorCode")
+            listener?.onStatusUpdate("掃描失敗，錯誤碼: $errorCode")
         }
     }
 
     fun startScan() {
         if (isScanning) return
-        listener.onStatusUpdate("正在掃描智慧藥盒...")
+        listener?.onStatusUpdate("正在掃描智慧藥盒...")
         isScanning = true
         handler.postDelayed({
             if (isScanning) {
                 stopScan()
-                listener.onStatusUpdate("掃描超時，未找到藥盒")
+                listener?.onStatusUpdate("掃描超時，未找到藥盒")
             }
         }, 10000)
         val scanSettings = ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build()
@@ -238,7 +267,7 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
     }
 
     fun disconnect() {
-        listener.onDeviceDisconnected()
+        listener?.onDeviceDisconnected()
         gatt?.disconnect()
     }
 
@@ -275,6 +304,11 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
              isCommandInProgress = false
         }
     }
+    
+    // New method to request protocol version from the device
+    fun requestProtocolVersion() {
+        sendCommand(byteArrayOf(0x01.toByte()))
+    }
 
     fun syncTime() {
         val now = java.util.Calendar.getInstance()
@@ -305,11 +339,9 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
     fun setEngineeringMode(enable: Boolean) {
         val command = byteArrayOf(0x13.toByte(), if (enable) 0x01.toByte() else 0x00.toByte())
         sendCommand(command)
-        // Provide immediate feedback, but final state is confirmed by onEngineeringModeUpdate
         Toast.makeText(context, "工程模式狀態已發送", Toast.LENGTH_SHORT).show()
     }
     
-    // New method
     fun requestEngineeringModeStatus() {
         sendCommand(byteArrayOf(0x14.toByte()))
     }
@@ -321,6 +353,8 @@ class BluetoothLeManager(private val context: Context, private val listener: Ble
     fun requestEnvironmentData() {
         sendCommand(byteArrayOf(0x30.toByte()))
     }
+
+
 
     fun requestHistoricEnvironmentData() {
         sendCommand(byteArrayOf(0x31.toByte()))

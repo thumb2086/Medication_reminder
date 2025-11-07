@@ -6,9 +6,13 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.medicationreminderapp.adapter.MedicationListAdapter
 import com.example.medicationreminderapp.databinding.FragmentMedicationListBinding
+import kotlinx.coroutines.launch
 
 class MedicationListFragment : Fragment() {
 
@@ -41,14 +45,18 @@ class MedicationListFragment : Fragment() {
     }
 
     private fun observeViewModel() {
-        viewModel.medicationList.observe(viewLifecycleOwner) { medications ->
-            if (medications.isNullOrEmpty()) {
-                binding.medicationRecyclerView.visibility = View.GONE
-                binding.emptyView.visibility = View.VISIBLE
-            } else {
-                binding.medicationRecyclerView.visibility = View.VISIBLE
-                binding.emptyView.visibility = View.GONE
-                medicationAdapter.submitList(medications)
+        viewLifecycleOwner.lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.medicationList.collect { medications ->
+                    if (medications.isEmpty()) {
+                        binding.medicationRecyclerView.visibility = View.GONE
+                        binding.emptyView.visibility = View.VISIBLE
+                    } else {
+                        binding.medicationRecyclerView.visibility = View.VISIBLE
+                        binding.emptyView.visibility = View.GONE
+                        medicationAdapter.submitList(medications)
+                    }
+                }
             }
         }
     }
