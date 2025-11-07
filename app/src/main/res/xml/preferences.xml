@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <PreferenceCategory app:title="@string/theme_settings">
+    <PreferenceCategory app:title="@string/appearance_settings">
 
         <ListPreference
             app:key="theme"
@@ -10,6 +10,40 @@
             app:entries="@array/theme_entries"
             app:entryValues="@array/theme_values"
             app:defaultValue="system" />
+
+        <ListPreference
+            app:key="language"
+            app:title="@string/language"
+            app:summary="%s"
+            app:entries="@array/language_entries"
+            app:entryValues="@array/language_values"
+            app:defaultValue="system" />
+
+        <ListPreference
+            app:key="accent_color"
+            app:title="@string/accent_color"
+            app:summary="%s"
+            app:entries="@array/accent_color_entries"
+            app:entryValues="@array/accent_color_values"
+            app:defaultValue="default" />
+
+        <ListPreference
+            app:key="character"
+            app:title="@string/character"
+            app:summary="%s"
+            app:entries="@array/character_entries"
+            app:entryValues="@array/character_values"
+            app:defaultValue="kuromi" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/developer_settings">
+
+        <SwitchPreferenceCompat
+            app:key="engineering_mode"
+            app:title="@string/engineering_mode"
+            app:summary="@string/engineering_mode_summary"
+            app:defaultValue="false" />
 
     </PreferenceCategory>
 

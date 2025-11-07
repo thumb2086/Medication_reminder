@@ -59,31 +59,31 @@
     <string name="set_all_medication_times">請設定所有必要的服藥時間</string>
     <string name="slot_occupied_title">藥倉已被佔用</string>
     <string name="slot_occupied_message">藥倉 #%d 已被其他藥物佔用，請選擇其他藥倉。</string>
-    <string name="medication_added_to_slot">藥物 \\%s\\ 已新增至第 %d 倉</string>
+    <string name="medication_added_to_slot">"藥物 '%s' 已新增至第 %d 倉"</string>
 
     <!-- Medication Info & Management -->
     <string name="edit_reminder">編輯提醒</string>
     <string name="delete_reminder">刪除提醒</string>
     <string name="low_stock_warning_title">低庫存警告</string>
-    <string name="low_stock_warning_message">藥物 \\%s\\ 即將用完，僅剩 %d 顆，請記得補充！</string>
+    <string name="low_stock_warning_message">"藥物 '%s' 即將用完，僅剩 %d 顆，請記得補充！"</string>
     <string name="reminders_synced_to_box">提醒已同步至藥盒</string>
     <string name="no_medication_reminders">無提醒</string>
     <string name="no_medication_to_modify">沒有可修改或刪除的藥物</string>
     <string name="select_medication_to_edit">選擇要編輯的藥物</string>
     <string name="select_medication_to_delete">選擇要刪除的藥物</string>
-    <string name="editing_medication">正在編輯 \'%s\'，請修改後重新儲存</string>
+    <string name="editing_medication">"正在編輯 '%s'，請修改後重新儲存"</string>
     <string name="confirm_delete_title">確認刪除</string>
-    <string name="confirm_delete_message">您確定要刪除藥物提醒 \'%s\' 嗎？</string>
-    <string name="medication_deleted">\'%s\' 已刪除</string>
-    <string name="medication_updated">藥物 \'%s\' 已更新</string>
+    <string name="confirm_delete_message">"您確定要刪除藥物提醒 '%s' 嗎？"</string>
+    <string name="medication_deleted">"'%s' 已刪除"</string>
+    <string name="medication_updated">"藥物 '%s' 已更新"</string>
     <string name="medication_info_header">— 藥物 %d —</string>
-    <string name="medication_info_name">名稱: %s (藥倉: #%d)\\n</string>
-    <string name="medication_info_dosage">劑量: %s\\n</string>
-    <string name="medication_info_stock">庫存: %d / %d 顆\\n</string>
-    <string name="medication_info_date_range">日期區間: %s 至 %s\\n</string>
-    <string name="medication_info_times">服藥時間:\\n</string>
-    <string name="medication_info_time_entry">  — %s: %s\\n</string>
-    <string name="medication_info_notes">備註: %s\\n</string>
+    <string name="medication_info_name">名稱: %s (藥倉: #%d)\n</string>
+    <string name="medication_info_dosage">劑量: %s\n</string>
+    <string name="medication_info_stock">庫存: %d / %d 顆\n</string>
+    <string name="medication_info_date_range">日期區間: %s 至 %s\n</string>
+    <string name="medication_info_times">服藥時間:\n</string>
+    <string name="medication_info_time_entry">  — %s: %s\n</string>
+    <string name="medication_info_notes">備註: %s\n</string>
     <string name="time_label_morning">早上</string>
     <string name="time_label_noon">中午</string>
     <string name="time_label_evening">晚上</string>
@@ -128,6 +128,7 @@
 
     <!-- New Strings for Fragment Architecture -->
     <string name="connect_box">連接藥盒</string>
+    <string name="disconnect_box">斷開藥盒</string>
     <string name="disconnected">未連接</string>
     <string name="how_many_meds_prompt">要新增幾種藥物？</string>
     <string name="medication_name">藥物名稱</string>
@@ -148,7 +149,8 @@
     <string name="environment_monitor">環境監測</string>
 
     <!-- Settings -->
-    <string name="theme_settings">主題設定</string>
+    <string name="title_settings">設定</string>
+    <string name="appearance_settings">外觀設定</string>
     <string name="theme">主題</string>
     <string-array name="theme_entries">
         <item>@string/themes_light</item>
@@ -160,5 +162,68 @@
         <item>dark</item>
         <item>system</item>
     </string-array>
+    <string name="language">語言</string>
+    <string name="language_system">跟隨系統</string>
+    <string name="language_zh_tw">繁體中文</string>
+    <string name="language_en">English</string>
+    <string-array name="language_entries">
+        <item>@string/language_system</item>
+        <item>@string/language_zh_tw</item>
+        <item>@string/language_en</item>
+    </string-array>
+    <string-array name="language_values">
+        <item>system</item>
+        <item>zh-TW</item>
+        <item>en</item>
+    </string-array>
+
+    <string name="accent_color">輔助顏色</string>
+    <string name="accent_color_default">預設</string>
+    <string name="accent_color_pink">粉色</string>
+    <string name="accent_color_blue">藍色</string>
+    <string name="accent_color_green">綠色</string>
+    <string name="accent_color_purple">紫色</string>
+    <string name="accent_color_orange">橘色</string>
+    <string-array name="accent_color_entries">
+        <item>@string/accent_color_default</item>
+        <item>@string/accent_color_pink</item>
+        <item>@string/accent_color_blue</item>
+        <item>@string/accent_color_green</item>
+        <item>@string/accent_color_purple</item>
+        <item>@string/accent_color_orange</item>
+    </string-array>
+    <string-array name="accent_color_values">
+        <item>default</item>
+        <item>pink</item>
+        <item>blue</item>
+        <item>green</item>
+        <item>purple</item>
+        <item>orange</item>
+    </string-array>
+
+    <string name="character">角色</string>
+    <string name="character_kuromi">酷洛米</string>
+    <string name="character_chibi_maruko_chan">櫻桃小丸子</string>
+    <string-array name="character_entries">
+        <item>@string/character_kuromi</item>
+        <item>@string/character_chibi_maruko_chan</item>
+    </string-array>
+    <string-array name="character_values">
+        <item>kuromi</item>
+        <item>chibi_maruko_chan</item>
+    </string-array>
+
+    <string name="kuromi_image_description">酷洛米圖片</string>
+
+    <!-- Wi-Fi Settings -->
+    <string name="wifi_settings">Wi-Fi 設定</string>
+    <string name="wifi_ssid">Wi-Fi 名稱 (SSID)</string>
+    <string name="wifi_password">Wi-Fi 密碼</string>
+    <string name="send_wifi_credentials">傳送 Wi-Fi 憑證</string>
+
+    <!-- Engineering Mode -->
+    <string name="developer_settings">開發者設定</string>
+    <string name="engineering_mode">工程模式</string>
+    <string name="engineering_mode_summary">啟用後將會開啟額外的除錯功能</string>
 
 </resources>

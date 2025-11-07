@@ -17,6 +17,7 @@
 *   **可靠的鬧鐘提醒:**
     *   在您設定的每個服藥時間，App 都會發送精確的本地通知。
     *   即使 App 未在前景執行，或手機重新開機，鬧鐘依然有效。
+    *   通知中包含「已服用」和「稍後提醒」操作，方便快速互動。
 *   **藍牙智能藥盒整合:**
     *   **引導式放藥 (Guided Filling):** 新增藥物時，App 會引導您逐一完成。每設定完一筆藥物，藥盒會自動旋轉到對應藥倉，讓您直接放入藥物，並透過藥盒上的按鈕確認，實現軟硬體結合的流暢體驗。
     *   掃描並連接到智能藥盒。
@@ -24,10 +25,13 @@
     *   接收藥盒的狀態更新，例如：哪個藥倉的藥物已被取出、藥倉堵塞、感應器錯誤等。
 *   **數據監測與追蹤:**
     *   在「環境監測」頁面，當藍牙連接時，透過 **即時折線圖** 視覺化呈現藥盒回傳的溫濕度數據；未連接時，則会顯示提示訊息。當使用者下拉刷新時，App 會從藥盒同步離線期間的 **歷史溫濕度數據**，並完整呈現在圖表上。
+*   **服藥紀錄:** 
     *   在「服藥紀錄」頁面，透過月曆視覺化呈現每日服藥記錄，並計算顯示過去 30 天的服藥依從率。
 *   **設定:**
     *   可透過工具列上的設定圖示進入設定頁面。
     *   支援亮色、暗色和跟隨系統主題的切換。
+    *   支援 **角色選擇**，允許使用者在「酷洛米」和「櫻桃小丸子」之間切換主頁面顯示的角色圖片。
+    *   **工程模式:** 在設定中提供開關，讓開發者可以啟用工程模式，用以觸發藥盒的特殊除錯功能。
 
 ## 使用說明
 
@@ -73,17 +77,34 @@
         - `[5]`: `分`
         - `[6]`: `秒`
 
-2.  **請求藥盒狀態 (Request Status):**
+2.  **傳送 Wi-Fi 憑證 (Send Wi-Fi Credentials):**
+    - **指令碼:** `0x12`
+    - **用途:** 將 Wi-Fi 的 SSID 和密碼傳送給藥盒。
+    - **格式 (可變長度):**
+        - `[0]`: `0x12`
+        - `[1]`: `SSID 長度 (S)`
+        - `[2...2+S-1]`: `SSID`
+        - `[2+S]`: `密碼長度 (P)`
+        - `[3+S...3+S+P-1]`: `密碼`
+
+3.  **設定工程模式 (Set Engineering Mode):**
+    - **指令碼:** `0x13`
+    - **用途:** 啟用或停用藥盒的工程模式。
+    - **格式 (2 bytes):**
+        - `[0]`: `0x13`
+        - `[1]`: `啟用 (0x01 為 true, 0x00 為 false)`
+
+4.  **請求藥盒狀態 (Request Status):**
     - **指令碼:** `0x20`
     - **用途:** 主動向藥盒查詢其當前狀態（例如各藥倉是否有藥）。
     - **格式 (1 byte):** `[0]: 0x20`
 
-3.  **請求即時環境數據 (Request Instant Environment Data):**
+5.  **請求即時環境數據 (Request Instant Environment Data):**
     - **指令碼:** `0x30`
     - **用途:** 主動向藥盒請求目前的即時溫濕度數據。
     - **格式 (1 byte):** `[0]: 0x30`
 
-4.  **請求歷史環境數據 (Request Historic Environment Data):**
+6.  **請求歷史環境數據 (Request Historic Environment Data):**
     - **指令碼:** `0x31`
     - **用途:** 請求藥盒開始傳輸其儲存的所有歷史溫濕度數據。
     - **格式 (1 byte):** `[0]: 0x31`
@@ -168,7 +189,7 @@
     *   根據狀態，顯示即時的溫濕度折線圖或「未連接」的提示。
 
 *   `SettingsFragment.kt`: 「設定」頁面的 Fragment。
-    *   提供應用程式的主題設定。
+    *   提供應用程式的主題和語言設定。
 
 *   `ble/BluetoothLeManager.kt`: 封裝所有低階藍牙通訊的細節。
     *   負責掃描、連接、發送指令和接收數據。
@@ -176,7 +197,11 @@
 
 *   `AlarmScheduler.kt`: 負責設定和取消系統鬧鐘 (`AlarmManager`) 的輔助類別。
 
-*   `AlarmReceiver.kt`: 一個 `BroadcastReceiver`，當鬧鐘觸發時，負責建立並顯示「該吃藥了！」的通知。
+*   `AlarmReceiver.kt`: 一個 `BroadcastReceiver`，當鬧鐘觸發時，負責建立並顯示「該吃藥了！」的通知，並附帶「已服用」和「稍後提醒」的操作按鈕。
+
+*   `SnoozeReceiver.kt`: 一個 `BroadcastReceiver`，處理來自藥物提醒通知的「稍後提醒」操作，將提醒延後一小段時間。
+
+*   `MedicationTakenReceiver.kt`: 一個 `BroadcastReceiver`，處理來自藥物提醒通知的「已服用」操作，將藥物標記為已服用並更新服藥紀錄。
 
 *   `BootReceiver.kt`: 一個 `BroadcastReceiver`，在設備重新啟動時，會自動讀取所有已儲存的藥物提醒，並重新設定鬧鐘。
 
@@ -184,12 +209,46 @@
 
 `POST_NOTIFICATIONS`, `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`, `ACCESS_FINE_LOCATION`, `SCHEDULE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED`, `VIBRATE`
 
-## Bug Fixes
-
+## Bug 修復
+*   **0065:** 修正了 `strings.xml` 中因單引號使用不當而引起的 `Apostrophe not preceded by \\` Linter 錯誤。透過將所有包含單引號的字串用雙引號 `""` 包起來，解決了這個問題。
+*   **0064:** 修正了 `strings.xml` 和 `values-en/strings.xml` 中因不正確的跳脫字元 (`\`) 和單引號用法而導致的 `String.format string doesn't match the XML format string` Linter 錯誤。
+*   **0063:** 修正了工具列與狀態列的 UI 顯示問題：
+    *   **文字顏色**：移除了在 `themes.xml` 中為不同輔助顏色主題寫死的 `colorOnPrimary`，讓系統能根據背景顏色自動選擇最佳的文字顏色，解決了在某些顏色 (如粉紅色) 下，工具列文字不易辨識的問題。
+    *   **沉浸式效果**：在 `MainActivity.kt` 中呼叫 `WindowCompat.setDecorFitsSystemWindows(window, false)`，實現了真正的 Edge-to-Edge 效果，讓 App 內容能延伸至系統列，解決了狀態列背景未填滿的問題。
+*   **0062:** 修正了多個 UI 和功能上的錯誤：
+    *   **編譯錯誤：** 透過在 `themes.xml` 中直接設定 `preferenceCategoryTitleTextColor`，取代了先前複雜且容易出錯的 `preferenceTheme`，解決了 `Android resource linking failed` 的編譯問題。
+    *   **返回 UI 異常：** 在 `SettingsFragment.kt` 的 `onPause` 方法中，主動呼叫 `updateUiForFragment(false)`，強制 `MainActivity` 在返回時重新整理 UI，確保了狀態列的沉浸式效果不會消失。
+    *   **工程模式同步：** 在 `MainActivity.kt` 的 `onDeviceConnected` 方法中，增加了在藍牙連線成功後，讀取並同步「工程模式」狀態到藥盒的邏輯，確保了兩邊狀態的一致性。
+*   **0061:** 修正了 UI 顯示問題和設定按鈕的功能異常。
+    *   **狀態列問題：** 透過修改 `themes.xml` 和 `values-night/themes.xml`，將 `statusBarColor` 設為透明並啟用 `windowDrawsSystemBarBackgrounds`，實現了沉浸式 (Edge-to-Edge) 效果，解決了狀態列背景未填滿和顏色不正確的問題。
+    *   **設定按鈕無效：** 取消了 `MainActivity.kt` 中 `onOptionsItemSelected` 函式裡對設定頁面 (`SettingsFragment`) 和 Wi-Fi 設定頁面 (`WiFiConfigFragment`) 導覽邏輯的註解，恢復了設定按鈕的正常功能。
+*   **0059:** 修正了狀態列遮擋工具列標題的問題。透過在 `activity_main.xml` 的 `AppBarLayout` 中加上 `android:fitsSystemWindows="true"` 屬性，確保了工具列會為狀態列預留出正確的空間，解決了內容重疊的問題。
+*   **0058:** 修正了當輔助顏色設為「預設」時，工具列顏色不正確的問題。透過將 `colors.xml` 和 `values-night/colors.xml` 中的 `primary` 和 `colorPrimary` 顏色改回 Material Design 的預設值，確保了在未選擇特殊輔助顏色時，App 會顯示正確的預設主題顏色。
+*   **0057:** 修正了 `MainActivity.kt` 中因 `activity_main.xml` 佈局變更而導致的編譯錯誤。透過註解對已移除元件 (`kuromiImage` 和 `fragment_container`) 的參考，解決了 `Unresolved reference` 的問題，讓專案能重新建置。
+*   **0056:** 復原了 0055 號的 Bug 修復，以解決 `AndroidManifest.xml` 的資源連結失敗問題。
+*   **0055:** 再次修正了圖片遮擋輸入欄位的 UI 問題。透過在 `MainActivity.kt` 中監聽 `ViewPager2` 的頁面切換事件，確保只有在非 `ReminderSettingsFragment` 的頁面，酷洛米圖片才會顯示。
+*   **0054:** 修正了 `ReminderSettingsFragment` 在挖孔螢幕上顯示異常，以及圖片遮擋輸入欄位的 UI 問題。透過在 `MainActivity.kt` 中動態調整圖片可見性，確保了在進入 `ReminderSettingsFragment` 時，圖片會被隱藏，避免遮擋。
+*   **0053:** 修正了輔助顏色在暗色模式下無法正確同步的問題。透過在 `values-night/themes.xml` 中為所有輔助顏色主題加上 `colorPrimary`，並在 `activity_main.xml` 中將 `MaterialToolbar` 的背景顏色設定為 `?attr/colorPrimary`，確保了 Toolbar 顏色能隨著主題動態變更。
+*   **0052:** 為提醒設定頁面新增了中斷藍牙連線的功能，並在 `drawable` 目錄中新增了 `ic_bluetooth_disabled.xml` 圖示。
 *   **0015:** 修正了服藥正確率未更新及服藥紀錄頁面時間顯示不清楚的問題。在 `MedicationTakenReceiver` 和 `MainViewModel` 中實作了正確的服藥率計算邏輯，並修正了 `fragment_history.xml` 中的文字顏色，確保其在淺色主題下可見。
 
 ## 最近更新
 
+*   **0060:** 新增了角色更換功能，讓使用者可以在「酷洛米」和「櫻桃小丸子」之間進行選擇。角色圖片會顯示在「提醒設定」頁面的最下方。
+*   **0049:** 清理了專案中的多個警告，包括刪除未使用的 `ThemeUtils.kt`、將 `SharedPreferences.edit()` 替換為 KTX 擴充函式，以及修正 `fragment_wifi_config.xml` 中的無障礙功能警告。
+*   **0047:** 新增了「工程模式」，並定義了新的藍牙協定 (`0x13`)，讓 App 可以通知藥盒進入或離開工程模式。此功能可透過設定頁面中的開關進行控制。
+*   **0045:** 為設定頁面與 Wi-Fi 設定頁面新增了返回按鈕，並將返回按鈕的邏輯集中到 `MainActivity` 中管理，確保了 UI 的一致性與可預測性。
+*   **0044:** 為藥物提醒通知新增「稍後提醒」與「已服用」操作，讓使用者能直接從通知中心進行互動。此功能由新的 `SnoozeReceiver` 和 `MedicationTakenReceiver` 處理。
+*   **0043:** 修正了 `WiFiConfigFragment` 的背景透明問題，確保介面清晰可見。
+*   **0042:** 新增 Wi-Fi 設定介面，讓使用者可以輸入 Wi-Fi 的 SSID 和密碼，並透過新的藍牙協定 (指令碼 0x12) 將憑證傳送給 ESP32。SSID 輸入框現在會提供之前輸入過的紀錄，方便使用者操作。
+*   **0041:** 修正了無障礙功能警告，為酷洛米圖片加上 `contentDescription`，並將 "..." 替換為標準的省略號字元 (`…`)。
+*   **0040:** 修正了 `themes.xml` 中的資源連結錯誤，並在主畫面上加入酷洛米圖案作為裝飾。
+*   **0039:** 修正了 `MainActivity.kt` 中的多個棄用警告。更新了返回按鈕的處理方式以使用新的 `OnBackPressedDispatcher`，並將地區/語言設定邏輯現代化為使用 `AppCompatDelegate.setApplicationLocales` API，移除了所有相關的已棄用方法。
+*   **0038:** 在設定頁面 (`SettingsFragment`) 新增了返回箭頭。讓使用者可以輕鬆地從設定選單返回到上一個畫面。
+*   **0.037:** 修正了設定頁面 (`SettingsFragment`) 的 UI 顯示問題。先前設定選單的背景是透明的，導致文字與下方的 UI 元件重疊。此問題已透過以編程方式設定一個遵循當前應用程式主題 (亮色/暗色) 的背景顏色來解決，確保了畫面的清晰可見度。
+*   **0036:** 修正了設定圖示在亮色模式下不可見的問題，並將設定頁面中的「主題設定」和「語言設定」合併為一個「外觀」分類，以簡化介面。
+*   **0035:** 在設定頁面中新增了語言切換功能，讓使用者可以手動切換應用程式的顯示語言 (繁體中文、英文或跟隨系統)。
+*   **0034:** 為應用程式新增英文本地化，以支援英語系使用者。
 *   **0033:** 實作了歷史溫濕度數據同步功能。擴充了藍牙協定，允許 App 在連接時，從藥盒同步離線期間記錄的所有溫濕度歷史數據，並在圖表上完整呈現。
 *   **0032:** 修正了專案中的多個編譯錯誤與警告，包含 `SwipeRefreshLayout` 依賴問題、`MainActivity.kt` 中的錯誤，以及清理未使用的程式碼。
 *   **0031:** 清理了 `app/src/main/java/com/example/medicationreminderapp/ui/` 目錄中所有重複且空白的檔案。
@@ -203,16 +262,16 @@
 *   **0023:** 在服藥紀錄頁面新增了視覺標示功能。現在，當天所有藥物都按時服用後，日曆上對應的日期下方會顯示一個綠色圓點，讓使用者可以更直觀地追蹤自己的服藥狀況。
 *   **0022:** 簡化了版本號碼的設定，並在藥物清單為空時顯示提示訊息。移除了 `app/build.gradle.kts` 中複雜的 Git 版本控制，改為直接從 `config.gradle.kts` 讀取版本資訊。同時，更新了藥物列表頁面，當沒有提醒事項時，會顯示「無提醒」的文字，改善了使用者體驗。
 *   **0021:** 清理了 `SettingsFragment.kt` 中的警告，移除了無用的 `import` 並以更安全的 `let` 區塊取代了不必要的安全呼叫。
-*   **0020:** 恢復了遺失的設定功能，包括設定圖示、主題切換和輔色調整。使用者現在可以再次從工具列存取設定頁面並自訂應用程式的外觀。
-*   **0019:** 解決了 `fragment_reminder_settings.xml` 中的無障礙功能警告，並清理了 `MainViewModel.kt` 中未使用的參數。
-*   **0018:** 解決了 IDE 中出現的 XML 資源解析錯誤和多個 Kotlin 檔案中的無用程式碼警告，並透過 Gradle 同步確保了專案狀態的穩定。
-*   **0017:** 解決了 IDE 中出現的 XML 資源解析錯誤和多個 Kotlin 檔案中的無用程式碼警告，並透過 Gradle 同步確保了專案狀態的穩定。
-*   **0016:** 恢復了編輯、刪除藥物提醒的功能，並重新整合了鬧鐘排程功能。現在，鬧鐘不僅可以在設定時啟用，還能在設備重啟後自動重新設定。
-*   **0015:** 修正了新增藥物後，藥物列表不會立即更新的 UI 問題。透過確保 `LiveData` 收到的是一個全新的列表實例，而非僅修改現有列表，來正確觸發 UI 更新。
-*   **0014:** 處理了 IDE 中關於 `MedicationListAdapter.kt` 和 `ReminderSettingsFragment.kt` 的過時警告，透過 Gradle 同步刷新了專案狀態。
-*   **0013:** 清理了專案中所有警告，包括無用的導入、參數和命名空間宣告，並修復了字串資源衝突。
-*   **0012:** 清理了專案中所有警告，包括無用的導入、參數和命名空間宣告，並修復了字串資源衝突。
-*   **0011:** 修復了因缺少 `androidx.preference:preference-ktx` 依賴而導致的資源連結錯誤。
-*   **0010:** 新增了設定頁面與藥物列表頁面，並恢復了主題設定功能。
-*   **0009:** 優化了藥物提醒表單的驗證，提供更清晰的錯誤提示。
-*   **0008:** 修復了因 Gradle 版本目錄不完整而導致的嚴重 build 錯誤。
+*   **0020:** 恢復了遺失的設定功能，包括設定圖示、主題切換和強調色調整。使用者現在可以從工具列再次存取設定頁面並自訂應用程式的外觀。
+*   **0019:** 解決了 `fragment_reminder_settings.xml` 中的無障礙警告，並清除了 `MainViewModel.kt` 中未使用的參數。
+*   **0018:** 解決了 IDE 中出現的 XML 資源解析錯誤和 Kotlin 檔案中的多個未使用程式碼警告，並透過 Gradle 同步確保了專案狀態的穩定性。
+*   **0017:** 解決了 IDE 中出現的 XML 資源解析錯誤和 Kotlin 檔案中的多個未使用程式碼警告，並透過 Gradle 同步確保了專案狀態的穩定性。
+*   **0016:** 恢復了編輯和刪除藥物提醒的功能，並重新整合了鬧鐘排程功能。現在，鬧鐘不僅在設定時啟用，還會在裝置重新啟動後自動重設。
+*   **0015:** 修正了新增藥物後，藥物列表不會立即更新的 UI 問題。現在透過確保 `LiveData` 接收到新的列表實例而非僅修改現有實例來正確觸發 UI 更新。
+*   **0014:** 處理了 IDE 中關於 `MedicationListAdapter.kt` 和 `ReminderSettingsFragment.kt` 的過時警告，並透過 Gradle 同步刷新了專案狀態。
+*   **0013:** 清理了專案中的所有警告，包括未使用的匯入、參數和命名空間宣告，並修正了字串資源衝突。
+*   **0012:** 清理了專案中的所有警告，包括未使用的匯入、參數和命名空間宣告，並修正了字串資源衝突。
+*   **0011:** 修正了因缺少 `androidx.preference:preference-ktx` 依賴項而導致的資源連結錯誤。
+*   **0010:** 新增了設定頁面和藥物列表頁面，並恢復了主題設定功能。
+*   **0009:** 優化了藥物提醒表單的驗證，以提供更清晰的錯誤訊息。
+*   **0008:** 修正了因 Gradle 版本目錄不完整而導致的嚴重建置錯誤。

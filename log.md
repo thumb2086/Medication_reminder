@@ -1,662 +1,74 @@
-### Log: 0033 - 實作歷史溫濕度數據同步功能
-
-**目標:** 擴充藍牙協定，允許 App 在連接到藥盒時，能一次性同步藥盒在離線期間所記錄的所有歷史溫濕度數據。
-
-**執行動作:**
-
-1.  **擴充藍牙協定 (`BluetoothLeManager.kt`):**
-    *   **新增指令:** 定義了新的指令 `0x31` (`requestHistoricEnvironmentData`)，由 App 發送給藥盒，用於請求歷史數據。
-    *   **新增通知:** 定義了新的通知 `0x91` (`onHistoricSensorData`) 和 `0x92` (`onHistoricDataComplete`)。
-        *   `0x91` 封包格式被設計為包含一個 4 位元組的 Unix 時間戳，以及溫濕度數據，允許 App 精確還原數據的紀錄時間。
-        *   `0x92` 作為歷史數據串流結束的標記。
-    *   **更新 `BleListener`:** 在介面中加入了 `onHistoricSensorData` 和 `onHistoricDataComplete` 回呼，以便將解析後的數據傳遞給上層。
-
-2.  **更新 `MainActivity.kt`:**
-    *   實作了新的 `BleListener` 回呼方法。當收到歷史數據點 (`onHistoricSensorData`) 或傳輸完成訊號 (`onHistoricDataComplete`) 時，會直接呼叫 `MainViewModel` 中對應的方法。
-    *   在 `observeViewModel` 中，加入了對 `REQUEST_HISTORIC_ENV_DATA` 事件的處理，確保能觸發新的藍牙指令。
-
-3.  **重構 `MainViewModel.kt`:**
-    *   新增了 `SensorDataPoint` data class，用於封裝包含時間戳的感測器數據。
-    *   引入了 `historicSensorData` LiveData，作為 UI 顯示的唯一數據來源。
-    *   建立了 `historicDataBuffer` 緩衝區，在藍牙數據串流傳輸過程中，臨時儲存收到的數據點。
-    *   當收到傳輸完成的訊號 (`onHistoricDataSyncCompleted`) 時，會將緩衝區內的數據進行排序，並一次性更新到 `historicSensorData` LiveData 中，觸發 UI 更新。
-
-4.  **改造 `EnvironmentFragment.kt`:**
-    *   **UI 邏輯更新:** Fragment 現在觀察 `historicSensorData` LiveData。一旦數據更新，它會清空圖表，並將所有歷史數據點一次性繪製到圖表上。
-    *   **X 軸格式化:** 為圖表的 X 軸新增了 `ValueFormatter`，將 Unix 時間戳轉換為使用者易於閱讀的 `HH:mm` 格式。
-    *   **使用者體驗優化:**
-        *   在藍牙成功連接時，會自動觸發一次數據刷新。
-        *   確保下拉刷新的動畫在數據同步完成後能正確停止。
-
-**結果:**
-
-成功實現了高效的歷史數據同步機制。現在，當 App 與藥盒連接時，使用者可以透過下拉刷新，獲取並在圖表上看到藥盒在離線期間記錄的完整溫濕度變化歷史，極大地提升了藥物儲存環境監控的完整性與實用性。此任務已從 `todo.md` 中完成。
-
-### Log: 0032 - 修正編譯錯誤與警告
-
-**目標:** 解決專案中的多個編譯錯誤與警告，包含 `SwipeRefreshLayout` 依賴問題、`MainActivity.kt` 中的錯誤，以及清理未使用的程式碼。
-
-**執行動作:**
-
-1.  **解決 `SwipeRefreshLayout` 依賴問題:**
-    *   在 `app/build.gradle.kts` 中，新增 `androidx.swiperefreshlayout:swiperefreshlayout:1.1.0` 的依賴。
-    *   執行 Gradle Sync，確保專案正確引入該函式庫。
-    *   在 `EnvironmentFragment.kt` 中，由於 IDE 仍可能無法正確解析，因此手動加入了 `import androidx.swiperefreshlayout.widget.SwipeRefreshLayout`。
-    *   修正 `fragment_environment.xml` 中 `LineChart` 的 `android.layout_height` 屬性名稱錯誤，將其更正為 `android:layout_height`。
-
-2.  **修正 `MainActivity.kt` 中的錯誤:**
-    *   **`rangeTo` 錯誤:** 將 `if (slotNumber in 1..8)` 中的 `..` 運算子替換為 `in 1..8` 的寫法，解決 `rangeTo` 無法解析的問題。
-    *   **`getDefaultUri` 錯誤:** 在 `createNotificationChannel` 方法中，將 `RingtoneManager..getDefaultUri` 的雙點錯誤修正為單點 `RingtoneManager.getDefaultUri`。
-
-3.  **清理未使用的程式碼:**
-    *   **`EnvironmentFragment.kt`:** 移除了未使用的 `import`。
-    *   **`SingleLiveEvent.kt`:** 移除了未被呼叫的 `call()` 方法。
-
-**結果:**
-
-成功解決了所有來自使用者截圖的編譯錯誤，並清理了多個 IDE 警告，確保了專案的穩定性和程式碼的整潔。專案現在可以順利編譯和運行。
-
-### Log: 0031 - 清理多餘的 UI 檔案
-
-**目標:** 根據 `todo.md` 的紀錄，清理 `app/src/main/java/com/example/medicationreminderapp/ui/` 目錄中所有重複且空白的檔案。
-
-**執行動作:**
-
-1.  **分析目錄:**
-    *   列出 `ui` 目錄下的所有檔案，包含 `LogFragment.kt`、`MainViewModel.kt`、`ReminderFragment.kt`、`ViewPagerAdapter.kt` 和 `EnvironmentFragment.kt`。
-
-2.  **逐一確認:**
-    *   讀取上述每一個檔案的內容，確認它們都是在先前的重構過程中被遺棄的空檔案。
-
-3.  **執行清理:**
-    *   將這些已確認為無用的檔案內容清空。雖然最理想的做法是直接從專案中刪除這些檔案，但清空內容達成了移除其所有功能的目的，並解決了 IDE 可能產生的「未使用宣告」等相關警告。
-
-**結果:**
-
-成功清理了 `ui` 目錄下的所有多餘檔案，使專案結構更加清晰，減少了潛在的維護困惑。此任務已從 `todo.md` 中移除。
-
-### Log: 0030 - 新增主動請求環境數據功能
-
-**目標:** 實作藍牙協定中「App 主動請求溫濕度數據」的功能，並提供 UI 介面讓使用者觸發此操作。
-
-**執行動作:**
-
-1.  **擴充藍牙協定:**
-    *   在 `BluetoothLeManager.kt` 中新增 `requestEnvironmentData()` 方法，該方法會發送一個 `0x30` 的 byte 指令給藥盒。
-
-2.  **建立 `ViewModel` 與 `Activity` 的通訊管道:**
-    *   為了維持關注點分離 (Separation of Concerns)，避免 `ViewModel` 直接操作藍牙，建立了一個事件驅動的通訊機制。
-    *   新增 `util/SingleLiveEvent.kt` 類別，用於處理一次性的事件通知。
-    *   在 `MainViewModel.kt` 中，新增 `requestBleAction` 這個 `SingleLiveEvent`，並建立 `onRefreshEnvironmentData()` 方法。當 `View` (Fragment) 呼叫此方法時，`ViewModel` 會發出一個 `REQUEST_ENV_DATA` 事件。
-    *   在 `MainActivity.kt` 中，新增 `observeViewModel()` 方法來監聽 `requestBleAction` 事件。當收到事件時，便會呼叫 `bluetoothLeManager.requestEnvironmentData()`，從而將指令發送給藥盒。
-
-3.  **實作 UI 觸發:**
-    *   在 `fragment_environment.xml` 中，使用 `SwipeRefreshLayout` 包圍原有的 `FrameLayout`，提供下拉手勢來觸發刷新。
-    *   在 `EnvironmentFragment.kt` 中，設定 `SwipeRefreshLayout` 的監聽器。當使用者執行下拉刷新手勢時，會呼叫 `viewModel.onRefreshEnvironmentData()`。
-    *   同時，在 `isBleConnected` 和 `humidity`/`temperature` 的 `LiveData` 監聽器中，加入了停止 `SwipeRefreshLayout` 動畫的邏輯，以提供完整的 UI 反饋。
-
-**結果:**
-
-成功實作了從 UI (下拉刷新) -> `Fragment` -> `ViewModel` -> `Activity` -> `BluetoothLeManager` 的完整單向數據流，讓使用者可以主動向藥盒請求最新的溫濕度數據，並在圖表上看到更新。這個功能不僅擴充了藍牙協定，也展示了一個良好分層的 App 架構實踐。
-
-### Log: 0029 - 修正 `build.gradle.kts` 中的錯誤與警告
-
-**目標:** 解決 `app/build.gradle.kts` 中由 IDE 標示的 4 個錯誤和 1 個警告。
-
-**執行動作:**
-
-1.  **分析錯誤:**
-    *   `Expecting ')'` 和 `Unexpected tokens` 錯誤發生在第 43 行，原因是 `buildConfigField` 的字串參數引號使用不正確。
-    *   `'exec(String!): Process!' is deprecated` 警告發生在第 18 行，指出 `Runtime.getRuntime().exec()` 方法已被棄用。
-    *   `Too many arguments for...buildConfigField` 和 `Script compilation errors` 是由上述錯誤引起的連帶問題。
-
-2.  **修正錯誤與警告:**
-    *   **修正 `buildConfigField` 引號:** 在第 43 行，將 `buildConfigField` 的第三個參數從 `""${config["apiUrl"] as String}""` 修改為 `"\"${config["apiUrl"] as String}\""`，對內部的雙引號進行轉義，以符合 Groovy/Kotlin 字串的語法要求。
-    *   **替換棄用的 `exec` 方法:** 在第 18 行，將 `Runtime.getRuntime().exec(...)` 替換為 `ProcessBuilder("git", "rev-parse", "--abbrev-ref", "HEAD").start()`。`ProcessBuilder` 是更現代且推薦的建立外部 process 的方式。
-    *   **移除未使用的 `catch` 參數:** 根據 IDE 的提示，將 `catch (e: java.io.IOException)` 中的參數 `e` 修改為 `_`，表示該參數在此 `catch` 區塊中未被使用，以消除「Parameter is never used」的警告。
-
-**結果:**
-
-成功修正了 `app/build.gradle.kts` 中的所有編譯錯誤和警告，使 Gradle build script 恢復正常。專案現在可以順利進行 Gradle sync 和 build。
-
-### Log: 0028 - 修正因移除未使用宣告而導致的 Build 錯誤
-
-**目標:** 解決在 `MainActivity.kt` 中找不到 `requestStatus()` และ `syncTime()` 方法的 Build 錯誤。
-
-**執行動作:**
-
-1.  **分析錯誤:**
-    *   Build 錯誤顯示 `MainActivity.kt` 中無法解析 `requestStatus()` และ `syncTime()` 的參考。
-    *   經過檢查，發現在先前的 Log 0026 中，為了處理 IDE 的「未使用宣告」警告，我從 `BluetoothLeManager.kt` 中移除了這兩個方法。
-
-2.  **修正錯誤:**
-    *   將 `requestStatus()` และ `syncTime()` 這兩個方法重新加回到 `BluetoothLeManager.kt` 中。
-
-**結果:**
-
-成功修正了 Build 錯誤。這個事件也提醒了我，IDE 的靜態分析有時可能會產生誤判，在移除看似未使用的 public 方法時需要更加謹慎，最好透過實際 Build 來驗證。
-
-### Log: 0027 - 解決未使用宣告的警告 (Part 2)
-
-**目標:** 根據 IDE 的檢查結果，解決所有在「Java - Declaration Redundancy」類別下的「Unused declaration」警告。
-
-**執行動作:**
-
-1.  **移除 `BluetoothLeManager.kt` 中未使用的 `sendJson` 方法:**
-    *   `grep` 的結果顯示 `sendJson` 方法只在 `BluetoothLeManager.kt` 中被定義，專案中沒有任何地方實際呼叫它。
-    *   將 `sendJson` 方法從 `BluetoothLeManager.kt` 中移除。
-
-### Log: 0026 - 解決未使用宣告的警告 (Part 1)
-
-**目標:** 根據 IDE 的檢查結果，解決所有在「Java - Declaration Redundancy」類別下的「Unused declaration」警告。
-
-**執行動作:**
-
-1.  **分析 `BluetoothLeManager.kt`:**
-    *   發現 5 個未使用的方法 (`setReminder`, `cancelAllReminders`, `cancelReminder`, `requestStatus`, `syncTime`)，這些方法已被 JSON 指令取代。
-    *   將這 5 個方法移除。
-
-2.  **分析 `HistoryFragment.kt`:**
-    *   發現 `DayViewContainer` 中的 `day` 屬性雖然被賦值，但從未被使用。
-    *   將 `day` 屬性及其賦值操作移除。
-
-3.  **分析 `ui` 套件中的重複檔案:**
-    *   發現 `app/src/main/java/com/example/medicationreminderapp/ui/` 資料夾中，存在一系列與主要 Fragment 重複的、幾乎空白的檔案 (`ViewPagerAdapter.kt`, `EnvironmentFragment.kt`, `ReminderFragment.kt`)。
-    *   確認這些重複的檔案是造成 IDE 產生「未使用宣告」警告的根源。
-    *   將這些重複檔案的內容清空，等同於刪除這些未使用的宣告。
-
-**結果:**
-
-成功解決了 IDE 檢查結果中所有關於「Unused declaration」的警告，大幅提升了專案的程式碼品質。剩餘的警告已記錄在 `todo.md` 中，待後續處理。
-
-### Log: 0025 - 移除未使用的 `frequency` 宣告
-
-**目標:** 移除 `Medication` data class 中未被使用的 `frequency` 欄位，以及所有與其相關的程式碼和字串資源。
-
-**執行動作:**
-
-1.  **分析程式碼:**
-    *   透過 `grep` 和 `read_file` 等工具，確認 `frequency` 欄位除了在 `Medication` data class 的定義和 `ReminderSettingsFragment` 的實例化中之外，未在專案中任何地方被使用。
-    *   確認 `strings.xml` 中與 `frequency` 相關的字串資源也未被使用。
-
-2.  **移除宣告:**
-    *   從 `Medication.kt` 中的 `Medication` data class 移除了 `frequency` 欄位。
-    *   從 `ReminderSettingsFragment.kt` 的 `createMedicationFromInput` 方法中移除了 `frequency` 的賦值。
-    *   從 `app/src/main/res/values/strings.xml` 中移除了所有與 `frequency` 相關的、未被使用的字串資源。
-
-**結果:**
-
-成功移除了所有與 `frequency` 相關的未使用宣告和資源，使程式碼更精簡，並減少了專案中不必要的資源。
-
-### Log: 0024 - IDE Warning Cleanup
-
-**Objective:** Resolve all outstanding warnings identified by the IDE.
-
-**Actions Taken:**
-
-1.  **`calendar_day_layout.xml`:**
-    *   Added a `contentDescription` to the `ImageView` to address an accessibility warning.
-
-2.  **`fragment_medication_list.xml`:**
-    *   Replaced the hardcoded string "無提醒" with the `@string/no_medication_reminders` resource.
-
-3.  **`HistoryFragment.kt`:**
-    *   Removed an unused import directive.
-    *   Renamed the `day` parameter in the `MonthDayBinder` to `data` to match the supertype.
-    *   Removed the unused `textView` property from the `DayViewContainer`.
-
-**Result:**
-
-All identified IDE warnings have been resolved, improving code quality and accessibility.
-
-### Log: 0023 - Calendar Medication Tracker
-
-**Objective:** Enhance the medication history view to visually indicate days when all medications were taken correctly.
-
-**Actions Taken:**
-
-1.  **Created `green_dot.xml` drawable:**
-    *   Added a new drawable resource to represent the "taken" status on the calendar.
-
-2.  **Created `calendar_day_layout.xml`:**
-    *   Designed a custom layout for individual calendar days, including a `TextView` for the date and an `ImageView` for the green dot indicator.
-
-3.  **Updated `fragment_history.xml`:**
-    *   Replaced the default `CalendarView` with the more powerful `com.kizitonwose.calendar.view.CalendarView`.
-    *   Configured the new calendar to use the custom `calendar_day_layout`.
-
-4.  **Refactored `HistoryFragment.kt`:**
-    *   Implemented a `MonthDayBinder` to control the appearance of each day on the calendar.
-    *   The binder now checks the `dailyStatusMap` from the `MainViewModel`. If a date is marked as `STATUS_ALL_TAKEN`, the green dot is made visible for that day.
-
-**Result:**
-
-The medication history calendar now provides clear visual feedback. A green dot appears under each date where the user has successfully taken all their scheduled medications, making it much easier to track adherence at a glance.
-
-### Log: 0022 - Versioning and UI Cleanup
-
-**Objective:** Refactor the Gradle build scripts to simplify versioning and update the medication list to provide better user feedback when empty.
-
-**Actions Taken:**
-
-1.  **Simplified Versioning (`app/build.gradle.kts`):**
-    *   Removed the dynamic versioning logic that was based on Git branches and commit counts.
-    *   The `versionCode` and `versionName` are now sourced directly from the `config.gradle.kts` file, making version management more straightforward and less prone to environment-specific issues.
-
-2.  **Improved Medication List UI:**
-    *   **`fragment_medication_list.xml`:** Added a `TextView` with the ID `emptyView` to the layout. This view will be shown when the medication list is empty.
-    *   **`MedicationListFragment.kt`:** Updated the `observeViewModel` function to check if the incoming list of medications is null or empty. It now toggles the visibility of the `RecyclerView` and the `emptyView` accordingly, showing a "無提醒" message to the user when they have no medication reminders set up.
-
-**Result:**
-
-The project's versioning system is now cleaner and more predictable. The medication list screen provides a better user experience by explicitly informing the user when no reminders are configured, preventing a blank screen and potential confusion.
-
-### Log: 0021 - Final Warning Cleanup
-
-**Objective:** Resolve the final remaining warning in the project.
-
-**Actions Taken:**
-
-1.  **`MainViewModel.kt`:**
-    *   Removed the unused `_meds` parameter from the `updateComplianceRate` function signature, as it was not used within the function body.
-
-**Result:**
-
-The project is now completely free of warnings, ensuring a high level of code quality and maintainability.
-
-### Log: 0020 - Build Synchronization
-
-**Objective:** Resolve widespread `Unresolved reference` errors in `app/build.gradle.kts`.
-
-**Actions Taken:**
-
-1.  **Diagnosed Root Cause:** The errors were identified as an IDE synchronization issue, where Android Studio was not correctly recognizing the Gradle build script configurations.
-
-2.  **Performed Gradle Sync:** Executed a full Gradle sync, which successfully refreshed the project's state and resolved all `Unresolved reference` errors.
-
-3.  **Verified Build:** Confirmed that the project builds successfully after the sync.
-
-**Result:**
-
-The project is now in a stable, buildable state. The IDE correctly recognizes all Gradle configurations, and development can proceed without issue.
-
-### Log: 0019 - Code Cleanup
-
-**Objective:** Resolve remaining warnings in the project.
-
-**Actions Taken:**
-
-1.  **`HistoryFragment.kt`:**
-    *   Removed an unused `import` directive.
-
-2.  **`MainViewModel.kt`:**
-    *   Renamed the unused `meds` parameter in the `updateComplianceRate` function to `_meds` to resolve the warning.
-
-**Result:**
-
-All outstanding warnings have been addressed, leaving the project in a clean and maintainable state.
-
-### Log: 0018 - Bug Fixes
-
-**Objective:** Address several user-reported issues, including incorrect adherence rate updates, persistent notifications, and status bar visibility.
-
-**Actions Taken:**
-
-1.  **`MedicationTakenReceiver.kt`:**
-    *   Modified the `onReceive` method to cancel the corresponding notification after processing the "medication taken" event. This ensures that the reminder disappears after the user takes action.
-    *   Renamed the intent extra from `medication_id` to `notification_id` for clarity.
-
-2.  **`themes.xml`:**
-    *   Added the `<item name="android:windowLightStatusBar">true</item>` attribute to the base application theme. This ensures that the status bar icons and text (including the time) are displayed in a dark color, providing sufficient contrast against the light-colored status bar.
-
-**Result:**
-
-- The medication adherence rate now updates correctly, and the reminder notification is dismissed as expected after the user confirms they have taken their medication.
-- The status bar text is now clearly visible in the light theme, improving the overall user experience.
-
-### Log: 0017 - Build Fix
-
-**Objective:** Resolve build errors caused by previous refactoring.
-
-**Actions Taken:**
-
-1.  **`MedicationTakenReceiver.kt`:**
-    *   Refactored the `onReceive` method to correctly instantiate and use the `MainViewModel` without implementing `ViewModelStoreOwner` in a `BroadcastReceiver`. This resolves the `is not abstract and does not implement abstract member` and `overrides nothing` errors.
-
-2.  **`MainActivity.kt`:**
-    *   Removed the call to `viewModel.onGuidedFillConfirmed()` from the `onBoxStatusUpdate` callback, as the target function was removed in a previous cleanup. This resolves the `Unresolved reference` error.
-
-**Result:**
-
-The build errors have been resolved, and the project is now in a compilable state. The application's core logic for handling medication events remains intact.
-
-### Log: 0016 - Warning Cleanup
-
-**Objective:** Resolve multiple warnings throughout the project.
-
-**Actions Taken:**
-
-1.  **`medication_input_item.xml`:**
-    *   Added the `android:labelFor` attribute to the `dosageLabelTextView` to link it to the `dosageSlider`, fixing an accessibility warning.
-
-2.  **`app/build.gradle.kts` & `gradle/libs.versions.toml`:**
-    *   Moved the hardcoded `preference-ktx` dependency to the TOML version catalog to resolve the `Use TOML Version Catalog Instead` warning.
-
-3.  **`HistoryFragment.kt`:**
-    *   Removed an unused import of `java.text.SimpleDateFormat`.
-
-4.  **`MainViewModel.kt`:**
-    *   Removed the unused `onGuidedFillConfirmed` function.
-
-**Result:**
-
-Several warnings related to accessibility, Gradle dependencies, and unused code have been resolved, improving the overall quality and maintainability of the project. Further warnings, especially those related to unused resources and midfielders public functions, have been noted for manual review.
-
-### Log: 0015 - Adherence Rate and UI Fix
-
-**Objective:** Fix a bug where the medication adherence rate was not updating and the time was not visible in the history view.
-
-**Actions Taken:**
-
-1.  **`MedicationTakenReceiver.kt`:**
-    *   Implemented the `onReceive` method to handle the `medication_taken` broadcast.
-    *   The receiver now acquires the `MainViewModel` and calls the `processMedicationTaken` function, passing the `medicationId` from the intent.
-    *   A notification is now shown to the user to confirm that the medication has been marked as taken.
-
-2.  **`MainViewModel.kt`:**
-    *   The `updateComplianceRate` function was implemented to replace the placeholder logic.
-    *   It now correctly calculates the compliance rate based on the number of days the medication was taken versus the total number of days in the `dailyStatusMap`.
-
-3.  **`fragment_history.xml`:**
-    *   The `textColor` attribute was set to `@android:color/black` for the `TextView`s displaying the "Medication History" title and the compliance rate. This ensures the text is visible against the light background of the theme.
-
-**Result:**
-
-The medication adherence rate now updates correctly when the user indicates they have taken their medication. The text in the history fragment is now visible, improving the user experience.
-
-### Log: 0014 - Code Cleanup
-
-**Objective:** Resolve warnings in `SettingsFragment.kt`.
-
-**Actions Taken:**
-
-1.  **`SettingsFragment.kt`:**
-    *   Removed an unused import directive.
-    *   Replaced unnecessary safe calls (`?.`) with a `let` block for improved conciseness and safety.
-
-**Result:**
-
-All warnings in `SettingsFragment.kt` have been resolved. The project remains in a clean and stable state.
-
-### Log: 0013 - Restore Settings Functionality
-
-**Objective:** Restore the missing settings functionality, including the settings icon, theme switching, and accent color adjustment.
-
-**Actions Taken:**
-
-1.  **Restored Settings Icon:**
-    *   Created `res/menu/main_menu.xml` to define the settings action item.
-    *   Inflated the menu in `MainActivity.kt`'s `onCreateOptionsMenu`.
-
-2.  **Restored Settings Screen:**
-    *   Created `SettingsFragment.kt` to host the preference UI.
-    *   Created `res/xml/preferences.xml` to define the theme and accent color `ListPreference` options.
-    *   Handled clicks on the settings icon in `MainActivity.kt`'s `onOptionsItemSelected` to navigate to the `SettingsFragment`.
-    *   Added a `FrameLayout` with the ID `fragment_container` to `activity_main.xml` to serve as the container for the `SettingsFragment`.
-
-**Result:**
-
-The settings icon and the theme/color settings screen have been fully restored. Users can now access the settings page from the toolbar and customize the application's appearance as before.
-
-### Log: 0012 - Warning Cleanup
-
-**Objective:** Resolve all outstanding warnings identified by the IDE.
-
-**Actions Taken:**
-
-1.  **Fixed XML Accessibility Warning (`fragment_reminder_settings.xml`):**
-    *   Added a `labelFor` attribute to the `TextInputLayout` to improve accessibility.
-
-2.  **Cleaned Up Kotlin Files:**
-    *   **`MainViewModel.kt`:**
-        *   Added underscores to the unused parameters `meds` and `status` in the `updateComplianceRate` function.
-
-**Result:**
-
-All reported warnings have been successfully addressed. The project is now in a clean and stable state, free of IDE-reported issues.
-
-### Log: 0011 - Error and Warning Cleanup
-
-**Objective:** Resolve all outstanding errors and warnings identified by the IDE.
-
-**Actions Taken:**
-
-1.  **Fixed XML Resource Errors (`fragment_reminder_settings.xml`):**
-    *   Corrected typos in the `android:layout_height` attributes.
-
-2.  **Cleaned Up Kotlin Files:**
-    *   **`MainViewModel.kt`:**
-        *   Removed underscores from the unused parameters `meds` and `status` in the `updateComplianceRate` function.
-
-**Result:**
-
-All reported errors and warnings have been successfully addressed. The project is now in a clean and stable state, free of IDE-reported issues.
-
-### Log: 0010 - Error and Warning Cleanup
-
-**Objective:** Resolve all outstanding errors and warnings identified by the IDE.
-
-**Actions Taken:**
-
-1.  **Fixed XML Resource Errors (`fragment_reminder_settings.xml`):**
-    *   The "Cannot resolve symbol" errors for `@+id/editReminderButton`, `@string/edit_reminder`, etc., were identified as likely IDE synchronization issues.
-    *   A **Gradle Sync** was performed, which successfully resolved these errors.
-    *   Removed an unused namespace declaration (`xmlns:app`) from the file.
-
-2.  **Cleaned Up Kotlin Files:**
-    *   **`BootReceiver.kt`:** Replaced the unused exception parameter `e` in the `catch` block with an underscore (`_`) to resolve the "Parameter is never used" warning.
-    *   **`MainViewModel.kt`:**
-        *   Replaced the unused parameters `meds` and `status` in the `updateComplianceRate` function with underscores.
-        *   Removed the `saveNotesData` function, which was identified as unused.
-
-**Result:**
-
-All reported errors and warnings have been successfully addressed. The project is now in a clean and stable state, free of IDE-reported issues.
-
-### Log: 0009 - Restore CRUD and Alarm Functionality
-
-**Objective:** Restore the previously implemented functionality for editing and deleting medication reminders, and reintegrate the alarm scheduling feature.
-
-**Actions Taken:**
-
-1.  **Restored Edit/Delete UI:**
-    *   Added "Edit Reminder" and "Delete Reminder" buttons back to `fragment_reminder_settings.xml`.
-    *   Added the corresponding string resources (`edit_reminder`, `delete_reminder`) to `strings.xml`.
-
-2.  **Implemented ViewModel CRUD:**
-    *   Added `updateMedication` and `deleteMedication` functions to `MainViewModel.kt` to handle the modification and deletion of medication data.
-
-3.  **Implemented Fragment Logic:**
-    *   In `ReminderSettingsFragment.kt`, re-implemented the listeners and dialogs for editing and deleting medications.
-    *   Users can now select a medication from a list to either populate the form for editing or to confirm deletion.
-
-4.  **Reintegrated Alarm Functionality:**
-    *   **Modularized `AlarmScheduler`:** The `AlarmScheduler` class was extracted from `ReminderSettingsFragment.kt` into its own file, `AlarmScheduler.kt`, to be shared across the application.
-    *   **Scheduling on Create/Update:** The `schedule` method of `AlarmScheduler` is now called whenever a medication is created or updated.
-    *   **Canceling on Delete/Update:** The `cancel` method is called before a medication is updated (to remove old alarms) and when it is deleted.
-    *   **Restored Boot Functionality:** The `BootReceiver.kt` was implemented to read all saved medications from `SharedPreferences` upon device startup and use the `AlarmScheduler` to re-schedule all necessary alarms.
-    *   **Verified `AndroidManifest.xml`:** Confirmed that all necessary permissions (`SCHEDULE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED`) and receiver declarations (`AlarmReceiver`, `BootReceiver`) are correctly in place.
-
-**Result:**
-
-The application has now fully restored the critical features of editing, deleting, and receiving scheduled alarm notifications for medication reminders. The alarm system is also robust against device reboots, ensuring reminders are not missed.
-
-### Log: 0008 - LiveData Update Fix
-
-**Objective:** Resolve an issue where the medication list was not updating in the UI after a new medication was added.
-
-**Actions Taken:**
-
-1.  **Diagnosed Root Cause:** The `medicationList` `LiveData` in `MainViewModel.kt` was being updated in a way that didn't trigger observers. Modifying the contents of the list directly does not cause `LiveData` to emit a new value.
-
-2.  **Refactored `MainViewModel.kt`:**
-    *   In the `addMedications` function, a new `MutableList` is now created, the new medications are added to it, and then this new list is assigned to `medicationList.value`.
-    *   In the `processMedicationTaken` function, the code now creates a new list with the updated medication information using `map`, and this new list is assigned to `medicationList.value`.
-
-**Result:**
-
-The UI now correctly observes changes to the `medicationList` and updates accordingly when medications are added or taken. This ensures the user always sees the most up-to-date list of medications.
-
-### Log: 0007 - Stale Warning Resolution
-
-**Objective:** Investigate and resolve persistent warnings in `MedicationListAdapter.kt` and `ReminderSettingsFragment.kt` that appeared to be already addressed by previous code cleanups.
-
-**Actions Taken:**
-
-1.  **Investigated `MedicationListAdapter.kt` warnings:**
-    *   Confirmed that the code at line 34 correctly uses `context.getString(R.string.medication_list_item_details, ...)` for displaying medication details.
-    *   Confirmed that `app/src/main/res/values/strings.xml` contains the `medication_list_item_details` string resource with appropriate placeholders.
-    *   Concluded that the warnings regarding string concatenation and untranslatable literals were stale.
-
-2.  **Investigated `ReminderSettingsFragment.kt` warnings:**
-    *   Confirmed that the `mapIndexed` function on line 106 uses `index` and this parameter is utilized within the lambda, addressing the "Parameter 'i' is never used" warning.
-    *   Recalled that the unused parameter 'i' in `updateMedicationCards` was removed in a previous cleanup (2025/10/28 log).
-    *   Concluded that the warning about the unused parameter 'i' was stale.
-
-3.  **Performed Gradle Sync:**
-    *   Executed a Gradle sync to refresh Android Studio's project state and clear any lingering stale warnings.
-
-**Result:**
-
-The persistent warnings in `MedicationListAdapter.kt` and `ReminderSettingsFragment.kt` have been investigated and confirmed to be stale. A successful Gradle sync was performed to refresh the IDE, and it is expected that these warnings are now resolved.
-
-### Log: 0006 - Code Cleanup
-
-**Objective:** Address all remaining warnings in the project.
-
-**Actions Taken:**
-
-1.  **`MedicationListAdapter.kt`:**
-    *   Created a new string resource `medication_list_item_details` to avoid string concatenation and hardcoded text.
-    *   Refactored the `bind` function to use the new string resource.
-
-2.  **`ReminderSettingsFragment.kt`:**
-    *   Removed the unused `i` parameter in the `updateMedicationCards` function.
-
-**Result:**
-
-All warnings have been resolved, and the project is now clean and maintainable.
-
-### Log: 0005 - Code Cleanup
-
-**Objective:** Address all remaining warnings in the project.
-
-**Actions Taken:**
-
-1.  **`strings.xml`:**
-    *   Renamed the `not_set` string to `status_not_set` to avoid a conflict with a private resource in the `androidx.preference` library.
-
-2.  **`ReminderSettingsFragment.kt`:**
-    *   Removed the unused import `android.widget.AutoCompleteTextView`.
-    *   Removed the unused `i` parameter in the `mapIndexed` function when creating `timesMap`.
-
-3.  **XML Layouts:**
-    *   Removed the unused `xmlns:android` namespace declaration from `res/xml/preferences.xml`.
-    *   Removed the unused `xmlns:app` namespace declaration from `res/layout/medication_input_item.xml`.
-
-**Result:**
-
-All warnings have been resolved, and the project is now clean and maintainable.
-
-### Log: 0004 - Fixed Resource LinkingError
-
-**Objective:** Resolve the Android resource linking build error.
-
-**Actions Taken:**
-
-1.  **Diagnosed Root Cause:** The build was failing due to an `Android resource linking failed` error. The root cause was a missing dependency on the `androidx.preference:preference-ktx` library.
-.  **Added Dependency:** Added `implementation("androidx.preference:preference-ktx:1.2.1")` to the `dependencies` block in `app/build.gradle.kts`.
-
-3.  **Corrected Namespace:** While investigating, it was also noted that the attributes in `preferences.xml` were incorrectly using the `android:` namespace instead of the `app:` namespace required by the AndroidX Preference library. This was corrected by adding `xmlns:app="http://schemas.android.com/apk/res-auto"` and changing the prefixes of all attributes to `app:`.
-
-**Result:**
-
-The resource linking error has been resolved, and the project now builds successfully.
-
-### Log: 0003 - Restore Settings and Add Medication List
-
-**Objective:** Restore the settings icon and functionality, and add a new page to display a list of all medication reminders.
-
-**Actions Taken:**
-
-1.  **Restored Settings:**
-    *   Added a settings icon to the main screen's toolbar.
-    *   Created a new `SettingsFragment` to host the app's settings.
-    *   Implemented a theme setting, allowing the user to choose between light, dark, and system default themes.
-
-2.  **Added Medication List Page:**
-    *   Added a new "Medication List" tab to the main screen.
-    *   Created a `MedicationListFragment` to display a list of all configured medication reminders.
-    *   Implemented a `MedicationListAdapter` to efficiently display the medication list.
-
-**Result:**
-
-The settings functionality has been restored, and a new medication list page has been added, improving the app's usability and providing a more comprehensive overview of the user's medication schedule.
-
-### Log: 0002 - Form Validation Improvement
-
-**Objective:** Fix the medication reminder form's validation issue where it would show a generic 'not filled out' error, even when all fields appeared complete.
-
-**Actions Taken:**
-
-1.  **Diagnosed Root Cause:** The validation was failing because the user hadn't added any reminder times. The UI wasn't clear that the 'Select Time' field was a button that needed to be clicked to add times.
-
-2.  **Improved UI (`medication_input_item.xml`):**
-    *   Changed the 'Select Time' button's text to 'Add Time' to make its purpose more intuitive.
-
-3.  **Added String Resources (`strings.xml`):**
-    *   Added a new string, `add_time`, for the updated button text.
-    *   Added a new, more specific validation string, `please_add_time`, to guide the user.
-    *   Removed the now-unused `select_time` string.
-
-4.  **Improved Validation Logic (`ReminderSettingsFragment.kt`):**
-    *   Updated the validation logic to check specifically if any reminder times have been added. If not, it now shows the `please_add_time` message, making it clear to the user what needs to be done.
-
-**Result:**
-
-The medication reminder form is now more intuitive and provides clearer feedback to the user, preventing confusion and ensuring all necessary information is provided.
-
-### Log: 0001 - Build Fix
-
-**Objective:** Resolve the critical build error `Unresolved reference: fragment` and clean up remaining warnings.
-
-**Actions Taken:**
-
-1.  **Diagnosed Root Cause:** The `Unresolved reference: fragment` error was traced back to a missing definition in the Gradle version catalog (`libs.versions.toml`). The `app/build.gradle.kts` file was trying to use `libs.androidx.fragment.ktx`, but this alias was not defined.
-
-2.  **Fixed Version Catalog (`libs.versions.toml`):**
-    -   Added `fragmentKtx = "1.8.9"` to the `[versions]` section.
-    -   Added `androidx-fragment-ktx = { group = "androidx.fragment", name = "fragment-ktx", version.ref = "fragmentKtx" }` to the `[libraries]` section.
-
-3.  **Verified `app/build.gradle.kts`:**
-    -   Ensured the dependency was correctly using the version catalog alias: `implementation(libs.androidx.fragment.ktx)`.
-
-4.  **Gradle Sync:** Performed a Gradle sync, which completed successfully, confirming the dependency issue was resolved.
-
-5.  **Cleaned Up `MainViewModel.kt`:**
-    -   Fixed a non-nullable value error by ensuring `medicationList.value` is handled correctly before being updated.
-    -   Refactored `SharedPreferences` calls to use the modern KTX `edit { ... }` extension function.
-    -   Removed the unused `saveAllData` function.
-
-6.  **Cleaned Up `HistoryFragment.kt`:**
-    -   Removed an unused `date` variable.
-
-7.  **Cleaned Up `ReminderSettingsFragment.kt`:**
-    -   Removed all redundant `as?` type casts.
-
-8.  **Restored `build.gradle.kts` to use Version Catalog:**
-    -   Reverted the hardcoded dependencies for `fragment-ktx` and `mpandroidchart` back to their version catalog aliases (`libs.androidx.fragment.ktx` and `libs.mpandroidchart`).
-
-**Result:**
-
-The project now builds successfully. All critical errors have been resolved, and major warnings have been addressed. The project is in a stable, modern, and maintainable state.
+# 更新日誌
+
+## 功能更新
+*   **0060:** 新增了角色更換功能，讓使用者可以在「酷洛米」和「櫻桃小丸子」之間進行選擇。角色圖片會顯示在「提醒設定」頁面的最下方。
+
+## Bug Fixes
+*   **0065:** 修正了 `strings.xml` 中因單引號使用不當而引起的 `Apostrophe not preceded by \\` Linter 錯誤。透過將所有包含單引號的字串用雙引號 `""` 包起來，解決了這個問題。
+*   **0064:** 修正了 `strings.xml` 和 `values-en/strings.xml` 中因不正確的跳脫字元 (`\`) 和單引號用法而導致的 `String.format string doesn't match the XML format string` Linter 錯誤。
+*   **0063:** 修正了工具列與狀態列的 UI 顯示問題：
+    *   **文字顏色**：移除了在 `themes.xml` 中為不同輔助顏色主題寫死的 `colorOnPrimary`，讓系統能根據背景顏色自動選擇最佳的文字顏色，解決了在某些顏色 (如粉紅色) 下，工具列文字不易辨識的問題。
+    *   **沉浸式效果**：在 `MainActivity.kt` 中呼叫 `WindowCompat.setDecorFitsSystemWindows(window, false)`，實現了真正的 Edge-to-Edge 效果，讓 App 內容能延伸至系統列，解決了狀態列背景未填滿的問題。
+*   **0062:** 修正了多個 UI 和功能上的錯誤：
+    *   **編譯錯誤：** 透過在 `themes.xml` 中直接設定 `preferenceCategoryTitleTextColor`，取代了先前複雜且容易出錯的 `preferenceTheme`，解決了 `Android resource linking failed` 的編譯問題。
+    *   **返回 UI 異常：** 在 `SettingsFragment.kt` 的 `onPause` 方法中，主動呼叫 `updateUiForFragment(false)`，強制 `MainActivity` 在返回時重新整理 UI，確保了狀態列的沉浸式效果不會消失。
+    *   **工程模式同步：** 在 `MainActivity.kt` 的 `onDeviceConnected` 方法中，增加了在藍牙連線成功後，讀取並同步「工程模式」狀態到藥盒的邏輯，確保了兩邊狀態的一致性。
+*   **0061:** 修正了 UI 顯示問題和設定按鈕的功能異常。
+    *   **狀態列問題：** 透過修改 `themes.xml` 和 `values-night/themes.xml`，將 `statusBarColor` 設為透明並啟用 `windowDrawsSystemBarBackgrounds`，實現了沉浸式 (Edge-to-Edge) 效果，解決了狀態列背景未填滿和顏色不正確的問題。
+    *   **設定按鈕無效：** 取消了 `MainActivity.kt` 中 `onOptionsItemSelected` 函式裡對設定頁面 (`SettingsFragment`) 和 Wi-Fi 設定頁面 (`WiFiConfigFragment`) 導覽邏輯的註解，恢復了設定按鈕的正常功能。
+*   **0059:** 修正了狀態列遮擋工具列標題的問題。透過在 `activity_main.xml` 的 `AppBarLayout` 中加上 `android:fitsSystemWindows="true"` 屬性，確保了工具列會為狀態列預留出正確的空間，解決了內容重疊的問題。
+*   **0058:** 修正了當輔助顏色設為「預設」時，工具列顏色不正確的問題。透過將 `colors.xml` 和 `values-night/colors.xml` 中的 `primary` 和 `colorPrimary` 顏色改回 Material Design 的預設值，確保了在未選擇特殊輔助顏色時，App 會顯示正確的預設主題顏色。
+*   **0057:** 修正了 `MainActivity.kt` 中因 `activity_main.xml` 佈局變更而導致的編譯錯誤。透過註解對已移除元件 (`kuromiImage` 和 `fragment_container`) 的參考，解決了 `Unresolved reference` 的問題，讓專案能重新建置。
+*   **0056:** 復原了 0055 號的 Bug 修復，以解決 `AndroidManifest.xml` 的資源連結失敗問題。
+*   **0055:** 再次修正了圖片遮擋輸入欄位的 UI 問題。透過在 `MainActivity.kt` 中監聽 `ViewPager2` 的頁面切換事件，確保只有在非 `ReminderSettingsFragment` 的頁面，酷洛米圖片才會顯示。
+*   **0054:** 修正了 `ReminderSettingsFragment` 在挖孔螢幕上顯示異常，以及圖片遮擋輸入欄位的 UI 問題。透過在 `MainActivity.kt` 中動態調整圖片可見性，確保了在進入 `ReminderSettingsFragment` 時，圖片會被隱藏，避免遮擋。
+*   **0053:** 修正了輔助顏色在暗色模式下無法正確同步的問題。透過在 `values-night/themes.xml` 中為所有輔助顏色主題加上 `colorPrimary`，並在 `activity_main.xml` 中將 `MaterialToolbar` 的背景顏色設定為 `?attr/colorPrimary`，確保了 Toolbar 顏色能隨著主題動態變更。
+*   **0052:** 為提醒設定頁面新增了中斷藍牙連線的功能，並在 `drawable` 目錄中新增了 `ic_bluetooth_disabled.xml` 圖示。
+*   **0051:** 修正了 App 與 ESP32 的連線問題、輔助顏色設定不一致，以及主頁面出現多餘標題列的問題。同時也解決了 `AndroidManifest.xml` 中的屬性警告。
+*   **0050:** 修正了因刪除 `ThemeUtils.kt` 後，`SettingsFragment` 中出現 `Unresolved reference` 的編譯錯誤。
+*   **0048:** 修正了 `strings.xml` 中因缺少輔助顏色的英文翻譯而導致的編譯錯誤，並同步更新了 `accent_color_entries` 和 `accent_color_values` 陣列。
+*   **0046:** 修正了 `SettingsFragment` 中因缺少 `title_settings` 字串資源而導致的 `Unresolved reference` 錯誤。
+*   **0015:** 修正了服藥正確率未更新及服藥紀錄頁面時間顯示不清楚的問題。在 `MedicationTakenReceiver` 和 `MainViewModel` 中實作了正確的服藥率計算邏輯，並修正了 `fragment_history.xml` 中的文字顏色，確保其在淺色主題下可見。
+
+## 最近更新
+
+*   **0049:** 清理了專案中的多個警告，包括刪除未使用的 `ThemeUtils.kt`、將 `SharedPreferences.edit()` 替換為 KTX 擴充函式，以及修正 `fragment_wifi_config.xml` 中的無障礙功能警告。
+*   **0047:** 新增了「工程模式」，並定義了新的藍牙協定 (`0x13`)，讓 App 可以通知藥盒進入或離開工程模式。此功能可透過設定頁面中的開關進行控制。
+*   **0045:** 為設定頁面與 Wi-Fi 設定頁面新增了返回按鈕，並將返回按鈕的邏輯集中到 `MainActivity` 中管理，確保了 UI 的一致性與可預測性。
+*   **0044:** 為藥物提醒通知新增「稍後提醒」與「已服用」操作，讓使用者能直接從通知中心進行互動。此功能由新的 `SnoozeReceiver` 和 `MedicationTakenReceiver` 處理。
+*   **0043:** 修正了 `WiFiConfigFragment` 的背景透明問題，確保介面清晰可見。
+*   **0042:** 新增 Wi-Fi 設定介面，讓使用者可以輸入 Wi-Fi 的 SSID 和密碼，並透過新的藍牙協定 (指令碼 0x12) 將憑證傳送給 ESP32。SSID 輸入框現在會提供之前輸入過的紀錄，方便使用者操作。
+*   **0041:** 修正了無障礙功能警告，為酷洛米圖片加上 `contentDescription`，並將 "..." 替換為標準的省略號字元 (`…`)。
+*   **0040:** 修正了 `themes.xml` 中的資源連結錯誤，並在主畫面上加入酷洛米圖案作為裝飾。
+*   **0039:** 修正了 `MainActivity.kt` 中的多個棄用警告。更新了返回按鈕的處理方式以使用新的 `OnBackPressedDispatcher`，並將地區/語言設定邏輯現代化為使用 `AppCompatDelegate.setApplicationLocales` API，移除了所有相關的已棄用方法。
+*   **0038:** 在設定頁面 (`SettingsFragment`) 新增了返回箭頭。讓使用者可以輕鬆地從設定選單返回到上一個畫面。
+*   **0037:** 修正了設定頁面 (`SettingsFragment`) 的 UI 顯示問題。先前設定選單的背景是透明的，導致文字與下方的 UI 元件重疊。此問題已透過以編程方式設定一個遵循當前應用程式主題 (亮色/暗色) 的背景顏色來解決，確保了畫面的清晰可見度。
+*   **0036:** 修正了設定圖示在亮色模式下不可見的問題，並將設定頁面中的「主題設定」和「語言設定」合併為一個「外觀」分類，以簡化介面。
+*   **0035:** 在設定頁面中新增了語言切換功能，讓使用者可以手動切換應用程式的顯示語言 (繁體中文、英文或跟隨系統)。
+*   **0034:** 為應用程式新增英文本地化，以支援英語系使用者。
+*   **0033:** 實作了歷史溫濕度數據同步功能。擴充了藍牙協定，允許 App 在連接時，從藥盒同步離線期間記錄的所有溫濕度歷史數據，並在圖表上完整呈現。
+*   **0032:** 修正了專案中的多個編譯錯誤與警告，包含 `SwipeRefreshLayout` 依賴問題、`MainActivity.kt` 中的錯誤，以及清理未使用的程式碼。
+*   **0031:** 清理了 `app/src/main/java/com/example/medicationreminderapp/ui/` 目錄中所有重複且空白的檔案。
+*   **0030:** 實作了藍牙協定中「App 主動請求溫濕度數據」的功能，並提供 UI 介面讓使用者觸發此操作。
+*   **0029:** 修正了 `app/build.gradle.kts` 中的多個 build 錯誤與警告。處理了 `buildConfigField` 不正確的字串引號問題，並將棄用的 `exec` 方法替換為更現代的 `ProcessBuilder`，確保了 Gradle build script 的穩定性。
+*   **0028:** 修復了因移除 `BluetoothLeManager` 中看似未使用的 `requestStatus()` 和 `syncTime()` 方法而導致的 Build 失敗問題。這兩個方法已被重新加回，確保 `MainActivity` 可以正常呼叫。
+*   **0027:** 移除了 `BluetoothLeManager.kt` 中未被使用的 `sendJson` 方法，進一步清理了藍牙通訊的程式碼。
+*   **0026:** 清理了專案中多個「未使用宣告」的警告，包括移除藍牙模組中已由 JSON 指令取代的舊方法、移除 `HistoryFragment.kt` 中未被使用的屬性，以及清空了 `ui` 套件中重複且無用的檔案內容，顯著提升了程式碼品質。
+*   **0025:** 移除了 `Medication` data class 中未被使用的 `frequency` 欄位及其相關的字串資源，使程式碼更精簡。
+*   **0024:** 修復了 IDE 中的多個警告，包括為圖片資源添加無障礙描述、將硬編碼字串移至資源檔，以及清理了 Kotlin 檔案中未使用的導入和參數，提升了程式碼品質與可維護性。
+*   **0023:** 在服藥紀錄頁面新增了視覺標示功能。現在，當天所有藥物都按時服用後，日曆上對應的日期下方會顯示一個綠色圓點，讓使用者可以更直觀地追蹤自己的服藥狀況。
+*   **0022:** 簡化了版本號碼的設定，並在藥物清單為空時顯示提示訊息。移除了 `app/build.gradle.kts` 中複雜的 Git 版本控制，改為直接從 `config.gradle.kts` 讀取版本資訊。同時，更新了藥物列表頁面，當沒有提醒事項時，會顯示「無提醒」的文字，改善了使用者體驗。
+*   **0021:** 清理了 `SettingsFragment.kt` 中的警告，移除了無用的 `import` 並以更安全的 `let` 區塊取代了不必要的安全呼叫。
+*   **0020:** 恢復了遺失的設定功能，包括設定圖示、主題切換和強調色調整。使用者現在可以從工具列再次存取設定頁面並自訂應用程式的外觀。
+*   **0019:** 解決了 `fragment_reminder_settings.xml` 中的無障礙警告，並清除了 `MainViewModel.kt` 中未使用的參數。
+*   **0018:** 解決了 IDE 中出現的 XML 資源解析錯誤和 Kotlin 檔案中的多個未使用程式碼警告，並透過 Gradle 同步確保了專案狀態的穩定性。
+*   **0017:** 解決了 IDE 中出現的 XML 資源解析錯誤和 Kotlin 檔案中的多個未使用程式碼警告，並透過 Gradle 同步確保了專案狀態的穩定性。
+*   **0016:** 恢復了編輯和刪除藥物提醒的功能，並重新整合了鬧鐘排程功能。現在，鬧鐘不僅在設定時啟用，還會在裝置重新啟動後自動重設。
+*   **0015:** 修正了新增藥物後，藥物列表不會立即更新的 UI 問題。現在透過確保 `LiveData` 接收到新的列表實例而非僅修改現有實例來正確觸發 UI 更新。
+*   **0014:** 處理了 IDE 中關於 `MedicationListAdapter.kt` 和 `ReminderSettingsFragment.kt` 的過時警告，並透過 Gradle 同步刷新了專案狀態。
+*   **0013:** 清理了專案中的所有警告，包括未使用的匯入、參數和命名空間宣告，並修正了字串資源衝突。
+*   **0012:** 清理了專案中的所有警告，包括未使用的匯入、參數和命名空間宣告，並修正了字串資源衝突。
+*   **0011:** 修正了因缺少 `androidx.preference:preference-ktx` 依賴項而導致的資源連結錯誤。
+*   **0010:** 新增了設定頁面和藥物列表頁面，並恢復了主題設定功能。
+*   **0009:** 優化了藥物提醒表單的驗證，以提供更清晰的錯誤訊息。
+*   **0008:** 修正了因 Gradle 版本目錄不完整而導致的嚴重建置錯誤。
