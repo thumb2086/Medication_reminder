@@ -1,16 +1,13 @@
 /*
-  SmartMedBox Firmware v20.1
+  SmartMedBox Firmware v20.2
   硬體: ESP32-C6
   IDE: esp32 by Espressif Systems v3.0.0+
   板子: ESP32C6 Dev Module, 8MB with spiffs (3MB APP/1.5MB SPIFFS)
 
-  v20.1 更新內容:
-  - Wi-Fi 連線體驗優化:
-    - [重構] 非阻塞連線: Wi-Fi 連線過程改為非阻塞狀態機，連線時 UI 不再卡頓，左上角圖示會閃爍提示。
-    - [優化] 縮短逾時: Wi-Fi 連線嘗試時間從 30 秒縮短為 15 秒。
-  - OTA 功能優化:
-    - [優化] 使用者功能化: OTA 更新現在是標準功能，只要 Wi-Fi 連上即可使用，不再限定於工程模式。
-    - [新增] 手動退出OTA: 在 OTA 更新畫面，按下返回鍵可以取消更新並安全地重啟裝置。
+  v20.2 更新內容:
+  - OTA 功能修復與增強:
+    - [Bug修復] 修復了 v20.1 中返回鍵長按無法觸發 OTA 模式的問題。
+    - [功能新增] 在工程模式的系統選單中，增加了 "OTA Update" 選項，提供第二個進入 OTA 模式的入口。
 */
 
 #include <Arduino.h>
@@ -31,7 +28,8 @@
 #include <ESPmDNS.h>
 #include <ArduinoOTA.h>
 
-// ==================== 腳位定義 ====================
+// ==================== 腳位定義、Wi-Fi、BLE UUID & 指令碼、圖示 ====================
+// (與 v20.1 相同，此處省略以保持簡潔)
 #define I2C_SDA_PIN 22
 #define I2C_SCL_PIN 21
 #define ENCODER_A_PIN GPIO_NUM_18
@@ -40,8 +38,6 @@
 #define BUTTON_CONFIRM_PIN 4
 #define DHT_PIN 2
 #define DHT_TYPE DHT11
-
-// ==================== Wi-Fi & NTP & OTA ====================
 const char* default_ssid = "charlie phone";
 const char* default_password = "12345678";
 String openWeatherMapApiKey = "ac1003d80943887d3d29d609afea98db";
@@ -51,13 +47,9 @@ const float TEMP_CALIBRATION_OFFSET = 2.4;
 const char* NTP_SERVER = "time.google.com";
 const long GMT_OFFSET = 8 * 3600;
 const int DAYLIGHT_OFFSET = 0;
-
-// ==================== BLE UUID ====================
 #define SERVICE_UUID           "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define COMMAND_CHANNEL_UUID   "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 #define DATA_EVENT_CHANNEL_UUID "c8c7c599-809c-43a5-b825-1038aa349e5d"
-
-// ==================== BLE 指令碼 ====================
 #define CMD_TIME_SYNC               0x11
 #define CMD_WIFI_CREDENTIALS        0x12
 #define CMD_SET_ENGINEERING_MODE    0x13
@@ -71,8 +63,6 @@ const int DAYLIGHT_OFFSET = 0;
 #define CMD_REPORT_HISTORIC_POINT   0x91
 #define CMD_REPORT_HISTORIC_END     0x92
 #define CMD_ERROR                   0xEE
-
-// ==================== 圖示 (XBM) ====================
 const unsigned char icon_ble_bits[] U8X8_PROGMEM = {0x18, 0x24, 0x42, 0x5A, 0x5A, 0x42, 0x24, 0x18};
 const unsigned char icon_sync_bits[] U8X8_PROGMEM = {0x00, 0x3C, 0x46, 0x91, 0x11, 0x26, 0x3C, 0x00};
 const unsigned char icon_wifi_bits[] U8X8_PROGMEM = {0x00, 0x18, 0x24, 0x42, 0x81, 0x42, 0x24, 0x18};
@@ -95,8 +85,11 @@ unsigned long wifiConnectionStartTime = 0;
 
 enum UIMode { UI_MODE_MAIN_SCREENS, UI_MODE_SYSTEM_MENU, UI_MODE_INFO_SCREEN };
 UIMode currentUIMode = UI_MODE_MAIN_SCREENS;
-enum SystemMenuItem { MENU_ITEM_WIFI, MENU_ITEM_INFO, MENU_ITEM_REBOOT, MENU_ITEM_BACK, NUM_MENU_ITEMS };
+
+// v20.2: 新增 OTA 選項
+enum SystemMenuItem { MENU_ITEM_WIFI, MENU_ITEM_OTA, MENU_ITEM_INFO, MENU_ITEM_REBOOT, MENU_ITEM_BACK, NUM_MENU_ITEMS };
 SystemMenuItem selectedMenuItem = MENU_ITEM_WIFI;
+
 enum EncoderMode { MODE_NAVIGATION, MODE_VIEW_ADJUST };
 EncoderMode currentEncoderMode = MODE_NAVIGATION;
 enum ScreenState { SCREEN_TIME, SCREEN_DATE, SCREEN_WEATHER, SCREEN_SENSOR, SCREEN_TEMP_CHART, SCREEN_HUM_CHART, SCREEN_RSSI_CHART, SCREEN_SYSTEM };
@@ -123,6 +116,8 @@ unsigned long lastHistoryRecord = 0;
 const unsigned long historyRecordInterval = 30000;
 unsigned long lastEncoderPushTime = 0;
 unsigned long lastConfirmPressTime = 0;
+unsigned long confirmPressStartTime = 0; // v20.2: 重新用於長按判斷
+bool confirmButtonPressed = false;      // v20.2: 重新用於長按判斷
 unsigned long syncIconStartTime = 0;
 const unsigned long SYNC_ICON_DURATION = 3000;
 unsigned long lastNTPResync = 0;
@@ -161,10 +156,6 @@ void sendBoxStatus();
 void sendMedicationTaken(uint8_t slot);
 void sendHistoricDataEnd();
 void updateScreens();
-void connectWiFi(bool showScreen);
-void drawWiFiConnecting(String ssid, int progress, int dotsCount);
-void drawWiFiConnected(String ip);
-void drawWiFiFailed();
 void setupOTA();
 void enterOtaMode();
 void drawOtaScreen(String text, int progress = -1);
@@ -174,13 +165,12 @@ void loadPersistentStates();
 void handleWiFiConnection();
 void startWiFiConnection();
 
-
 // ==================== BLE 回呼 & 指令處理 ====================
+// (與 v20.1 相同，此處省略)
 class MyServerCallbacks: public BLEServerCallbacks {
     void onConnect(BLEServer* pServer) { bleDeviceConnected = true; Serial.println("BLE Connected"); }
     void onDisconnect(BLEServer* pServer) { bleDeviceConnected = false; Serial.println("BLE Disconnected"); BLEDevice::startAdvertising(); }
 };
-
 class CommandCallbacks: public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) {
         uint8_t* data = pCharacteristic->getData();
@@ -188,7 +178,6 @@ class CommandCallbacks: public BLECharacteristicCallbacks {
         if (length > 0) { handleCommand(data, length); }
     }
 };
-
 void handleCommand(uint8_t* data, size_t length) {
     if (length == 0) return;
     uint8_t command = data[0];
@@ -230,119 +219,20 @@ void handleCommand(uint8_t* data, size_t length) {
         default: sendErrorReport(0x03); break;
     }
 }
-
-void sendBoxStatus() {
-    if (!bleDeviceConnected) return;
-    uint8_t slotMask = 0b00001111;
-    uint8_t packet[2] = {CMD_REPORT_STATUS, slotMask};
-    pDataEventCharacteristic->setValue(packet, 2);
-    pDataEventCharacteristic->notify();
-}
-
-void sendMedicationTaken(uint8_t slot) {
-    if (!bleDeviceConnected || slot > 7) return;
-    uint8_t packet[2] = {CMD_REPORT_TAKEN, slot};
-    pDataEventCharacteristic->setValue(packet, 2);
-    pDataEventCharacteristic->notify();
-}
-
-void sendSensorDataReport() {
-    if (!bleDeviceConnected) return;
-    float t = dht.readTemperature() - TEMP_CALIBRATION_OFFSET;
-    float h = dht.readHumidity();
-    if (isnan(h) || isnan(t)) { sendErrorReport(0x02); return; }
-    uint8_t packet[5];
-    packet[0] = CMD_REPORT_ENV;
-    packet[1] = (uint8_t)t; packet[2] = (uint8_t)((t - packet[1]) * 100);
-    packet[3] = (uint8_t)h; packet[4] = (uint8_t)((h - packet[3]) * 100);
-    pDataEventCharacteristic->setValue(packet, 5);
-    pDataEventCharacteristic->notify();
-}
-
-void sendHistoricDataEnd() {
-    if (!bleDeviceConnected) return;
-    uint8_t packet[1] = {CMD_REPORT_HISTORIC_END};
-    pDataEventCharacteristic->setValue(packet, 1);
-    pDataEventCharacteristic->notify();
-}
-
-void handleHistoricDataTransfer() {
-    if (!isSendingHistoricData) return;
-    if (historicDataIndexToSend == 0) {
-        historyFile = SPIFFS.open("/history.dat", "r");
-        if (!historyFile) {
-            sendErrorReport(0x04);
-            isSendingHistoricData = false;
-            return;
-        }
-    }
-    if (!bleDeviceConnected) {
-        historyFile.close();
-        isSendingHistoricData = false;
-        Serial.println("BLE disconnected during transfer. Aborting.");
-        return;
-    }
-    const int MAX_POINTS_PER_PACKET = 5;
-    uint8_t batchPacket[2 + MAX_POINTS_PER_PACKET * 8];
-    uint8_t pointsInBatch = 0;
-    int packetWriteIndex = 2;
-    while (pointsInBatch < MAX_POINTS_PER_PACKET && historicDataIndexToSend < historyCount) {
-        DataPoint dp;
-        int startIdx = (historyIndex - historyCount + MAX_HISTORY) % MAX_HISTORY;
-        int currentReadIdx = (startIdx + historicDataIndexToSend) % MAX_HISTORY;
-        historyFile.seek(currentReadIdx * sizeof(DataPoint));
-        historyFile.read((uint8_t*)&dp, sizeof(DataPoint));
-        time_t timestamp = time(nullptr) - (historyCount - 1 - historicDataIndexToSend) * (historyRecordInterval / 1000);
-        batchPacket[packetWriteIndex++] = timestamp & 0xFF;
-        batchPacket[packetWriteIndex++] = (timestamp >> 8) & 0xFF;
-        batchPacket[packetWriteIndex++] = (timestamp >> 16) & 0xFF;
-        batchPacket[packetWriteIndex++] = (timestamp >> 24) & 0xFF;
-        uint8_t temp_int = (uint8_t)dp.temp;
-        uint8_t temp_frac = (uint8_t)((dp.temp - temp_int) * 100);
-        uint8_t hum_int = (uint8_t)dp.hum;
-        uint8_t hum_frac = (uint8_t)((dp.hum - hum_int) * 100);
-        batchPacket[packetWriteIndex++] = temp_int;
-        batchPacket[packetWriteIndex++] = temp_frac;
-        batchPacket[packetWriteIndex++] = hum_int;
-        batchPacket[packetWriteIndex++] = hum_frac;
-        pointsInBatch++;
-        historicDataIndexToSend++;
-    }
-    if (pointsInBatch > 0) {
-        batchPacket[0] = CMD_REPORT_HISTORIC_POINT;
-        batchPacket[1] = pointsInBatch;
-        pDataEventCharacteristic->setValue(batchPacket, 2 + pointsInBatch * 8);
-        pDataEventCharacteristic->notify();
-    }
-    if (historicDataIndexToSend >= historyCount) {
-        historyFile.close();
-        sendHistoricDataEnd();
-        isSendingHistoricData = false;
-        unsigned long duration = millis() - historicDataStartTime;
-        Serial.printf("Historic data transfer finished in %lu ms.\n", duration);
-    }
-}
-
-void sendTimeSyncAck() {
-    if (!bleDeviceConnected) return;
-    uint8_t packet[1] = {CMD_TIME_SYNC_ACK};
-    pDataEventCharacteristic->setValue(packet, 1);
-    pDataEventCharacteristic->notify();
-}
-
-void sendErrorReport(uint8_t errorCode) {
-    if (!bleDeviceConnected) return;
-    uint8_t packet[2] = {CMD_ERROR, errorCode};
-    pDataEventCharacteristic->setValue(packet, 2);
-    pDataEventCharacteristic->notify();
-}
-
+// (其他 BLE 相關函式 sendBoxStatus 等與前版相同，省略)
+void sendBoxStatus() { if (!bleDeviceConnected) return; uint8_t p[2] = {CMD_REPORT_STATUS, 0b1111}; pDataEventCharacteristic->setValue(p, 2); pDataEventCharacteristic->notify(); }
+void sendMedicationTaken(uint8_t s) { if (!bleDeviceConnected||s>7) return; uint8_t p[2]={CMD_REPORT_TAKEN,s}; pDataEventCharacteristic->setValue(p,2); pDataEventCharacteristic->notify(); }
+void sendSensorDataReport() { if(!bleDeviceConnected)return; float t=dht.readTemperature()-TEMP_CALIBRATION_OFFSET; float h=dht.readHumidity(); if(isnan(h)||isnan(t)){sendErrorReport(2);return;} uint8_t p[5];p[0]=CMD_REPORT_ENV;p[1]=(uint8_t)t;p[2]=(uint8_t)((t-p[1])*100);p[3]=(uint8_t)h;p[4]=(uint8_t)((h-p[3])*100);pDataEventCharacteristic->setValue(p,5);pDataEventCharacteristic->notify();}
+void sendHistoricDataEnd() { if (!bleDeviceConnected) return; uint8_t p[1] = {CMD_REPORT_HISTORIC_END}; pDataEventCharacteristic->setValue(p, 1); pDataEventCharacteristic->notify(); }
+void handleHistoricDataTransfer() { if(!isSendingHistoricData)return; if(historicDataIndexToSend==0){historyFile=SPIFFS.open("/history.dat","r");if(!historyFile){sendErrorReport(4);isSendingHistoricData=false;return;}} if(!bleDeviceConnected){historyFile.close();isSendingHistoricData=false;return;} const int B=5; uint8_t p[2+B*8]; uint8_t n=0; int i=2; while(n<B&&historicDataIndexToSend<historyCount){DataPoint d; int s=(historyIndex-historyCount+MAX_HISTORY)%MAX_HISTORY; int c=(s+historicDataIndexToSend)%MAX_HISTORY; historyFile.seek(c*sizeof(DataPoint)); historyFile.read((uint8_t*)&d,sizeof(DataPoint)); time_t t=time(nullptr)-(historyCount-1-historicDataIndexToSend)*(historyRecordInterval/1000); p[i++]=t&0xFF;p[i++]=(t>>8)&0xFF;p[i++]=(t>>16)&0xFF;p[i++]=(t>>24)&0xFF;uint8_t ti=(uint8_t)d.temp;uint8_t tf=(uint8_t)((d.temp-ti)*100);uint8_t hi=(uint8_t)d.hum;uint8_t hf=(uint8_t)((d.hum-hi)*100);p[i++]=ti;p[i++]=tf;p[i++]=hi;p[i++]=hf;n++;historicDataIndexToSend++;} if(n>0){p[0]=CMD_REPORT_HISTORIC_POINT;p[1]=n;pDataEventCharacteristic->setValue(p,2+n*8);pDataEventCharacteristic->notify();} if(historicDataIndexToSend>=historyCount){historyFile.close();sendHistoricDataEnd();isSendingHistoricData=false;unsigned long u=millis()-historicDataStartTime;Serial.printf("Historic data transfer finished in %lu ms.\n",u);}}
+void sendTimeSyncAck() { if (!bleDeviceConnected) return; uint8_t p[1] = {CMD_TIME_SYNC_ACK}; pDataEventCharacteristic->setValue(p, 1); pDataEventCharacteristic->notify(); }
+void sendErrorReport(uint8_t e) { if (!bleDeviceConnected) return; uint8_t p[2] = {CMD_ERROR, e}; pDataEventCharacteristic->setValue(p, 2); pDataEventCharacteristic->notify(); }
 
 // ==================== SETUP ====================
 void setup() {
     Serial.begin(115200);
     delay(1000);
-    Serial.println("\n--- SmartMedBox Firmware v20.1 ---");
+    Serial.println("\n--- SmartMedBox Firmware v20.2 ---");
     pinMode(ENCODER_PSH_PIN, INPUT_PULLUP);
     pinMode(BUTTON_CONFIRM_PIN, INPUT_PULLUP);
     Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
@@ -362,7 +252,7 @@ void setup() {
     u8g2.setFont(u8g2_font_ncenB10_tr);
     u8g2.drawStr((128 - u8g2.getStrWidth("SmartMedBox"))/2, 30, "SmartMedBox");
     u8g2.setFont(u8g2_font_ncenB08_tr);
-    u8g2.drawStr((128 - u8g2.getStrWidth("v20.1"))/2, 45, "v20.1");
+    u8g2.drawStr((128 - u8g2.getStrWidth("v20.2"))/2, 45, "v20.2");
     u8g2.sendBuffer();
     delay(2000);
 
@@ -463,7 +353,7 @@ void syncTimeNTPForce() {
     if (wifiState != WIFI_CONNECTED) return;
     configTime(GMT_OFFSET, DAYLIGHT_OFFSET, NTP_SERVER);
     struct tm timeinfo;
-    if (getLocalTime(&timeinfo, 5000)) { // 5秒等待
+    if (getLocalTime(&timeinfo, 5000)) {
         syncIconStartTime = millis();
         lastNTPResync = millis();
         Serial.println("NTP Time synced.");
@@ -476,29 +366,15 @@ void setupOTA() {
     ArduinoOTA.setHostname("smartmedbox");
     ArduinoOTA.setPassword("medbox123");
     ArduinoOTA
-            .onStart([]() {
-                SPIFFS.end();
-                String type = (ArduinoOTA.getCommand() == U_FLASH) ? "sketch" : "filesystem";
-                drawOtaScreen("Updating " + type, 0);
-            })
-            .onProgress([](unsigned int progress, unsigned int total) {
-                drawOtaScreen("Updating...", (progress / (total / 100)));
-            })
-            .onEnd([]() {
-                drawOtaScreen("Update Complete!", 100);
-                delay(1000);
-                ESP.restart();
-            })
-            .onError([](ota_error_t error) {
-                String msg;
-                if (error == OTA_AUTH_ERROR) msg = "Auth Failed";
-                else if (error == OTA_BEGIN_ERROR) msg = "Begin Failed";
-                else if (error == OTA_CONNECT_ERROR) msg = "Connect Failed";
-                else if (error == OTA_RECEIVE_ERROR) msg = "Receive Failed";
-                else if (error == OTA_END_ERROR) msg = "End Failed";
-                drawOtaScreen("Error: " + msg);
-                delay(3000);
-                ESP.restart();
+            .onStart([]() { SPIFFS.end(); drawOtaScreen("Updating " + String((ArduinoOTA.getCommand()==U_FLASH)?"sketch":"fs"), 0); })
+            .onProgress([](unsigned int p, unsigned int t) { drawOtaScreen("Updating...", (p/(t/100))); })
+            .onEnd([]() { drawOtaScreen("Complete!", 100); delay(1000); ESP.restart(); })
+            .onError([](ota_error_t e) {
+                String m;
+                if(e==OTA_AUTH_ERROR)m="Auth Fail"; else if(e==OTA_BEGIN_ERROR)m="Begin Fail";
+                else if(e==OTA_CONNECT_ERROR)m="Connect Fail"; else if(e==OTA_RECEIVE_ERROR)m="Receive Fail";
+                else if(e==OTA_END_ERROR)m="End Fail";
+                drawOtaScreen("Error: "+m); delay(3000); ESP.restart();
             });
     ArduinoOTA.begin();
     Serial.println("OTA service ready.");
@@ -511,11 +387,13 @@ void enterOtaMode() {
         u8g2.drawStr((128-u8g2.getStrWidth("Need WiFi for OTA"))/2, 38, "Need WiFi for OTA");
         u8g2.sendBuffer();
         delay(2000);
+        currentUIMode = UI_MODE_MAIN_SCREENS; // 返回主畫面
+        updateScreens();
         return;
     };
     isOtaMode = true;
     Serial.println("Entering OTA mode...");
-    lastConfirmPressTime = millis(); // 防止立即觸發退出
+    lastConfirmPressTime = millis();
     BLEDevice::deinit(true);
     String ip = WiFi.localIP().toString();
     u8g2.clearBuffer();
@@ -527,7 +405,6 @@ void enterOtaMode() {
     u8g2.drawStr(0, 56, "Press BACK to exit");
     u8g2.sendBuffer();
 }
-
 
 // ==================== UI 核心函式 ====================
 void updateDisplay() {
@@ -565,9 +442,9 @@ void updateDisplay() {
 void drawSystemMenu() {
     u8g2.setFont(u8g2_font_ncenB08_tr);
     u8g2.drawStr((128-u8g2.getStrWidth("System Menu"))/2, 12, "System Menu");
-    const char* menuItems[] = { "Connect to WiFi", "System Info", "Reboot Device", "Back to Main" };
+    const char* menuItems[] = { "Connect to WiFi", "OTA Update", "System Info", "Reboot Device", "Back to Main" };
     for (int i = 0; i < NUM_MENU_ITEMS; i++) {
-        int y = 26 + i * 12;
+        int y = 26 + i * 11;
         if (i == selectedMenuItem) {
             u8g2.drawBox(0, y - 9, 128, 11);
             u8g2.setDrawColor(0);
@@ -598,19 +475,9 @@ void drawStatusIcons() {
     if (bleDeviceConnected) { u8g2.drawXBM(x, 2, 8, 8, icon_ble_bits); x += spacing; }
     if (millis() - syncIconStartTime < SYNC_ICON_DURATION && (millis() / 500) % 2 == 0) { u8g2.drawXBM(x, 2, 8, 8, icon_sync_bits); x += spacing; }
     switch(wifiState) {
-        case WIFI_CONNECTED:
-            u8g2.drawXBM(x, 2, 8, 8, icon_wifi_bits);
-            break;
-        case WIFI_CONNECTING:
-            if ((millis() / 500) % 2 == 0) {
-                u8g2.drawXBM(x, 2, 8, 8, icon_wifi_connecting_bits);
-            }
-            break;
-        case WIFI_FAILED:
-        case WIFI_IDLE:
-        default:
-            u8g2.drawXBM(x, 2, 8, 8, icon_wifi_fail_bits);
-            break;
+        case WIFI_CONNECTED: u8g2.drawXBM(x, 2, 8, 8, icon_wifi_bits); break;
+        case WIFI_CONNECTING: if ((millis()/500)%2==0) { u8g2.drawXBM(x, 2, 8, 8, icon_wifi_connecting_bits); } break;
+        default: u8g2.drawXBM(x, 2, 8, 8, icon_wifi_fail_bits); break;
     }
     x += spacing;
     if (isEngineeringMode) { u8g2.drawXBM(x, 2, 8, 8, icon_gear_bits); x += spacing; }
@@ -631,7 +498,7 @@ void updateScreens() {
     updateDisplay();
 }
 
-// ==================== 按鍵處理 (v20.1) ====================
+// ==================== 按鍵處理 (v20.2) ====================
 void handleEncoder() {
     if (rotaryEncoder.encoderChanged()) {
         if (currentUIMode == UI_MODE_SYSTEM_MENU) {
@@ -661,31 +528,22 @@ void handleEncoderPush() {
             case UI_MODE_SYSTEM_MENU:
                 switch (selectedMenuItem) {
                     case MENU_ITEM_WIFI:
-                        u8g2.clearBuffer();
-                        u8g2.setFont(u8g2_font_ncenB10_tr);
-                        u8g2.drawStr((128-u8g2.getStrWidth("Starting WiFi..."))/2, 38, "Starting WiFi...");
-                        u8g2.sendBuffer();
-                        delay(1000);
+                        u8g2.clearBuffer(); u8g2.setFont(u8g2_font_ncenB10_tr); u8g2.drawStr((128-u8g2.getStrWidth("Starting WiFi..."))/2,38,"Starting WiFi..."); u8g2.sendBuffer(); delay(1000);
                         startWiFiConnection();
-                        currentUIMode = UI_MODE_MAIN_SCREENS;
-                        currentPageIndex = SCREEN_TIME;
-                        updateScreens();
+                        currentUIMode = UI_MODE_MAIN_SCREENS; currentPageIndex = SCREEN_TIME; updateScreens();
+                        break;
+                    case MENU_ITEM_OTA: // v20.2: 新增
+                        enterOtaMode();
                         break;
                     case MENU_ITEM_INFO:
                         currentUIMode = UI_MODE_INFO_SCREEN;
                         break;
                     case MENU_ITEM_REBOOT:
-                        u8g2.clearBuffer();
-                        u8g2.setFont(u8g2_font_ncenB10_tr);
-                        u8g2.drawStr((128-u8g2.getStrWidth("Rebooting..."))/2, 38, "Rebooting...");
-                        u8g2.sendBuffer();
-                        delay(1000);
+                        u8g2.clearBuffer(); u8g2.setFont(u8g2_font_ncenB10_tr); u8g2.drawStr((128-u8g2.getStrWidth("Rebooting..."))/2,38,"Rebooting..."); u8g2.sendBuffer(); delay(1000);
                         ESP.restart();
                         break;
                     case MENU_ITEM_BACK:
-                        currentUIMode = UI_MODE_MAIN_SCREENS;
-                        currentPageIndex = SCREEN_TIME;
-                        updateScreens();
+                        currentUIMode = UI_MODE_MAIN_SCREENS; currentPageIndex = SCREEN_TIME; updateScreens();
                         break;
                 }
                 break;
@@ -698,31 +556,38 @@ void handleEncoderPush() {
 }
 
 void handleButtons() {
-    if (digitalRead(BUTTON_CONFIRM_PIN) == LOW && (millis() - lastConfirmPressTime > 300)) {
-        lastConfirmPressTime = millis();
-        // 優先處理 OTA 模式的長按
-        if (millis() - lastConfirmPressTime > 2700 && digitalRead(BUTTON_CONFIRM_PIN) == LOW) { // 檢查是否長按近3秒
-            enterOtaMode();
-            return; // 執行後返回，避免觸發短按
+    bool isPressed = (digitalRead(BUTTON_CONFIRM_PIN) == LOW);
+    if (isPressed && !confirmButtonPressed) { // 按下事件
+        confirmPressStartTime = millis();
+        confirmButtonPressed = true;
+    } else if (!isPressed && confirmButtonPressed) { // 釋放事件
+        if (millis() - confirmPressStartTime < 3000) { // 短按
+            lastConfirmPressTime = millis();
+            switch (currentUIMode) {
+                case UI_MODE_SYSTEM_MENU:
+                case UI_MODE_INFO_SCREEN:
+                    currentUIMode = UI_MODE_MAIN_SCREENS;
+                    currentPageIndex = SCREEN_TIME;
+                    updateScreens();
+                    break;
+                case UI_MODE_MAIN_SCREENS:
+                default:
+                    currentPageIndex = SCREEN_TIME;
+                    rotaryEncoder.setEncoderValue(SCREEN_TIME);
+                    break;
+            }
+            updateDisplay();
         }
+        confirmButtonPressed = false; // 重置狀態
+    }
 
-        // 短按邏輯
-        switch (currentUIMode) {
-            case UI_MODE_SYSTEM_MENU:
-            case UI_MODE_INFO_SCREEN:
-                currentUIMode = UI_MODE_MAIN_SCREENS;
-                currentPageIndex = SCREEN_TIME;
-                updateScreens();
-                break;
-            case UI_MODE_MAIN_SCREENS:
-            default:
-                currentPageIndex = SCREEN_TIME;
-                rotaryEncoder.setEncoderValue(SCREEN_TIME);
-                break;
-        }
-        updateDisplay();
+    // 按住期間的長按檢查
+    if (confirmButtonPressed && (millis() - confirmPressStartTime >= 3000)) {
+        enterOtaMode();
+        confirmButtonPressed = false; // 觸發後重置，避免重複觸發
     }
 }
+
 
 // ==================== 歷史資料與狀態處理 ====================
 void loadPersistentStates() {
@@ -801,32 +666,32 @@ void drawChart_OriginalStyle(const char* title, bool isTemp, bool isRssi) {
     }
     if (isRssi) {
         minVal = max(minVal, -100.0f); maxVal = min(maxVal, -30.0f);
-        if (maxVal - minVal < 10) { float mid = (minVal + maxVal) / 2; minVal = mid - 5; maxVal = mid + 5; }
-    } else if (isTemp && maxVal - minVal < 1) { float mid = (minVal + maxVal) / 2; minVal = mid - 0.5; maxVal = mid + 0.5;
-    } else if (!isTemp && maxVal - minVal < 2) { float mid = (minVal + maxVal) / 2; minVal = mid - 1; maxVal = mid + 1; }
+        if (maxVal-minVal<10) { float mid=(minVal+maxVal)/2; minVal=mid-5; maxVal=mid+5; }
+    } else if (isTemp && maxVal-minVal<1) { float mid=(minVal+maxVal)/2; minVal=mid-0.5; maxVal=mid+0.5;
+    } else if (!isTemp && maxVal-minVal<2) { float mid=(minVal+maxVal)/2; minVal=mid-1; maxVal=mid+1; }
     float range = maxVal - minVal;
     if (range < 0.1) range = 1;
-    int chartX = 18, chartY = 15, chartW = 128 - chartX - 2, chartH = 40;
+    int chartX=18, chartY=15, chartW=128-chartX-2, chartH=40;
     u8g2.setFont(u8g2_font_5x7_tr);
     char buf[12];
-    if (isRssi) { sprintf(buf, "%d", (int)maxVal); u8g2.drawStr(0, chartY + 5, buf); sprintf(buf, "%d", (int)minVal); u8g2.drawStr(0, chartY + chartH, buf); }
-    else { sprintf(buf, isTemp ? "%.1f" : "%.0f", maxVal); u8g2.drawStr(0, chartY + 5, buf); sprintf(buf, isTemp ? "%.1f" : "%.0f", minVal); u8g2.drawStr(0, chartY + chartH, buf); }
+    if (isRssi) { sprintf(buf, "%d", (int)maxVal); u8g2.drawStr(0, chartY+5, buf); sprintf(buf, "%d", (int)minVal); u8g2.drawStr(0, chartY+chartH, buf); }
+    else { sprintf(buf, isTemp?"%.1f":"%.0f", maxVal); u8g2.drawStr(0, chartY+5, buf); sprintf(buf, isTemp?"%.1f":"%.0f", minVal); u8g2.drawStr(0, chartY+chartH, buf); }
     u8g2.drawFrame(chartX, chartY, chartW, chartH);
-    int lastX = -1, lastY = -1;
-    for (int i = 0; i < displayCount; i++) {
-        float val = isRssi ? historyWindowBuffer[i].rssi : (isTemp ? historyWindowBuffer[i].temp : historyWindowBuffer[i].hum);
-        int x = chartX + (i * chartW / displayCount);
-        int y = chartY + chartH - 1 - ((val - minVal) / range * (chartH - 2));
-        if (lastX >= 0) u8g2.drawLine(lastX, lastY, x, y);
-        lastX = x; lastY = y;
+    int lastX=-1, lastY=-1;
+    for (int i=0; i<displayCount; i++) {
+        float val = isRssi?historyWindowBuffer[i].rssi:(isTemp?historyWindowBuffer[i].temp:historyWindowBuffer[i].hum);
+        int x=chartX+(i*chartW/displayCount);
+        int y=chartY+chartH-1-((val-minVal)/range*(chartH-2));
+        if (lastX>=0) u8g2.drawLine(lastX, lastY, x, y);
+        lastX=x; lastY=y;
     }
     char countStr[20]; sprintf(countStr, "[%d/%d]", displayCount, historyCount);
     u8g2.drawStr(128 - u8g2.getStrWidth(countStr) - 2, 10, countStr);
     char offsetStr[10];
-    if (historyViewOffset == 0) { strcpy(offsetStr, "Now"); }
-    else { float hours = (historyViewOffset * historyRecordInterval) / 3600000.0; sprintf(offsetStr, "-%.1fh", hours); }
+    if (historyViewOffset==0) { strcpy(offsetStr, "Now"); }
+    else { float hours=(historyViewOffset*historyRecordInterval)/3600000.0; sprintf(offsetStr, "-%.1fh", hours); }
     u8g2.drawStr(128 - u8g2.getStrWidth(offsetStr) - 2, 64, offsetStr);
-    if (currentEncoderMode == MODE_VIEW_ADJUST) { u8g2.drawStr(2, 64, "VIEW"); }
+    if (currentEncoderMode==MODE_VIEW_ADJUST) { u8g2.drawStr(2, 64, "VIEW"); }
 }
 
 void drawTempChartScreen() { drawChart_OriginalStyle("Temp Chart", true, false); }
