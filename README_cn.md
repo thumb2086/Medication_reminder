@@ -157,6 +157,10 @@
 `POST_NOTIFICATIONS`, `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`, `ACCESS_FINE_LOCATION`, `SCHEDULE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED`, `VIBRATE`
 
 ## 最近更新
+*   **0091:** **修復圖表顯示問題與優化藍牙診斷。**
+    *   **問題修復:** 修正了 `EnvironmentFragment` 中 MPAndroidChart 因 Unix Timestamp 數值過大導致 Float 精度丟失，進而無法正確顯示圖表的問題。實作了 Timestamp Offset 機制，將 X 軸數值轉換為相對時間，確保了圖表的顯示精度。
+    *   **診斷增強:** 在 `BluetoothLeManager` 中加入了詳細的 Log 輸出 (RX/TX)，印出接收到的原始 Hex 數據，方便開發者區分是 ESP32 未發送數據還是 App 解析錯誤。
+    *   **邏輯優化:** 確保 `MainViewModel` 在接收到新的即時感測數據時，會將其正確合併並排序，防止數據亂序導致圖表繪製異常。
 *   **0090:** **導入 Hilt 實現依賴注入。**
     *   **重構範圍:** 為 `MainViewModel` 和 `BluetoothLeManager` 導入 Hilt 依賴注入。
     *   **程式碼修改:**

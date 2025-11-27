@@ -88,7 +88,12 @@ class MainViewModel @Inject constructor(application: Application) : ViewModel() 
     fun onNewSensorData(temperature: Float, humidity: Float) {
         val now = System.currentTimeMillis() / 1000
         val newDataPoint = SensorDataPoint(now, temperature, humidity)
-        _historicSensorData.value = _historicSensorData.value + newDataPoint
+        // Append to historic list if needed or handle separately for real-time display
+        // Currently we merge it into the historic list for simplicity in graph viewing
+        val currentList = _historicSensorData.value.toMutableList()
+        currentList.add(newDataPoint)
+        currentList.sortBy { it.timestamp }
+        _historicSensorData.value = currentList
     }
 
     fun addHistoricSensorData(timestamp: Long, temperature: Float, humidity: Float) {
@@ -96,7 +101,8 @@ class MainViewModel @Inject constructor(application: Application) : ViewModel() 
     }
 
     fun onHistoricDataSyncCompleted() {
-        _historicSensorData.value = historicDataBuffer.sortedBy { it.timestamp }.toList()
+        val sortedData = historicDataBuffer.sortedBy { it.timestamp }.toList()
+        _historicSensorData.value = sortedData
         _bleStatus.value = "Historic data sync complete"
     }
 

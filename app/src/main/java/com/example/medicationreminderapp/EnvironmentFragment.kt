@@ -31,6 +31,9 @@ class EnvironmentFragment : Fragment() {
 
     private lateinit var tempDataSet: LineDataSet
     private lateinit var humidityDataSet: LineDataSet
+    
+    // Reference timestamp to offset X-axis values for better float precision
+    private var referenceTimestamp: Long = 0
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -69,13 +72,25 @@ class EnvironmentFragment : Fragment() {
                 position = XAxis.XAxisPosition.BOTTOM
                 valueFormatter = object : ValueFormatter() {
                     private val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
-                    override fun getFormattedValue(value: Float):
-                            String {
-                        return sdf.format(Date(value.toLong() * 1000))
+                    override fun getFormattedValue(value: Float): String {
+                        // Reconstruct the original timestamp: reference + offset
+                        val originalTimestamp = referenceTimestamp + value.toLong()
+                        return sdf.format(Date(originalTimestamp * 1000))
                     }
                 }
+                // Prevent labels from bunching up
+                granularity = 60f // Minimum 1 minute interval
+                setDrawGridLines(false)
             }
+            
             axisRight.isEnabled = false
+            axisLeft.apply {
+                setDrawLabels(true) // Explicitly enable Y-axis labels
+                setDrawGridLines(true)
+                granularity = 1f
+            }
+            
+            legend.isEnabled = true
         }
     }
 
@@ -83,9 +98,20 @@ class EnvironmentFragment : Fragment() {
         return LineDataSet(null, label).apply {
             this.color = color
             this.valueTextColor = Color.BLACK
-            this.lineWidth = 2f
+            this.lineWidth = 2.5f
             this.setCircleColor(color)
-            this.circleRadius = 4f
+            this.circleRadius = 3.5f
+            this.setDrawCircleHole(false)
+            
+            // Enhance style
+            this.mode = LineDataSet.Mode.CUBIC_BEZIER // Smooth curves
+            this.setDrawFilled(true)
+            this.fillAlpha = 50
+            this.fillColor = color
+            
+            // Optimize drawing for performance
+            setDrawValues(false) 
+            setDrawCircles(true) // Keep circles for data points visibility
         }
     }
 
@@ -131,14 +157,28 @@ class EnvironmentFragment : Fragment() {
     }
 
     private fun updateChart(dataPoints: List<SensorDataPoint>) {
-        val tempEntries = dataPoints.map { Entry(it.timestamp.toFloat(), it.temperature) }
-        val humidityEntries = dataPoints.map { Entry(it.timestamp.toFloat(), it.humidity) }
+        if (dataPoints.isEmpty()) {
+            clearChartData()
+            return
+        }
+
+        // Update reference timestamp to the first point's timestamp
+        referenceTimestamp = dataPoints.first().timestamp
+
+        // Create entries relative to the reference timestamp
+        val tempEntries = dataPoints.map { 
+            Entry((it.timestamp - referenceTimestamp).toFloat(), it.temperature) 
+        }
+        val humidityEntries = dataPoints.map { 
+            Entry((it.timestamp - referenceTimestamp).toFloat(), it.humidity) 
+        }
 
         tempDataSet.values = tempEntries
         humidityDataSet.values = humidityEntries
 
         binding.lineChart.data.notifyDataChanged()
         binding.lineChart.notifyDataSetChanged()
+        binding.lineChart.fitScreen() // Reset zoom to fit new data
         binding.lineChart.invalidate()
     }
 

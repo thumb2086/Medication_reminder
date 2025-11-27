@@ -1,13 +1,16 @@
 /*
-  SmartMedBox Firmware v20.3
+  SmartMedBox Firmware v20.5
   硬體: ESP32-C6
   IDE: esp32 by Espressif Systems v3.0.0+
-  板子: ESP32C6 Dev Module, 8MB with spiffs (3MB APP/1.5MB SPIFFS)
+  板子: ESP32C6 Dev Module, 8MB with spiffs
 
-  v20.3 更新內容:
-  - UI/UX 體驗優化:
-    - [核心功能] 新增系統選單滾動邏輯: 當選單項目超過螢幕可顯示數量時，介面會自動滾動。
-    - [UX提升] 新增視覺滾動條: 在選單右側增加了滾動條，直觀顯示目前在列表中的位置。
+  v20.5 合併更新內容:
+  - [核心合併] 整合 v20.4 的軟體架構與 v17.0 的硬體驅動。
+  - [硬體支援] 新增無源蜂鳴器 (GPIO 10, 11)、SG90 伺服馬達 (GPIO 12)、WS2812B 燈板 (GPIO 13)。
+  - [操作優化] 新增實體 Back 鍵 (GPIO 5) 支援，可快速退出選單或圖表檢視模式。
+  - [系統優化] 保留 v20.4 的藍牙即時訂閱 (0x32/0x33)、OTA 更新、滾動式選單系統。
+  - [互動體驗] 旋鈕轉動與按鍵操作增加音效回饋。
+  - [開機檢測] 包含開機硬體自檢流程 (燈光、聲音、馬達)。
 */
 
 #include <Arduino.h>
@@ -27,8 +30,11 @@
 #include "SPIFFS.h"
 #include <ESPmDNS.h>
 #include <ArduinoOTA.h>
+#include <ESP32Servo.h>       // v17.0 新增
+#include <Adafruit_NeoPixel.h> // v17.0 新增
 
 // ==================== 腳位定義 ====================
+// 既有腳位
 #define I2C_SDA_PIN 22
 #define I2C_SCL_PIN 21
 #define ENCODER_A_PIN GPIO_NUM_18
@@ -37,6 +43,14 @@
 #define BUTTON_CONFIRM_PIN 4
 #define DHT_PIN 2
 #define DHT_TYPE DHT11
+
+// v17.0 新增硬體腳位
+#define BUTTON_BACK_PIN 5     // Back 鍵
+#define BUZZER1_PIN 10        // 蜂鳴器 1
+#define BUZZER2_PIN 11        // 蜂鳴器 2
+#define SERVO_PIN 12          // SG90 伺服馬達
+#define LED_PIN 13            // WS2812B DIN
+#define NUMPIXELS 64          // 燈珠數量 8x8
 
 // ==================== Wi-Fi & NTP & OTA ====================
 const char* default_ssid = "charlie phone";
@@ -61,6 +75,8 @@ const int DAYLIGHT_OFFSET = 0;
 #define CMD_REQUEST_STATUS          0x20
 #define CMD_REQUEST_ENV             0x30
 #define CMD_REQUEST_HISTORIC        0x31
+#define CMD_SUBSCRIBE_ENV           0x32
+#define CMD_UNSUBSCRIBE_ENV         0x33
 #define CMD_REPORT_STATUS           0x80
 #define CMD_REPORT_TAKEN            0x81
 #define CMD_TIME_SYNC_ACK           0x82
@@ -84,6 +100,8 @@ DHT dht(DHT_PIN, DHT_TYPE);
 BLECharacteristic* pDataEventCharacteristic = NULL;
 Preferences preferences;
 File historyFile;
+Servo myServo;                                     // 新增 Servo 物件
+Adafruit_NeoPixel pixels(NUMPIXELS, LED_PIN, NEO_GRB + NEO_KHZ800); // 新增 WS2812B 物件
 
 // ==================== 狀態與數據 ====================
 enum WiFiState { WIFI_IDLE, WIFI_CONNECTING, WIFI_CONNECTED, WIFI_FAILED };
@@ -113,6 +131,7 @@ int historyCount = 0;
 int historyViewOffset = 0;
 bool bleDeviceConnected = false;
 bool isEngineeringMode = false;
+bool isRealtimeEnvSubscribed = false;
 bool isOtaMode = false;
 bool isSendingHistoricData = false;
 int historicDataIndexToSend = 0;
@@ -123,6 +142,7 @@ unsigned long lastHistoryRecord = 0;
 const unsigned long historyRecordInterval = 30000;
 unsigned long lastEncoderPushTime = 0;
 unsigned long lastConfirmPressTime = 0;
+unsigned long lastBackPressTime = 0; // Back按鍵防抖
 unsigned long confirmPressStartTime = 0;
 bool confirmButtonPressed = false;
 unsigned long syncIconStartTime = 0;
@@ -131,6 +151,8 @@ unsigned long lastNTPResync = 0;
 const unsigned long NTP_RESYNC_INTERVAL = 12 * 3600000;
 unsigned long lastWeatherUpdate = 0;
 const unsigned long WEATHER_INTERVAL = 600000;
+unsigned long lastRealtimeEnvPush = 0;
+const unsigned long REALTIME_ENV_PUSH_INTERVAL = 5000;
 
 // ==================== 函式宣告 ====================
 void updateDisplay();
@@ -167,10 +189,14 @@ void setupOTA();
 void enterOtaMode();
 void drawOtaScreen(String text, int progress = -1);
 void handleHistoricDataTransfer();
+void handleRealtimeEnvPush();
 void drawSystemMenu();
 void loadPersistentStates();
 void handleWiFiConnection();
 void startWiFiConnection();
+// v17.0 新增硬體測試與控制
+void runHardwareSelfTest();
+void playBeep(int buzzerNum, int freq, int duration);
 
 // ==================== BLE 回呼 & 指令處理 ====================
 class MyServerCallbacks: public BLEServerCallbacks {
@@ -180,6 +206,7 @@ class MyServerCallbacks: public BLEServerCallbacks {
     }
     void onDisconnect(BLEServer* pServer) {
         bleDeviceConnected = false;
+        isRealtimeEnvSubscribed = false;
         Serial.println("BLE Disconnected");
         BLEDevice::startAdvertising();
     }
@@ -239,6 +266,12 @@ void handleCommand(uint8_t* data, size_t length) {
                 preferences.end();
                 updateScreens();
                 sendTimeSyncAck();
+                // 進入/退出工程模式提示燈
+                if(isEngineeringMode) {
+                    pixels.fill(pixels.Color(0, 0, 100)); // Blue
+                    pixels.show(); delay(500); pixels.clear(); pixels.show();
+                    playBeep(1, 2000, 200);
+                }
             }
             break;
         case CMD_REQUEST_STATUS:
@@ -254,6 +287,16 @@ void handleCommand(uint8_t* data, size_t length) {
                 historicDataStartTime = millis();
                 Serial.println("Starting historic data transfer (batch mode)...");
             }
+            break;
+        case CMD_SUBSCRIBE_ENV:
+            isRealtimeEnvSubscribed = true;
+            sendTimeSyncAck();
+            Serial.println("Realtime ENV subscribed.");
+            break;
+        case CMD_UNSUBSCRIBE_ENV:
+            isRealtimeEnvSubscribed = false;
+            sendTimeSyncAck();
+            Serial.println("Realtime ENV unsubscribed.");
             break;
         default:
             sendErrorReport(0x03);
@@ -330,7 +373,8 @@ void handleHistoricDataTransfer() {
         int currentReadIdx = (startIdx + historicDataIndexToSend) % MAX_HISTORY;
         historyFile.seek(currentReadIdx * sizeof(DataPoint));
         historyFile.read((uint8_t*)&dp, sizeof(DataPoint));
-        time_t timestamp = time(nullptr) - (historyCount - 1 - historicDataIndexToSend) * (historyRecordInterval / 1000);
+
+        time_t timestamp = time(nullptr) - (long)((historyCount - 1 - historicDataIndexToSend) * (historyRecordInterval / 1000));
 
         batchPacket[packetWriteIndex++] = timestamp & 0xFF;
         batchPacket[packetWriteIndex++] = (timestamp >> 8) & 0xFF;
@@ -381,17 +425,79 @@ void sendErrorReport(uint8_t errorCode) {
     pDataEventCharacteristic->notify();
 }
 
+void handleRealtimeEnvPush() {
+    if (isRealtimeEnvSubscribed && bleDeviceConnected && (millis() - lastRealtimeEnvPush >= REALTIME_ENV_PUSH_INTERVAL)) {
+        lastRealtimeEnvPush = millis();
+        sendSensorDataReport();
+        Serial.println("Realtime ENV pushed.");
+    }
+}
+
+// ==================== 硬體測試與控制函式 (v17.0) ====================
+void playBeep(int buzzerNum, int freq, int duration) {
+    int pin = (buzzerNum == 1) ? BUZZER1_PIN : BUZZER2_PIN;
+    tone(pin, freq, duration);
+    delay(duration);
+    noTone(pin);
+}
+
+void runHardwareSelfTest() {
+    Serial.println("Starting Hardware Self Test...");
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_ncenB08_tr);
+    u8g2.drawStr(10, 20, "Hardware Test...");
+    u8g2.drawStr(10, 40, "Check Lights/Sound");
+    u8g2.sendBuffer();
+
+    // 1. 測試 WS2812B (彩虹掃描)
+    pixels.setBrightness(50);
+    for(int i=0; i<NUMPIXELS; i++) {
+        pixels.setPixelColor(i, pixels.Color(150, 0, 0)); // R
+        pixels.show(); delay(5);
+    }
+    delay(100);
+    for(int i=0; i<NUMPIXELS; i++) {
+        pixels.setPixelColor(i, pixels.Color(0, 150, 0)); // G
+        pixels.show(); delay(5);
+    }
+    delay(100);
+    pixels.clear(); pixels.show();
+
+    // 2. 測試蜂鳴器
+    playBeep(1, 1000, 100);
+    delay(50);
+    playBeep(2, 1500, 100);
+
+    // 3. 測試伺服馬達 SG90
+    myServo.attach(SERVO_PIN);
+    myServo.write(0); delay(300);
+    myServo.write(90); delay(300);
+    myServo.write(0); delay(300);
+
+    u8g2.clearBuffer();
+    u8g2.drawStr(10, 30, "Test OK!");
+    u8g2.sendBuffer();
+    delay(500);
+}
+
 // ==================== SETUP ====================
 void setup() {
     Serial.begin(115200);
     delay(1000);
-    Serial.println("\n--- SmartMedBox Firmware v20.3 ---");
+    Serial.println("\n--- SmartMedBox Firmware v20.5 ---");
+
+    // 初始化腳位
     pinMode(ENCODER_PSH_PIN, INPUT_PULLUP);
     pinMode(BUTTON_CONFIRM_PIN, INPUT_PULLUP);
+    pinMode(BUTTON_BACK_PIN, INPUT_PULLUP); // Back 鍵
+
+    // 初始化硬體元件
     Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
     u8g2.begin();
     u8g2.enableUTF8Print();
     dht.begin();
+    pixels.begin(); pixels.clear(); pixels.show(); // WS2812B
+
     if (!SPIFFS.begin(true)) {
         Serial.println("SPIFFS mount failed");
         return;
@@ -404,13 +510,16 @@ void setup() {
     rotaryEncoder.begin();
     rotaryEncoder.setup([] { rotaryEncoder.readEncoder_ISR(); }, [] {});
 
+    // Logo
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_ncenB10_tr);
     u8g2.drawStr((128 - u8g2.getStrWidth("SmartMedBox"))/2, 30, "SmartMedBox");
     u8g2.setFont(u8g2_font_ncenB08_tr);
-    u8g2.drawStr((128 - u8g2.getStrWidth("v20.3"))/2, 45, "v20.3");
+    u8g2.drawStr((128 - u8g2.getStrWidth("v20.5"))/2, 45, "v20.5");
     u8g2.sendBuffer();
-    delay(2000);
+
+    // 執行硬體自檢
+    runHardwareSelfTest();
 
     BLEDevice::init("SmartMedBox");
     BLEServer *pServer = BLEDevice::createServer();
@@ -449,21 +558,24 @@ void loop() {
     if (isOtaMode) {
         ArduinoOTA.handle();
         if (digitalRead(BUTTON_CONFIRM_PIN) == LOW && (millis() - lastConfirmPressTime > 500)) {
-            u8g2.clearBuffer();
-            u8g2.setFont(u8g2_font_ncenB10_tr);
-            u8g2.drawStr((128-u8g2.getStrWidth("Rebooting..."))/2, 38, "Rebooting...");
-            u8g2.sendBuffer();
-            delay(1000);
             ESP.restart();
+        }
+        if (digitalRead(BUTTON_BACK_PIN) == LOW && (millis() - lastBackPressTime > 500)) {
+            lastBackPressTime = millis();
+            isOtaMode = false;
+            WiFi.disconnect(true);
+            BLEDevice::init("SmartMedBox"); // Re-init BLE if possible or just restart
+            ESP.restart(); // 最簡單退出 OTA 的方法是重啟
         }
         return;
     }
 
     handleWiFiConnection();
     handleHistoricDataTransfer();
+    handleRealtimeEnvPush();
     handleEncoder();
     handleEncoderPush();
-    handleButtons();
+    handleButtons(); // 包含 Confirm 與 Back
 
     if (wifiState == WIFI_CONNECTED && millis() - lastNTPResync >= NTP_RESYNC_INTERVAL) {
         syncTimeNTPForce();
@@ -551,13 +663,7 @@ void setupOTA() {
                 ESP.restart();
             })
             .onError([](ota_error_t error) {
-                String msg;
-                if (error == OTA_AUTH_ERROR) msg = "Auth Failed";
-                else if (error == OTA_BEGIN_ERROR) msg = "Begin Failed";
-                else if (error == OTA_CONNECT_ERROR) msg = "Connect Failed";
-                else if (error == OTA_RECEIVE_ERROR) msg = "Receive Failed";
-                else if (error == OTA_END_ERROR) msg = "End Failed";
-                drawOtaScreen("Error: " + msg);
+                drawOtaScreen("Error: " + String(error));
                 delay(3000);
                 ESP.restart();
             });
@@ -587,7 +693,7 @@ void enterOtaMode() {
     u8g2.setFont(u8g2_font_profont11_tf);
     u8g2.drawStr(0, 28, "smartmedbox.local");
     u8g2.drawStr(0, 42, ("IP: " + ip).c_str());
-    u8g2.drawStr(0, 56, "Press BACK to exit");
+    u8g2.drawStr(0, 56, "Press BACK to reboot");
     u8g2.sendBuffer();
 }
 
@@ -598,7 +704,15 @@ void updateDisplay() {
     switch (currentUIMode) {
         case UI_MODE_MAIN_SCREENS:
             switch (currentPageIndex) {
-                case SCREEN_TIME: drawTimeScreen(); break;
+                case SCREEN_TIME:
+                    drawTimeScreen();
+                    // 藍色呼吸燈特效
+                    {
+                        int b = (millis() / 20) % 50;
+                        pixels.setPixelColor(0, pixels.Color(0, 0, b));
+                        pixels.show();
+                    }
+                    break;
                 case SCREEN_DATE: drawDateScreen(); break;
                 case SCREEN_WEATHER: drawWeatherScreen(); break;
                 case SCREEN_SENSOR: drawSensorScreen(); break;
@@ -636,9 +750,9 @@ void drawSystemMenu() {
             int y = 24 + i * 11;
             if (itemIndex == selectedMenuItem) {
                 u8g2.drawBox(0, y - 9, 128 - 6, 11);
-                u8g2.setDrawColor(0); // Reverse color for selected item
+                u8g2.setDrawColor(0);
                 u8g2.drawStr(5, y, menuItems[itemIndex]);
-                u8g2.setDrawColor(1); // Restore color
+                u8g2.setDrawColor(1);
             } else {
                 u8g2.drawStr(5, y, menuItems[itemIndex]);
             }
@@ -717,6 +831,7 @@ void updateScreens() {
 // ==================== 按鍵處理 ====================
 void handleEncoder() {
     if (rotaryEncoder.encoderChanged()) {
+        playBeep(1, 4000, 10); // 旋轉音效
         if (currentUIMode == UI_MODE_SYSTEM_MENU) {
             selectedMenuItem = (SystemMenuItem)rotaryEncoder.readEncoder();
             if (selectedMenuItem >= menuViewOffset + MAX_MENU_ITEMS_ON_SCREEN) {
@@ -737,6 +852,8 @@ void handleEncoder() {
 void handleEncoderPush() {
     if (digitalRead(ENCODER_PSH_PIN) == LOW && (millis() - lastEncoderPushTime > 300)) {
         lastEncoderPushTime = millis();
+        playBeep(2, 2000, 50); // 確認音效
+
         switch (currentUIMode) {
             case UI_MODE_MAIN_SCREENS:
                 if (isEngineeringMode && currentPageIndex == SCREEN_SYSTEM) {
@@ -779,6 +896,7 @@ void handleEncoderPush() {
 }
 
 void handleButtons() {
+    // Confirm 按鈕 (GPIO 4)
     bool isPressed = (digitalRead(BUTTON_CONFIRM_PIN) == LOW);
     if (isPressed && !confirmButtonPressed) {
         confirmPressStartTime = millis();
@@ -786,6 +904,9 @@ void handleButtons() {
     } else if (!isPressed && confirmButtonPressed) {
         if (millis() - confirmPressStartTime < 3000) {
             lastConfirmPressTime = millis();
+            playBeep(2, 2000, 50);
+
+            // Confirm 鍵邏輯：通常回到主頁
             switch (currentUIMode) {
                 case UI_MODE_SYSTEM_MENU:
                 case UI_MODE_INFO_SCREEN:
@@ -803,9 +924,35 @@ void handleButtons() {
         }
         confirmButtonPressed = false;
     }
+    // 長按 Confirm 進入 OTA (保留)
     if (confirmButtonPressed && (millis() - confirmPressStartTime >= 3000)) {
         enterOtaMode();
         confirmButtonPressed = false;
+    }
+
+    // Back 按鈕 (GPIO 5) - 新增邏輯
+    if (digitalRead(BUTTON_BACK_PIN) == LOW && (millis() - lastBackPressTime > 300)) {
+        lastBackPressTime = millis();
+        playBeep(2, 1000, 50); // 低音提示
+
+        // Back 鍵邏輯: 逐層返回
+        if (currentUIMode == UI_MODE_INFO_SCREEN) {
+            currentUIMode = UI_MODE_SYSTEM_MENU;
+        } else if (currentUIMode == UI_MODE_SYSTEM_MENU) {
+            currentUIMode = UI_MODE_MAIN_SCREENS;
+            currentPageIndex = SCREEN_TIME;
+            updateScreens();
+        } else if (currentUIMode == UI_MODE_MAIN_SCREENS) {
+            if (currentEncoderMode == MODE_VIEW_ADJUST) {
+                // 如果在查看圖表細節，退出到導航模式
+                currentEncoderMode = MODE_NAVIGATION;
+            } else {
+                // 否則直接回到時鐘
+                currentPageIndex = SCREEN_TIME;
+                rotaryEncoder.setEncoderValue(SCREEN_TIME);
+            }
+        }
+        updateDisplay();
     }
 }
 
