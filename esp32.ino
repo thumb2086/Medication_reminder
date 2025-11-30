@@ -1,12 +1,10 @@
 /*
-  SmartMedBox Firmware v21.1 (OTA Crash Fix)
+  SmartMedBox Firmware v21.2 (Fixed)
   硬體: ESP32-C6 Dev Module
 
-  v21.1 修正說明:
-  1. [緊急修復] 移除 enterOtaMode() 中的 BLEDevice::deinit(true)。
-     原因: 該指令會導致 ESP32-C6 核心崩潰並重啟。
-  2. [優化] OTA 模式下現在會保持藍牙開啟，但不處理數據，確保系統穩定。
-  3. [保留] v21.0 的所有功能 (鬧鐘、0x41指令、硬體驅動、滾動選單)。
+  v21.2 修正說明:
+  1. [修復] 補回遺漏的全域變數 'bool isOtaMode'，解決編譯錯誤。
+  2. [功能] 包含 v21.1 所有功能 (鬧鐘、0x41指令、硬體驅動、滾動選單)。
 */
 
 #include <Arduino.h>
@@ -134,7 +132,8 @@ WeatherInfo weather;
 EnvData histBuf[HISTORY_WINDOW];
 Alarm alarms[MAX_ALARMS];
 
-// 變數
+// 全域變數
+bool isOtaMode = false; // [已補回]
 int histCount = 0, histHead = 0, histViewOffset = 0, histSendIdx = 0;
 unsigned long tmrDisplay=0, tmrHist=0, tmrWeather=0, tmrPush=0, tmrAlarmCheck=0;
 unsigned long tmrBtnOk=0, tmrBtnBack=0, tmrEncBtn=0;
@@ -299,6 +298,7 @@ void render() {
     u8g2.clearBuffer();
 
     if (state.uiMode == UI_ALARM_RINGING) {
+        // 鬧鐘響鈴畫面
         u8g2.setFont(u8g2_font_fub20_tn);
         u8g2.drawStr(15, 35, "ALARM!");
         char buf[20]; sprintf(buf, "Take Meds #%d", state.activeAlarmId + 1);
@@ -364,7 +364,7 @@ void setupOTA() {
     Serial.println("OTA ready.");
 }
 
-// Enter OTA - **** FIXED ****
+// Enter OTA
 void enterOtaMode() {
     if (isOtaMode || !state.wifiConnected) {
         u8g2.clearBuffer();
@@ -375,7 +375,6 @@ void enterOtaMode() {
     };
     isOtaMode = true;
     state.uiMode = UI_OTA;
-    // BLEDevice::deinit(true); // <--- REMOVED TO PREVENT CRASH
     Serial.println("OTA Mode Active");
 }
 
