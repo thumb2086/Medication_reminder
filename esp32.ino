@@ -1,7 +1,7 @@
 /*
   SmartMedBox Firmware v21.0 (Alarm Logic Added)
   硬體: ESP32-C6 Dev Module
-
+  
   v21.0 重大更新:
   1. [修復] 解決 Error 3 問題: 新增 0x41 (設定鬧鐘) 指令處理。
   2. [Debug] 若收到未知指令，會在 Serial Monitor 印出 "Unknown Command: 0x??"。
@@ -54,6 +54,7 @@ const long  GMT_OFFSET = 8 * 3600;
 const int   MAX_HISTORY = 4800;
 const int   HISTORY_WINDOW = 60;
 const int   MAX_ALARMS = 4; // 支援 4 組鬧鐘
+const unsigned long INTERVAL_DISPLAY = 100; // 畫面刷新間隔 (ms)
 
 // BLE 指令集
 enum BleCmd {
@@ -84,7 +85,7 @@ enum BleCmd {
 const uint8_t CURRENT_PROTOCOL_VERSION = 3;
 
 // UI 狀態
-enum UIMode { UI_MAIN, UI_MENU, UI_INFO, UI_OTA, UI_ALARM_RINGING }; // 新增 Ringing 狀態
+enum UIMode { UI_MAIN, UI_MENU, UI_INFO, UI_ALARM_RINGING }; // 新增 Ringing 狀態
 enum Screen { SCR_TIME, SCR_DATE, SCR_WEATHER, SCR_SENSOR, SCR_CH_TEMP, SCR_CH_HUM, SCR_CH_RSSI, SCR_SYS };
 enum MenuOpt { MN_WIFI, MN_OTA, MN_INFO, MN_REBOOT, MN_BACK, MN_COUNT };
 
