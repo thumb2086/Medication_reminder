@@ -1,12 +1,12 @@
 /*
-  SmartMedBox Firmware v21.0 (Final Fixed)
+  SmartMedBox Firmware v21.1 (OTA Crash Fix)
   硬體: ESP32-C6 Dev Module
 
-  v21.0 修正說明:
-  1. [修復] 補回遺漏的 INTERVAL_DISPLAY 定義，解決編譯錯誤。
-  2. [修復] 解決 Error 3: 新增 0x41 (設定鬧鐘) 指令處理邏輯。
-  3. [功能] 實作鬧鐘系統: 時間到會響鈴 + 紅色呼吸燈 + 螢幕提示。
-  4. [除錯] 若收到 App 發送的未知指令，Serial Monitor 會印出該指令代碼 (Unknown Command)。
+  v21.1 修正說明:
+  1. [緊急修復] 移除 enterOtaMode() 中的 BLEDevice::deinit(true)。
+     原因: 該指令會導致 ESP32-C6 核心崩潰並重啟。
+  2. [優化] OTA 模式下現在會保持藍牙開啟，但不處理數據，確保系統穩定。
+  3. [保留] v21.0 的所有功能 (鬧鐘、0x41指令、硬體驅動、滾動選單)。
 */
 
 #include <Arduino.h>
@@ -50,10 +50,9 @@ const char* NTP_SERVER = "time.google.com";
 const long  GMT_OFFSET = 8 * 3600;
 const int   MAX_HISTORY = 4800;
 const int   HISTORY_WINDOW = 60;
-const int   MAX_ALARMS = 4; // 支援 4 組鬧鐘
+const int   MAX_ALARMS = 4;
 
-// *** 補回漏掉的定義 ***
-const unsigned long INTERVAL_DISPLAY = 100; // 畫面刷新 (ms)
+const unsigned long INTERVAL_DISPLAY = 100;
 const unsigned long INTERVAL_HISTORY = 30000;
 const unsigned long INTERVAL_WEATHER = 600000;
 const unsigned long INTERVAL_PUSH    = 5000;
@@ -64,16 +63,12 @@ enum BleCmd {
     CMD_TIME_SYNC = 0x11,
     CMD_WIFI_CRED = 0x12,
     CMD_ENG_MODE = 0x13,
-
-    // 鬧鐘相關 (v21.0 新增)
-    CMD_SET_ALARM = 0x41, // 格式: [CMD, ID, HOUR, MIN, ENABLE]
-
+    CMD_SET_ALARM = 0x41,
     CMD_REQ_STATUS = 0x20,
     CMD_REQ_ENV = 0x30,
     CMD_REQ_HIST = 0x31,
     CMD_SUB_ENV = 0x32,
     CMD_UNSUB_ENV = 0x33,
-
     CMD_REP_STATUS = 0x80,
     CMD_REP_TAKEN = 0x81,
     CMD_ACK = 0x82,
@@ -118,7 +113,7 @@ struct AppState {
     bool subRealtime = false;
     bool sendingHist = false;
     bool chartViewMode = false;
-    int activeAlarmId = -1; // 當前觸發的鬧鐘 ID
+    int activeAlarmId = -1;
 };
 
 struct EnvData { float temp; float hum; int16_t rssi; };
@@ -139,7 +134,7 @@ WeatherInfo weather;
 EnvData histBuf[HISTORY_WINDOW];
 Alarm alarms[MAX_ALARMS];
 
-// 歷史與計時變數
+// 變數
 int histCount = 0, histHead = 0, histViewOffset = 0, histSendIdx = 0;
 unsigned long tmrDisplay=0, tmrHist=0, tmrWeather=0, tmrPush=0, tmrAlarmCheck=0;
 unsigned long tmrBtnOk=0, tmrBtnBack=0, tmrEncBtn=0;
@@ -149,15 +144,14 @@ unsigned long tmrBtnOk=0, tmrBtnBack=0, tmrEncBtn=0;
 #define CHAR_CMD_UUID   "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 #define CHAR_DATA_UUID  "c8c7c599-809c-43a5-b825-1038aa349e5d"
 
-// 圖示 Data
 extern const uint8_t ico_ble[], ico_wifi[], ico_no_wifi[], ico_gear[];
 
-// ==================== 鬧鐘與儲存邏輯 ====================
+// ==================== 邏輯函式 ====================
 void loadAlarms() {
     prefs.begin("alarms", true);
     for(int i=0; i<MAX_ALARMS; i++) {
         char key[5]; sprintf(key, "a%d", i);
-        uint32_t val = prefs.getUInt(key, 0); // 格式: 0x00HHMMEn
+        uint32_t val = prefs.getUInt(key, 0);
         alarms[i].enabled = (val & 0x1);
         alarms[i].min = (val >> 8) & 0xFF;
         alarms[i].hour = (val >> 16) & 0xFF;
@@ -176,11 +170,8 @@ void saveAlarm(int id) {
 
 void checkAlarms() {
     if(state.uiMode == UI_ALARM_RINGING) return;
-
     time_t now; time(&now);
     struct tm *t = localtime(&now);
-
-    // 每分鐘的第0秒檢查，避免重複觸發
     if(t->tm_sec == 0) {
         for(int i=0; i<MAX_ALARMS; i++) {
             if(alarms[i].enabled && alarms[i].hour == t->tm_hour && alarms[i].min == t->tm_min) {
@@ -193,30 +184,26 @@ void checkAlarms() {
     }
 }
 
-// 鬧鐘響鈴特效 (紅燈閃爍 + 雙聲道音效)
 void playAlarmEffect() {
     static unsigned long lastBeep = 0;
     static int phase = 0;
-
     if(millis() - lastBeep > 200) {
         lastBeep = millis();
         phase = !phase;
-
         if(phase) leds.fill(leds.Color(255, 0, 0));
         else leds.clear();
         leds.show();
-
         if(phase) { tone(PIN_BUZZER_1, 2000, 150); }
         else { tone(PIN_BUZZER_2, 1500, 150); }
     }
 }
 
-// ==================== 硬體與通訊 ====================
 void beep(int id, int freq, int ms) {
     int pin = (id == 1) ? PIN_BUZZER_1 : PIN_BUZZER_2;
     tone(pin, freq, ms); delay(ms); noTone(pin);
 }
 
+// BLE Callback
 void sendBlePacket(uint8_t type, uint8_t* data, size_t len) {
     if(!state.bleConnected) return;
     uint8_t pkg[len + 1];
@@ -236,7 +223,6 @@ class CmdCB: public BLECharacteristicCallbacks {
         uint8_t* d = c->getData();
         size_t len = c->getLength();
         if(len == 0) return;
-
         uint8_t cmd = d[0];
         Serial.printf("RX CMD: 0x%02X, Len: %d\n", cmd, len);
 
@@ -245,7 +231,6 @@ class CmdCB: public BLECharacteristicCallbacks {
                 uint8_t v = CURRENT_PROTOCOL_VERSION;
                 sendBlePacket(CMD_REP_PROTO_VER, &v, 1); break;
             }
-                // 處理 0x41 設定鬧鐘
             case CMD_SET_ALARM: {
                 if(len >= 5) {
                     int id = d[1];
@@ -278,12 +263,10 @@ class CmdCB: public BLECharacteristicCallbacks {
                 prefs.begin("meta", false); prefs.putBool("eng", state.engMode); prefs.end();
                 sendBlePacket(CMD_ACK, NULL, 0); break;
             case CMD_REQ_STATUS: { uint8_t s=0x0F; sendBlePacket(CMD_REP_STATUS, &s, 1); break; }
-            case CMD_REQ_ENV: { /* Env Report Logic Skipped for brevity */ break; }
+            case CMD_REQ_ENV: { /* Env Report Logic Skipped */ break; }
             case CMD_SUB_ENV: state.subRealtime = true; sendBlePacket(CMD_ACK, NULL, 0); break;
             case CMD_UNSUB_ENV: state.subRealtime = false; sendBlePacket(CMD_ACK, NULL, 0); break;
-
             default:
-                // 若收到無法識別指令，印出 Debug 並回報 Error 3
                 Serial.printf(">>> ERROR: Unknown Command 0x%02X <<<\n", cmd);
                 sendBlePacket(CMD_ERROR, (uint8_t*)"\x03", 1);
         }
@@ -316,7 +299,6 @@ void render() {
     u8g2.clearBuffer();
 
     if (state.uiMode == UI_ALARM_RINGING) {
-        // 鬧鐘觸發畫面
         u8g2.setFont(u8g2_font_fub20_tn);
         u8g2.drawStr(15, 35, "ALARM!");
         char buf[20]; sprintf(buf, "Take Meds #%d", state.activeAlarmId + 1);
@@ -331,7 +313,6 @@ void render() {
                 time_t now; time(&now); struct tm *t = localtime(&now);
                 char s[10]; snprintf(s, 10, "%02d:%02d:%02d", t->tm_hour, t->tm_min, t->tm_sec);
                 u8g2.setFont(u8g2_font_fub20_tn); u8g2.drawStr((128-u8g2.getStrWidth(s))/2, 45, s);
-                // 呼吸燈
                 int b = (millis()/20)%50; leds.setPixelColor(0, leds.Color(0,0,b)); leds.show();
                 break;
             }
@@ -356,8 +337,46 @@ void render() {
             }
             u8g2.drawStr(5, 30+i*11, opts[idx]); u8g2.setDrawColor(1);
         }
+    } else if(state.uiMode == UI_OTA) {
+        drawHeader("OTA Mode");
+        u8g2.setFont(u8g2_font_profont11_tf);
+        String ip = WiFi.localIP().toString();
+        u8g2.drawStr((128 - u8g2.getStrWidth(ip.c_str()))/2, 35, ip.c_str());
+        u8g2.drawStr(10, 55, "Ready for Upload...");
     }
     u8g2.sendBuffer();
+}
+
+// OTA Setup
+void setupOTA() {
+    ArduinoOTA.setHostname("smartmedbox");
+    ArduinoOTA.setPassword("medbox123");
+    ArduinoOTA
+            .onStart([]() {
+                SPIFFS.end();
+                u8g2.clearBuffer(); u8g2.drawStr(30, 30, "Updating..."); u8g2.sendBuffer();
+            })
+            .onEnd([]() {
+                u8g2.clearBuffer(); u8g2.drawStr(30, 30, "Done!"); u8g2.sendBuffer();
+                delay(1000); ESP.restart();
+            });
+    ArduinoOTA.begin();
+    Serial.println("OTA ready.");
+}
+
+// Enter OTA - **** FIXED ****
+void enterOtaMode() {
+    if (isOtaMode || !state.wifiConnected) {
+        u8g2.clearBuffer();
+        u8g2.drawStr(20, 30, "No WiFi!");
+        u8g2.sendBuffer();
+        delay(1000);
+        return;
+    };
+    isOtaMode = true;
+    state.uiMode = UI_OTA;
+    // BLEDevice::deinit(true); // <--- REMOVED TO PREVENT CRASH
+    Serial.println("OTA Mode Active");
 }
 
 // ==================== 主程式 ====================
@@ -376,7 +395,7 @@ void setup() {
     encoder.setup([]{encoder.readEncoder_ISR();}, []{});
     encoder.setBoundaries(0, 3, true);
 
-    // 硬體自檢
+    // POST
     u8g2.clearBuffer(); u8g2.setFont(u8g2_font_ncenB08_tr); u8g2.drawStr(10,30,"Self Test..."); u8g2.sendBuffer();
     leds.fill(leds.Color(0,50,0)); leds.show(); delay(500); leds.clear(); leds.show();
     beep(1, 1000, 100);
@@ -404,31 +423,34 @@ void loop() {
             state.wifiConnected = true;
             configTime(GMT_OFFSET, 0, NTP_SERVER);
             if(MDNS.begin("medbox")) ArduinoOTA.begin();
+            setupOTA();
         }
-        ArduinoOTA.handle();
+        if(isOtaMode) {
+            ArduinoOTA.handle();
+            // Exit OTA
+            if(!digitalRead(PIN_BTN_BACK)) ESP.restart();
+            // Refresh OTA Screen
+            if(now - tmrDisplay > INTERVAL_DISPLAY) { render(); tmrDisplay = now; }
+            return; // Stop other logic
+        }
     } else state.wifiConnected = false;
 
-    // 檢查鬧鐘
-    if(now - tmrAlarmCheck > 1000) {
-        checkAlarms();
-        tmrAlarmCheck = now;
-    }
+    // Alarm Check
+    if(now - tmrAlarmCheck > 1000) { checkAlarms(); tmrAlarmCheck = now; }
 
-    // 鬧鐘響鈴狀態
+    // Alarm Ringing
     if(state.uiMode == UI_ALARM_RINGING) {
         playAlarmEffect();
         if(!digitalRead(PIN_BTN_OK) || !digitalRead(PIN_BTN_BACK) || !digitalRead(PIN_ENC_BTN)) {
             state.uiMode = UI_MAIN;
             leds.clear(); leds.show();
             noTone(PIN_BUZZER_1); noTone(PIN_BUZZER_2);
-            Serial.println("Alarm Stopped.");
             delay(500);
         }
-        render();
-        return;
+        render(); return;
     }
 
-    // 一般輸入
+    // Encoder
     if(encoder.encoderChanged()) {
         beep(1, 4000, 10);
         if(state.uiMode == UI_MENU) {
@@ -441,32 +463,39 @@ void loop() {
         tmrDisplay = 0;
     }
 
+    // OK Button
     if(!digitalRead(PIN_BTN_OK) && now - tmrBtnOk > 1000) {
         if(state.uiMode == UI_MAIN) {
             state.uiMode = UI_MENU;
             encoder.setBoundaries(0, MN_COUNT-1, true);
             state.menuIdx = 0; encoder.setEncoderValue(0);
             beep(2, 1500, 100);
+        } else if (state.uiMode == UI_MENU) {
+            // Menu Select Logic
+            switch(state.menuIdx) {
+                case MN_WIFI: connectWiFi(); break;
+                case MN_OTA: enterOtaMode(); break;
+                case MN_INFO: state.uiMode = UI_INFO; break;
+                case MN_REBOOT: ESP.restart(); break;
+                case MN_BACK: state.uiMode = UI_MAIN; encoder.setBoundaries(0, state.engMode?7:3, true); break;
+            }
         }
         tmrBtnOk = now;
     }
 
+    // Back Button
     if(!digitalRead(PIN_BTN_BACK) && now - tmrBtnBack > 300) {
         beep(2, 1000, 50);
-        if(state.uiMode == UI_MENU) {
+        if(state.uiMode == UI_MENU || state.uiMode == UI_INFO) {
             state.uiMode = UI_MAIN;
             encoder.setBoundaries(0, state.engMode?7:3, true);
         }
         tmrBtnBack = now;
     }
 
-    // 畫面刷新 (已修復 INTERVAL_DISPLAY)
-    if(now - tmrDisplay > INTERVAL_DISPLAY) {
-        render(); tmrDisplay = now;
-    }
+    if(now - tmrDisplay > INTERVAL_DISPLAY) { render(); tmrDisplay = now; }
 }
 
-// 圖示 Data
 const uint8_t ico_ble[] = {0x18,0x24,0x42,0x5A,0x5A,0x42,0x24,0x18};
 const uint8_t ico_wifi[] = {0x00,0x18,0x24,0x42,0x81,0x42,0x24,0x18};
 const uint8_t ico_no_wifi[] = {0x00,0x18,0x18,0x18,0x00,0x18,0x18,0x00};
