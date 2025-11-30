@@ -147,14 +147,17 @@ class EnvironmentFragment : Fragment() {
             this.valueTextColor = color
             this.lineWidth = 2f
             
-            // Clean visual style: no circles, just curve and fill
-            this.setDrawCircles(false) 
-            this.setDrawCircleHole(false)
-            this.highLightColor = color // Color of the crosshair when selected
+            // Restore circles for better visibility on single data point
+            this.setDrawCircles(true) 
+            this.setDrawCircleHole(true) // Hollow circle looks nicer with fill
+            this.circleRadius = 4f // Moderate size
+            this.circleHoleRadius = 2f
+            this.setCircleColor(color)
+            this.highLightColor = color 
             
             this.mode = LineDataSet.Mode.CUBIC_BEZIER
             this.setDrawFilled(true)
-            this.fillAlpha = 30 // Lighter fill
+            this.fillAlpha = 50 // Slightly increased alpha
             this.fillColor = color
             
             setDrawValues(false) 
