@@ -77,74 +77,94 @@
 
 所有指令均透過寫入 **Write Characteristic** 發送。
 
-1.  **時間同步 (Time Sync):**
+1.  **請求協定版本 (Request Protocol Version):**
+    - **指令碼:** `0x01`
+    - **用途:** 詢問藥盒當前的協定版本。
+    - **格式 (1 byte):** `[0]: 0x01`
+
+2.  **時間同步 (Time Sync):**
     - **指令碼:** `0x11`
     - **格式 (7 bytes):** `[0]: 0x11`, `[1]: 年-2000`, `[2]: 月`, `[3]: 日`, `[4]: 時`, `[5]: 分`, `[6]: 秒`
 
-2.  **傳送 Wi-Fi 憑證 (Send Wi-Fi Credentials):**
+3.  **傳送 Wi-Fi 憑證 (Send Wi-Fi Credentials):**
     - **指令碼:** `0x12`
     - **格式 (可變長度):** `[0]: 0x12`, `[1]: SSID長度`, `[2...]: SSID`, `[...]: 密碼長度`, `[...]: 密碼`
 
-3.  **設定工程模式 (Set Engineering Mode):**
+4.  **設定工程模式 (Set Engineering Mode):**
     - **指令碼:** `0x13`
     - **用途:** 命令藥盒啟用或停用工程模式。
     - **格式 (2 bytes):** `[0]: 0x13`, `[1]: 啟用 (0x01 為 true, 0x00 為 false)`
 
-4.  **請求工程模式狀態 (Request Engineering Mode Status):**
+5.  **請求工程模式狀態 (Request Engineering Mode Status):**
     - **指令碼:** `0x14`
     - **用途:** 主動向藥盒查詢其當前的工程模式狀態。
     - **格式 (1 byte):** `[0]: 0x14`
 
-5.  **請求藥盒狀態 (Request Status):**
+6.  **請求藥盒狀態 (Request Status):**
     - **指令碼:** `0x20`
     - **用途:** 主動向藥盒查詢其當前狀態（例如各藥倉是否有藥）。
     - **格式 (1 byte):** `[0]: 0x20`
 
-6.  **請求即時環境數據 (Request Instant Environment Data):**
+7.  **請求即時環境數據 (Request Instant Environment Data):**
     - **指令碼:** `0x30`
     - **用途:** 主動向藥盒請求目前的即時溫濕度數據。
     - **格式 (1 byte):** `[0]: 0x30`
 
-7.  **請求歷史環境數據 (Request Historic Environment Data):**
+8.  **請求歷史環境數據 (Request Historic Environment Data):**
     - **指令碼:** `0x31`
     - **用途:** 請求藥盒開始傳輸其儲存的所有歷史溫濕度數據。
     - **格式 (1 byte):** `[0]: 0x31`
+
+9.  **訂閱即時環境數據 (Subscribe Realtime Environment Data):**
+    - **指令碼:** `0x32`
+    - **用途:** 訂閱即時環境數據推送。
+    - **格式 (1 byte):** `[0]: 0x32`
+
+10. **取消訂閱即時環境數據 (Unsubscribe Realtime Environment Data):**
+    - **指令碼:** `0x33`
+    - **用途:** 取消訂閱即時環境數據推送。
+    - **格式 (1 byte):** `[0]: 0x33`
 
 ### 藥盒 -> App (通知)
 
 所有通知均透過 **Notify Characteristic** 發送。App 在 `handleIncomingData(data: ByteArray)` 方法中解析這些數據。
 
-1.  **藥盒狀態回報 (Box Status Update):**
+1.  **協定版本回報 (Protocol Version Report):**
+    - **指令碼:** `0x71`
+    - **格式 (2 bytes):** `[0]: 0x71`, `[1]: 版本 (例如 0x02 代表 V2)`
+    - **用途:** 回報藥盒當前的協定版本。
+
+2.  **藥盒狀態回報 (Box Status Update):**
     - **指令碼:** `0x80`
     - **格式 (2 bytes):** `[0]: 0x80`, `[1]: 藥倉狀態位元遮罩`
 
-2.  **藥物已取出回報 (Medication Taken Report):**
+3.  **藥物已取出回報 (Medication Taken Report):**
     - **指令碼:** `0x81`
     - **格式 (2 bytes):** `[0]: 0x81`, `[1]: 藥倉編號`
 
-3.  **時間同步確認 (Time Sync Acknowledged):**
+4.  **時間同步確認 (Time Sync Acknowledged):**
     - **指令碼:** `0x82`
     - **格式 (1 byte):** `[0]: 0x82`
 
-4.  **工程模式狀態回報 (Engineering Mode Status Report):**
+5.  **工程模式狀態回報 (Engineering Mode Status Report):**
     - **指令碼:** `0x83`
     - **用途:** 回報藥盒當前的工程模式狀態。
     - **格式 (2 bytes):** `[0]: 0x83`, `[1]: 狀態 (0x01 為啟用, 0x00 為關閉)`
 
-5.  **即時溫濕度數據回報 (Instant Sensor Data Report):**
+6.  **即時溫濕度數據回報 (Instant Sensor Data Report):**
     - **指令碼:** `0x90`
     - **格式 (5 bytes):** `[0]: 0x90`, `[1-2]: 溫度`, `[3-4]: 濕度` (Little Endian, 數值*100)
 
-6.  **歷史溫濕度數據批次 (Historic Sensor Data Batch):**
+7.  **歷史溫濕度數據批次 (Historic Sensor Data Batch):**
     - **指令碼:** `0x91`
     - **格式 (可變, 9-41 bytes):** `[0]: 0x91`, `[1...]: 1至5筆歷史紀錄`
     - ***注意:*** *此協定變更需要 ESP32 韌體同步更新。*
 
-7.  **歷史數據傳輸結束 (End of Historic Data Transmission):**
+8.  **歷史數據傳輸結束 (End of Historic Data Transmission):**
     - **指令碼:** `0x92`
     - **格式 (1 byte):** `[0]: 0x92`
 
-8.  **異常狀態回報 (Error Report):**
+9.  **異常狀態回報 (Error Report):**
     - **指令碼:** `0xEE`
     - **格式 (2 bytes):** `[0]: 0xEE`, `[1]: 錯誤碼`
 
@@ -157,10 +177,20 @@
 `POST_NOTIFICATIONS`, `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`, `ACCESS_FINE_LOCATION`, `SCHEDULE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED`, `VIBRATE`
 
 ## 最近更新
+*   **0094:** **圖表視覺與互動優化。**
+    *   **雙軸顯示:** 實作了溫度 (左軸) 與濕度 (右軸) 的雙 Y 軸顯示，解決了數值範圍差異導致的顯示問題。
+    *   **視覺簡化:** 移除了圖表上的圓點，僅保留曲線與填充，使畫面更加現代簡潔。加入進場動畫與下拉刷新動畫。
+    *   **互動增強:** 新增了 `CustomMarkerView`，當使用者長按圖表時，會顯示選中點的具體時間與數值。
+*   **0093:** **修復藍牙連接時的未知錯誤代碼 3。**
+    *   **問題分析:** 錯誤代碼 3 發生在 Android App 傳送新的「請求協定版本 (0x01)」指令時，但 `esp32.ino` 韌體中尚未實作此指令，導致韌體回報未知指令錯誤 (0x03)。
+    *   **韌體修復:** 在 `esp32.ino` 中新增了 `CMD_REQUEST_PROTOCOL_VERSION (0x01)` 和 `CMD_REPORT_PROTOCOL_VERSION (0x71)` 的定義。
+    *   **邏輯實作:** 在 `handleCommand` 中新增邏輯，當收到 `0x01` 時，回傳當前韌體協定版本 `0x02`，使 App 能夠順利完成協定同步，消除連線錯誤。
+*   **0092:** **實作即時環境數據訂閱機制與圖表優化。**
+    *   **協定升級:** 新增 `0x32` (訂閱) 與 `0x33` (取消訂閱) 指令。
+    *   **App 優化:** `EnvironmentFragment` 改用 `LineChart`，並修正了數據解析邏輯。
 *   **0091:** **修復圖表顯示問題與優化藍牙診斷。**
-    *   **問題修復:** 修正了 `EnvironmentFragment` 中 MPAndroidChart 因 Unix Timestamp 數值過大導致 Float 精度丟失，進而無法正確顯示圖表的問題。實作了 Timestamp Offset 機制，將 X 軸數值轉換為相對時間，確保了圖表的顯示精度。
-    *   **診斷增強:** 在 `BluetoothLeManager` 中加入了詳細的 Log 輸出 (RX/TX)，印出接收到的原始 Hex 數據，方便開發者區分是 ESP32 未發送數據還是 App 解析錯誤。
-    *   **邏輯優化:** 確保 `MainViewModel` 在接收到新的即時感測數據時，會將其正確合併並排序，防止數據亂序導致圖表繪製異常。
+    *   **問題修復:** 修正了 `EnvironmentFragment` 中 MPAndroidChart 的精度問題。
+    *   **診斷增強:** 在 `BluetoothLeManager` 中加入了詳細的 Log 輸出。
 *   **0090:** **導入 Hilt 實現依賴注入。**
     *   **重構範圍:** 為 `MainViewModel` 和 `BluetoothLeManager` 導入 Hilt 依賴注入。
     *   **程式碼修改:**

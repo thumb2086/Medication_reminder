@@ -20,7 +20,7 @@
         *   建立 `AppModule` 來提供 `BluetoothLeManager` 的實例。
     *   **優點:** 降低了元件之間的耦合度，提高了程式碼的可測試性和可維護性。
 *   **0089:** **將 `MainViewModel` 中的 `LiveData` 重構為 `StateFlow`。**
-    *   **重構範圍:** `isBleConnected`, `bleStatus`, `isEngineeringMode`, `historicSensorData`, `medicationList`, `dailyStatusMap`, `notesMap`, and `complianceRate`。
+    *   **重構範圍:** `isBleConnected`, `bleStatus`, `isEngineeringMode`, `historicSensorData`, `medicationList`, `dailyStatusMap`, and `complianceRate`。
     *   **UI 層更新:** 同步更新了 `MainActivity` 和所有相關的 Fragment (`EnvironmentFragment`, `HistoryFragment`, `MedicationListFragment`, `ReminderSettingsFragment`, `SettingsFragment`)，改為使用 `lifecycleScope.launch` 和 `repeatOnLifecycle` 來收集 `StateFlow` 的更新。
     *   **優點:** 提高了 UI 狀態管理的可預測性、線程安全性，並為未來導入更複雜的非同步數據流操作打下了基礎。
 
@@ -38,13 +38,29 @@
     *   **程式碼修改:** 更新了 `BluetoothLeManager.kt` 中的 `handleIncomingData` 函式，使其能夠解析新的批次數據格式。
     *   **文件更新:** 同步更新了 `README.md` 和 `README_cn.md` 中的藍牙協定文件。
     *   **重要提示:** 此項協定變更需要 ESP32 韌體同步更新。
-*   **0084:** 調整了歷史溫濕度數據的同步時機。
+    *   **0084:** 調整了歷史溫濕度數據的同步時機。
     *   **邏輯修改**: 移除了在 `EnvironmentFragment` 中，每當藍牙連線成功就自動請求歷史數據 (`0x31`) 的邏輯。
     *   **使用者體驗改善**: 現在，歷史數據的同步將只在使用者於「環境監測」頁面執行下拉刷新手勢時觸發，避免了不必要的自動數據傳輸，給予使用者更大的控制權。
 *   **0083:** 優化了 App 與 ESP32 之間的藍牙數據協定。
     *   **協定變更**: 將溫濕度數據的傳輸方式，從原本將整數與小數部分拆分的作法，改為更高效、標準的 2-byte 帶正負號整數（原始數值乘以 100）。此修改同時應用於即時數據（`0x90`）和歷史數據（`0x91`）的解析邏輯中，提高了數據處理的穩定性與效率。
 
+## UI/UX 調整
+*   **0094:** **圖表視覺與互動優化。**
+    *   **雙軸顯示:** 實作了溫度 (左軸) 與濕度 (右軸) 的雙 Y 軸顯示，解決了數值範圍差異導致的顯示問題。
+    *   **視覺簡化:** 移除了圖表上的圓點，僅保留曲線與填充，使畫面更加現代簡潔。加入進場動畫與下拉刷新動畫。
+    *   **互動增強:** 新增了 `CustomMarkerView`，當使用者長按圖表時，會顯示選中點的具體時間與數值。
+
 ## Bug Fixes
+*   **0095:** **修復 `EnvironmentFragment` 中的多個程式碼警告。**
+    *   **問題:** `String.format` 隱式使用預設 Locale，以及 `setText` 中直接串接字串。
+    *   **修正:** 
+        *   為所有 `String.format` 呼叫明確加入 `Locale.getDefault()`。
+        *   在 `strings.xml` 中新增格式化字串資源 (`marker_view_format`, `chart_value_temp`, `chart_value_humidity`)。
+        *   改用 `context.getString(...)` 或 `String.format(...)` 來處理帶有佔位符的字串，避免直接串接。
+*   **0093:** **修復藍牙連接時的未知錯誤代碼 3。**
+    *   **問題分析:** 錯誤代碼 3 發生在 Android App 傳送新的「請求協定版本 (0x01)」指令時，但 `esp32.ino` 韌體中尚未實作此指令，導致韌體回報未知指令錯誤 (0x03)。
+    *   **韌體修復:** 在 `esp32.ino` 中新增了 `CMD_REQUEST_PROTOCOL_VERSION (0x01)` 和 `CMD_REPORT_PROTOCOL_VERSION (0x71)` 的定義。
+    *   **邏輯實作:** 在 `handleCommand` 中新增邏輯，當收到 `0x01` 時，回傳當前韌體協定版本 `0x02`，使 App 能夠順利完成協定同步，消除連線錯誤。
 *   **0082:** 修正了工具列標題的垂直對齊問題。
     *   **UI 修正**: 透過在 `activity_main.xml` 中，為標題的 `TextView` 加入 `paddingTop` 屬性，成功地將標題向下移動，使其與右側的設定圖示在視覺上對齊。
 *   **0081:** 修正了工具列標題的顯示問題。
@@ -121,7 +137,7 @@
 *   **0052:** 為提醒設定頁面新增了中斷藍牙連線的功能，並在 `drawable` 目錄中新增了 `ic_bluetooth_disabled.xml` 圖示。
 *   **0051:** 修正了 App 與 ESP32 的連線問題、輔助顏色設定不一致，以及主頁面出現多餘標題列的問題。同時也解決了 `AndroidManifest.xml` 中的屬性警告。
 *   **0050:** 修正了因刪除 `ThemeUtils.kt` 後，`SettingsFragment` 中出現 `Unresolved reference` 的編譯錯誤。
-*   **0048:** 修正了 `strings.xml` 中因缺少輔助顏色的英文翻譯而導致的編譯錯誤，並同步更新了 `accent_color_entries` 和 `accent_color_values` 陣列。
+*   **0048:** 修正了因缺少輔助顏色的英文翻譯而導致的編譯錯誤。
 *   **0046:** 修正了 `SettingsFragment` 中因缺少 `title_settings` 字串資源而導致的 `Unresolved reference` 錯誤。
 *   **0015:** 修正了服藥正確率未更新及服藥紀錄頁面時間顯示不清楚的問題。在 `MedicationTakenReceiver` 和 `MainViewModel` 中實作了正確的服藥率計算邏輯，並修正了 `fragment_history.xml` 中的文字顏色，確保其在淺色主題下可見。
 

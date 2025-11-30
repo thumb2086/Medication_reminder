@@ -69,6 +69,7 @@ const int DAYLIGHT_OFFSET = 0;
 #define DATA_EVENT_CHANNEL_UUID "c8c7c599-809c-43a5-b825-1038aa349e5d"
 
 // ==================== BLE 指令碼 ====================
+#define CMD_REQUEST_PROTOCOL_VERSION 0x01 // 新增：請求協定版本
 #define CMD_TIME_SYNC               0x11
 #define CMD_WIFI_CREDENTIALS        0x12
 #define CMD_SET_ENGINEERING_MODE    0x13
@@ -77,6 +78,7 @@ const int DAYLIGHT_OFFSET = 0;
 #define CMD_REQUEST_HISTORIC        0x31
 #define CMD_SUBSCRIBE_ENV           0x32
 #define CMD_UNSUBSCRIBE_ENV         0x33
+#define CMD_REPORT_PROTOCOL_VERSION  0x71 // 新增：回報協定版本
 #define CMD_REPORT_STATUS           0x80
 #define CMD_REPORT_TAKEN            0x81
 #define CMD_TIME_SYNC_ACK           0x82
@@ -162,6 +164,7 @@ void handleCommand(uint8_t* data, size_t length);
 void sendSensorDataReport();
 void sendTimeSyncAck();
 void sendErrorReport(uint8_t errorCode);
+void sendProtocolVersionReport(uint8_t version); // 新增宣告
 void initializeHistoryFile();
 void loadHistoryMetadata();
 void saveHistoryMetadata();
@@ -226,6 +229,11 @@ void handleCommand(uint8_t* data, size_t length) {
     if (length == 0) return;
     uint8_t command = data[0];
     switch (command) {
+        case CMD_REQUEST_PROTOCOL_VERSION: // 0x01
+            if (length == 1) {
+                sendProtocolVersionReport(0x02); // 韌體版本 v20.5 應回報協定版本 2
+            }
+            break;
         case CMD_TIME_SYNC:
             if (length == 7) {
                 tm timeinfo;
@@ -424,6 +432,14 @@ void sendErrorReport(uint8_t errorCode) {
     pDataEventCharacteristic->setValue(packet, 2);
     pDataEventCharacteristic->notify();
 }
+
+void sendProtocolVersionReport(uint8_t version) {
+    if (!bleDeviceConnected) return;
+    uint8_t packet[2] = {CMD_REPORT_PROTOCOL_VERSION, version};
+    pDataEventCharacteristic->setValue(packet, 2);
+    pDataEventCharacteristic->notify();
+    Serial.printf("Protocol Version %d reported.\n", version);
+} // 新增函式
 
 void handleRealtimeEnvPush() {
     if (isRealtimeEnvSubscribed && bleDeviceConnected && (millis() - lastRealtimeEnvPush >= REALTIME_ENV_PUSH_INTERVAL)) {

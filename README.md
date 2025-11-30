@@ -60,25 +60,29 @@ To enable interaction between the app and the pillbox, we have defined a bidirec
 
 ### App -> Pillbox (Commands)
 
-1.  **Time Sync (0x11):** `[0]: 0x11`, `[1]: Year-2000`, `[2]: Month`, `[3]: Day`, `[4]: Hour`, `[5]: Minute`, `[6]: Second`
-2.  **Send Wi-Fi Credentials (0x12):** `[0]: 0x12`, `[1]: SSID_Len`, `[2...]: SSID`, `[...]: Pass_Len`, `[...]: Password`
-3.  **Set Engineering Mode (0x13):** `[0]: 0x13`, `[1]: Enable (0x01/0x00)` - Commands the pillbox to enter or exit engineering mode.
-4.  **Request Engineering Mode Status (0x14):** `[0]: 0x14` - Asks the pillbox for its current engineering mode status.
-5.  **Request Status (0x20):** `[0]: 0x20` - Asks for the pillbox's general status.
-6.  **Request Instant Environment Data (0x30):** `[0]: 0x30`
-7.  **Request Historic Environment Data (0x31):** `[0]: 0x31`
+1.  **Request Protocol Version (0x01):** `[0]: 0x01` - Asks the pillbox for its current protocol version.
+2.  **Time Sync (0x11):** `[0]: 0x11`, `[1]: Year-2000`, `[2]: Month`, `[3]: Day`, `[4]: Hour`, `[5]: Minute`, `[6]: Second`
+3.  **Send Wi-Fi Credentials (0x12):** `[0]: 0x12`, `[1]: SSID_Len`, `[2...]: SSID`, `[...]: Pass_Len`, `[...]: Password`
+4.  **Set Engineering Mode (0x13):** `[0]: 0x13`, `[1]: Enable (0x01/0x00)` - Commands the pillbox to enter or exit engineering mode.
+5.  **Request Engineering Mode Status (0x14):** `[0]: 0x14` - Asks the pillbox for its current engineering mode status.
+6.  **Request Status (0x20):** `[0]: 0x20` - Asks for the pillbox's general status.
+7.  **Request Instant Environment Data (0x30):** `[0]: 0x30`
+8.  **Request Historic Environment Data (0x31):** `[0]: 0x31`
+9.  **Subscribe Realtime Environment Data (0x32):** `[0]: 0x32` - Subscribes to real-time environment data push.
+10. **Unsubscribe Realtime Environment Data (0x33):** `[0]: 0x33` - Unsubscribes from real-time environment data push.
 
 ### Pillbox -> App (Notifications)
 
-1.  **Box Status Update (0x80):** `[0]: 0x80`, `[1]: Slot Mask`
-2.  **Medication Taken Report (0x81):** `[0]: 0x81`, `[1]: Slot Number`
-3.  **Time Sync Acknowledged (0x82):** `[0]: 0x82`
-4.  **Engineering Mode Status Report (0x83):** `[0]: 0x83`, `[1]: Status (0x01 for enabled)` - Reports the pillbox's current engineering mode.
-5.  **Instant Sensor Data Report (0x90):** `[0]: 0x90`, `[1-2]: Temp`, `[3-4]: Hum` (Little Endian, value*100)
-6.  **Historic Sensor Data Batch (0x91):** `[0]: 0x91`, `[1...]: 1 to 5 history records`
+1.  **Protocol Version Report (0x71):** `[0]: 0x71`, `[1]: Version (e.g., 0x02 for V2)` - Reports the pillbox's current protocol version.
+2.  **Box Status Update (0x80):** `[0]: 0x80`, `[1]: Slot Mask`
+3.  **Medication Taken Report (0x81):** `[0]: 0x81`, `[1]: Slot Number`
+4.  **Time Sync Acknowledged (0x82):** `[0]: 0x82`
+5.  **Engineering Mode Status Report (0x83):** `[0]: 0x83`, `[1]: Status (0x01 for enabled)` - Reports the pillbox's current engineering mode.
+6.  **Instant Sensor Data Report (0x90):** `[0]: 0x90`, `[1-2]: Temp`, `[3-4]: Hum` (Little Endian, value*100)
+7.  **Historic Sensor Data Batch (0x91):** `[0]: 0x91`, `[1...]: 1 to 5 history records`
     - ***Note:*** *This protocol change requires a corresponding firmware update on the ESP32.*
-7.  **End of Historic Data Transmission (0x92):** `[0]: 0x92`
-8.  **Error Report (0xEE):** `[0]: 0xEE`, `[1]: Error Code`
+8.  **End of Historic Data Transmission (0x92):** `[0]: 0x92`
+9.  **Error Report (0xEE):** `[0]: 0xEE`, `[1]: Error Code`
 
 ## Project Structure
 
@@ -89,6 +93,16 @@ To enable interaction between the app and the pillbox, we have defined a bidirec
 `POST_NOTIFICATIONS`, `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`, `ACCESS_FINE_LOCATION`, `SCHEDULE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED`, `VIBRATE`
 
 ## Recent Updates
+*   **0094:** **Chart Visuals and Interaction Improvements.**
+    *   **Dual Axis Display:** Implemented dual Y-axis display for temperature (left) and humidity (right), resolving display issues caused by scale differences.
+    *   **Visual Simplification:** Removed data point circles from the chart, keeping only the curves and fill for a cleaner, modern look. Added entry and pull-to-refresh animations.
+    *   **Enhanced Interaction:** Added a `CustomMarkerView` that displays the specific time and value of a selected point upon long-press.
+*   **0093:** **Fixed Unknown Error Code 3 during Bluetooth connection.**
+    *   **Analysis:** Error code 3 occurred when the app sent the new "Request Protocol Version (0x01)" command, which was unimplemented in the `esp32.ino` firmware.
+    *   **Fix:** Updated firmware to handle `0x01` and reply with version `0x02`.
+*   **0092:** **Implemented Real-time Environment Data Subscription.**
+    *   **Protocol Upgrade:** Added `0x32` (Subscribe) and `0x33` (Unsubscribe) commands.
+    *   **App Optimization:** `EnvironmentFragment` switched to `LineChart`.
 *   **0090:** **Implemented Dependency Injection with Hilt.**
     *   **Refactoring Scope:** Integrated Hilt to manage dependencies for `MainViewModel` and `BluetoothLeManager`.
     *   **Code Changes:**
@@ -98,7 +112,7 @@ To enable interaction between the app and the pillbox, we have defined a bidirec
         *   Created an `AppModule` to provide the `BluetoothLeManager` instance.
     *   **Benefits:** Decoupled components, improving the code's testability and maintainability.
 *   **0089:** **Refactored `LiveData` to `StateFlow` in `MainViewModel`.**
-    *   **Refactoring Scope:** `isBleConnected`, `bleStatus`, `isEngineeringMode`, `historicSensorData`, `medicationList`, `dailyStatusMap`, and `complianceRate`.
+    *   **Refactoring Scope:** `isBleConnected`, `bleStatus`, `isEngineeringMode`, `historicSensorData`, `medicationList`, `dailyStatusMap`, and `complianceRate`。
     *   **UI Layer Update:** Updated `MainActivity` and all relevant Fragments to collect the `StateFlow` updates using `lifecycleScope.launch` and `repeatOnLifecycle`.
     *   **Benefits:** Improved predictability and thread safety of UI state management.
 *   **0088:** **Introduced Bluetooth protocol versioning and outlined future optimization directions.**
