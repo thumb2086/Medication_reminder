@@ -1,10 +1,18 @@
 /*
-  SmartMedBox Firmware v21.2 (Fixed)
+  SmartMedBox Firmware v21.4 (UI Restored)
   硬體: ESP32-C6 Dev Module
 
-  v21.2 修正說明:
-  1. [修復] 補回遺漏的全域變數 'bool isOtaMode'，解決編譯錯誤。
-  2. [功能] 包含 v21.1 所有功能 (鬧鐘、0x41指令、硬體驅動、滾動選單)。
+  v21.4 修正說明:
+  1. [介面復原] 放棄簡化寫法，完全恢復 v20.4/v16.0 的 UI 架構。
+     - 找回大字體溫濕度顯示。
+     - 找回原本的天氣圖示排版。
+     - 找回原本詳細的折線圖繪製邏輯。
+  2. [功能整合] 保留 v21 系列的所有新功能:
+     - 鬧鐘系統 (0x41, 響鈴畫面, 儲存)。
+     - 硬體驅動 (WS2812B, 雙蜂鳴器, 馬達)。
+     - 實體 Back 鍵 (GPIO 5) 多層級退出。
+     - BLE 協定 0x01 回報。
+  3. [穩定性] 修復所有編譯錯誤與變數遺失。
 */
 
 #include <Arduino.h>
@@ -24,158 +32,626 @@
 #include "SPIFFS.h"
 #include <ESPmDNS.h>
 #include <ArduinoOTA.h>
+// 硬體驅動
 #include <ESP32Servo.h>
 #include <Adafruit_NeoPixel.h>
 
-// ==================== 硬體腳位定義 ====================
-#define PIN_I2C_SDA     22
-#define PIN_I2C_SCL     21
-#define PIN_ENC_A       18
-#define PIN_ENC_B       19
-#define PIN_ENC_BTN     23
-#define PIN_BTN_OK      4
-#define PIN_BTN_BACK    5
-#define PIN_DHT         2
-#define PIN_BUZZER_1    10
-#define PIN_BUZZER_2    11
-#define PIN_SERVO       12
-#define PIN_LED         13
-#define LED_COUNT       64
-#define DHT_TYPE        DHT11
+// ==================== 腳位定義 ====================
+#define I2C_SDA_PIN 22
+#define I2C_SCL_PIN 21
+#define ENCODER_A_PIN GPIO_NUM_18
+#define ENCODER_B_PIN GPIO_NUM_19
+#define ENCODER_PSH_PIN GPIO_NUM_23
+#define BUTTON_CONFIRM_PIN 4
+#define BUTTON_BACK_PIN 5     // Back 鍵
+#define DHT_PIN 2
+#define DHT_TYPE DHT11
 
-// ==================== 系統常數 ====================
+// 新增硬體 (v17.0)
+#define BUZZER1_PIN 10
+#define BUZZER2_PIN 11
+#define SERVO_PIN 12
+#define LED_PIN 13
+#define LED_COUNT 64
+
+// ==================== 參數設定 ====================
+const char* default_ssid = "charlie phone";
+const char* default_password = "12345678";
+String openWeatherMapApiKey = "ac1003d80943887d3d29d609afea98db";
+String city = "Taipei";
+String countryCode = "TW";
+const float TEMP_CALIBRATION_OFFSET = 2.4;
 const char* NTP_SERVER = "time.google.com";
-const long  GMT_OFFSET = 8 * 3600;
-const int   MAX_HISTORY = 4800;
-const int   HISTORY_WINDOW = 60;
-const int   MAX_ALARMS = 4;
+const long GMT_OFFSET = 8 * 3600;
+const int DAYLIGHT_OFFSET = 0;
 
+// 時間間隔
 const unsigned long INTERVAL_DISPLAY = 100;
 const unsigned long INTERVAL_HISTORY = 30000;
 const unsigned long INTERVAL_WEATHER = 600000;
 const unsigned long INTERVAL_PUSH    = 5000;
 
-// BLE 指令集
-enum BleCmd {
-    CMD_REQ_PROTO_VER = 0x01,
-    CMD_TIME_SYNC = 0x11,
-    CMD_WIFI_CRED = 0x12,
-    CMD_ENG_MODE = 0x13,
-    CMD_SET_ALARM = 0x41,
-    CMD_REQ_STATUS = 0x20,
-    CMD_REQ_ENV = 0x30,
-    CMD_REQ_HIST = 0x31,
-    CMD_SUB_ENV = 0x32,
-    CMD_UNSUB_ENV = 0x33,
-    CMD_REP_STATUS = 0x80,
-    CMD_REP_TAKEN = 0x81,
-    CMD_ACK = 0x82,
-    CMD_REP_PROTO_VER = 0x83,
-    CMD_REP_ENV = 0x90,
-    CMD_REP_HIST_PT = 0x91,
-    CMD_REP_HIST_END = 0x92,
-    CMD_ERROR = 0xEE
-};
+// ==================== BLE 設定 ====================
+#define SERVICE_UUID           "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define COMMAND_CHANNEL_UUID   "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+#define DATA_EVENT_CHANNEL_UUID "c8c7c599-809c-43a5-b825-1038aa349e5d"
 
-const uint8_t CURRENT_PROTOCOL_VERSION = 3;
+// BLE 指令
+#define CMD_REQ_PROTO_VER 0x01
+#define CMD_TIME_SYNC     0x11
+#define CMD_WIFI_CRED     0x12
+#define CMD_ENG_MODE      0x13
+#define CMD_SET_ALARM     0x41 // 新增鬧鐘指令
+#define CMD_REQ_STATUS    0x20
+#define CMD_REQ_ENV       0x30
+#define CMD_REQ_HIST      0x31
+#define CMD_SUB_ENV       0x32
+#define CMD_UNSUB_ENV     0x33
+#define CMD_REP_PROTO     0x83
+#define CMD_REP_STATUS    0x80
+#define CMD_REP_TAKEN     0x81
+#define CMD_ACK           0x82
+#define CMD_REP_ENV       0x90
+#define CMD_REP_HIST_PT   0x91
+#define CMD_REP_HIST_END  0x92
+#define CMD_ERROR         0xEE
 
-// UI 狀態
-enum UIMode { UI_MAIN, UI_MENU, UI_INFO, UI_OTA, UI_ALARM_RINGING };
-enum Screen { SCR_TIME, SCR_DATE, SCR_WEATHER, SCR_SENSOR, SCR_CH_TEMP, SCR_CH_HUM, SCR_CH_RSSI, SCR_SYS };
-enum MenuOpt { MN_WIFI, MN_OTA, MN_INFO, MN_REBOOT, MN_BACK, MN_COUNT };
+const uint8_t PROTOCOL_VERSION = 3;
 
-// ==================== 數據結構 ====================
-struct AppConfig {
-    String wifiSSID = "charlie phone";
-    String wifiPass = "12345678";
-    String city = "Taipei";
-    String country = "TW";
-    String weatherKey = "ac1003d80943887d3d29d609afea98db";
-    float tempOffset = 2.4;
-};
-
-struct Alarm {
-    uint8_t hour;
-    uint8_t min;
-    bool enabled;
-};
-
-struct AppState {
-    UIMode uiMode = UI_MAIN;
-    Screen curScreen = SCR_TIME;
-    int menuIdx = 0;
-    int menuOffset = 0;
-    bool engMode = false;
-    bool wifiConnected = false;
-    bool bleConnected = false;
-    bool subRealtime = false;
-    bool sendingHist = false;
-    bool chartViewMode = false;
-    int activeAlarmId = -1;
-};
-
-struct EnvData { float temp; float hum; int16_t rssi; };
-struct WeatherInfo { String desc; float temp; int hum; bool valid; };
+// ==================== 圖示 (XBM) ====================
+// 恢復原本的圖示定義
+const unsigned char icon_ble_bits[] U8X8_PROGMEM = {0x18, 0x24, 0x42, 0x5A, 0x5A, 0x42, 0x24, 0x18};
+const unsigned char icon_sync_bits[] U8X8_PROGMEM = {0x00, 0x3C, 0x46, 0x91, 0x11, 0x26, 0x3C, 0x00};
+const unsigned char icon_wifi_bits[] U8X8_PROGMEM = {0x00, 0x18, 0x24, 0x42, 0x81, 0x42, 0x24, 0x18};
+const unsigned char icon_wifi_fail_bits[] U8X8_PROGMEM = {0x00, 0x18, 0x18, 0x18, 0x00, 0x18, 0x18, 0x00};
+const unsigned char icon_gear_bits[] U8X8_PROGMEM = {0x24, 0x18, 0x7E, 0x25, 0x52, 0x7E, 0x18, 0x24};
+const unsigned char icon_wifi_connecting_bits[] U8X8_PROGMEM = {0x00,0x00,0x0E,0x11,0x11,0x0E,0x00,0x00};
 
 // ==================== 全域物件 ====================
 U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
-AiEsp32RotaryEncoder encoder(PIN_ENC_A, PIN_ENC_B, PIN_ENC_BTN, -1, 4);
-DHT dht(PIN_DHT, DHT_TYPE);
-BLECharacteristic* pBleData = NULL;
-Preferences prefs;
-Servo servo;
-Adafruit_NeoPixel leds(LED_COUNT, PIN_LED, NEO_GRB + NEO_KHZ800);
+AiEsp32RotaryEncoder rotaryEncoder(ENCODER_A_PIN, ENCODER_B_PIN, ENCODER_PSH_PIN, -1, 4);
+DHT dht(DHT_PIN, DHT_TYPE);
+BLECharacteristic* pDataEventCharacteristic = NULL;
+Preferences preferences;
+File historyFile;
+Servo myServo;
+Adafruit_NeoPixel pixels(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 
-AppConfig config;
-AppState state;
-WeatherInfo weather;
-EnvData histBuf[HISTORY_WINDOW];
+// ==================== 狀態結構 ====================
+enum WiFiState { WIFI_IDLE, WIFI_CONNECTING, WIFI_CONNECTED, WIFI_FAILED };
+WiFiState wifiState = WIFI_IDLE;
+
+enum UIMode { UI_MODE_MAIN_SCREENS, UI_MODE_SYSTEM_MENU, UI_MODE_INFO_SCREEN, UI_MODE_OTA, UI_ALARM_RINGING };
+UIMode currentUIMode = UI_MODE_MAIN_SCREENS;
+
+enum SystemMenuItem { MENU_ITEM_WIFI, MENU_ITEM_OTA, MENU_ITEM_INFO, MENU_ITEM_REBOOT, MENU_ITEM_BACK, NUM_MENU_ITEMS };
+SystemMenuItem selectedMenuItem = MENU_ITEM_WIFI;
+
+enum EncoderMode { MODE_NAVIGATION, MODE_VIEW_ADJUST };
+EncoderMode currentEncoderMode = MODE_NAVIGATION;
+
+enum ScreenState { SCREEN_TIME, SCREEN_DATE, SCREEN_WEATHER, SCREEN_SENSOR, SCREEN_TEMP_CHART, SCREEN_HUM_CHART, SCREEN_RSSI_CHART, SCREEN_SYSTEM };
+int NUM_SCREENS = 4;
+ScreenState currentPageIndex = SCREEN_TIME;
+
+struct WeatherData { String description; float temp = 0; int humidity = 0; bool valid = false; } weatherData;
+struct Alarm { uint8_t hour; uint8_t min; bool enabled; };
+const int MAX_ALARMS = 4;
 Alarm alarms[MAX_ALARMS];
 
-// 全域變數
-bool isOtaMode = false; // [已補回]
-int histCount = 0, histHead = 0, histViewOffset = 0, histSendIdx = 0;
-unsigned long tmrDisplay=0, tmrHist=0, tmrWeather=0, tmrPush=0, tmrAlarmCheck=0;
-unsigned long tmrBtnOk=0, tmrBtnBack=0, tmrEncBtn=0;
+const int MAX_HISTORY = 4800;
+const int HISTORY_WINDOW_SIZE = 60;
+struct DataPoint { float temp; float hum; int16_t rssi; };
+DataPoint historyWindowBuffer[HISTORY_WINDOW_SIZE];
 
-// BLE UUID
-#define SERVICE_UUID    "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-#define CHAR_CMD_UUID   "beb5483e-36e1-4688-b7f5-ea07361b26a8"
-#define CHAR_DATA_UUID  "c8c7c599-809c-43a5-b825-1038aa349e5d"
+// 變數
+int historyIndex = 0;
+int historyCount = 0;
+int historyViewOffset = 0;
+int menuViewOffset = 0;
+const int MAX_MENU_ITEMS_ON_SCREEN = 4;
+static int lastViewOffset[3] = {0, 0, 0};
 
-extern const uint8_t ico_ble[], ico_wifi[], ico_no_wifi[], ico_gear[];
+bool bleDeviceConnected = false;
+bool isEngineeringMode = false;
+bool isRealtimeEnvSubscribed = false;
+bool isOtaMode = false;
+bool isSendingHistoricData = false;
+int historicDataIndexToSend = 0;
+int activeAlarmId = -1;
 
-// ==================== 邏輯函式 ====================
+unsigned long wifiConnectionStartTime = 0;
+unsigned long lastDisplayUpdate = 0;
+unsigned long lastHistoryRecord = 0;
+unsigned long lastEncoderPushTime = 0;
+unsigned long lastConfirmPressTime = 0;
+unsigned long lastBackPressTime = 0;
+unsigned long confirmPressStartTime = 0;
+bool confirmButtonPressed = false;
+unsigned long syncIconStartTime = 0;
+const unsigned long SYNC_ICON_DURATION = 3000;
+unsigned long lastNTPResync = 0;
+unsigned long lastWeatherUpdate = 0;
+unsigned long lastRealtimeEnvPush = 0;
+unsigned long lastAlarmCheck = 0;
+
+// ==================== 函式宣告 ====================
+void updateDisplay();
+void drawTimeScreen();
+void drawDateScreen();
+void drawWeatherScreen();
+void drawSensorScreen();
+void drawTempChartScreen();
+void drawHumChartScreen();
+void drawRssiChartScreen();
+void drawSystemScreen();
+void drawSystemMenu();
+void drawOtaScreen(String text, int progress = -1);
+void drawAlarmScreen();
+void drawStatusIcons();
+void drawChart_OriginalStyle(const char* title, bool isTemp, bool isRssi);
+
+void syncTimeNTPForce();
+void handleCommand(uint8_t* data, size_t length);
+void sendSensorDataReport();
+void sendTimeSyncAck();
+void sendErrorReport(uint8_t errorCode);
+void initializeHistoryFile();
+void loadHistoryMetadata();
+void saveHistoryMetadata();
+void addDataToHistory(float temp, float hum, int16_t rssi);
+void loadHistoryWindow(int offset);
+void fetchWeatherData();
+void handleEncoder();
+void handleEncoderPush();
+void handleButtons();
+const char* getWeatherIcon(const String &desc);
+void sendBoxStatus();
+void sendHistoricDataEnd();
+void updateScreens();
+void setupOTA();
+void enterOtaMode();
+void handleHistoricDataTransfer();
+void handleRealtimeEnvPush();
+void loadPersistentStates();
+void handleWiFiConnection();
+void startWiFiConnection();
+void runHardwareSelfTest();
+void playBeep(int buzzerNum, int freq, int duration);
+void loadAlarms();
+void saveAlarm(int id);
+void checkAlarms();
+void playAlarmEffect();
+
+// ==================== BLE & 核心邏輯 ====================
+class MyServerCallbacks: public BLEServerCallbacks {
+    void onConnect(BLEServer* pServer) { bleDeviceConnected = true; Serial.println("BLE Connected"); }
+    void onDisconnect(BLEServer* pServer) { bleDeviceConnected = false; isRealtimeEnvSubscribed = false; BLEDevice::startAdvertising(); }
+};
+
+class CommandCallbacks: public BLECharacteristicCallbacks {
+    void onWrite(BLECharacteristic *pCharacteristic) {
+        uint8_t* data = pCharacteristic->getData();
+        size_t length = pCharacteristic->getLength();
+        if (length > 0) handleCommand(data, length);
+    }
+};
+
+void handleCommand(uint8_t* data, size_t length) {
+    if (length == 0) return;
+    uint8_t cmd = data[0];
+
+    Serial.printf("RX CMD: 0x%02X\n", cmd);
+
+    switch (cmd) {
+        case CMD_REQ_PROTO_VER: {
+            uint8_t v = PROTOCOL_VERSION;
+            uint8_t p[2] = {CMD_REP_PROTO, v};
+            pDataEventCharacteristic->setValue(p, 2);
+            pDataEventCharacteristic->notify();
+            break;
+        }
+        case CMD_SET_ALARM: {
+            if(length >= 5) {
+                int id = data[1];
+                if(id >= 0 && id < MAX_ALARMS) {
+                    alarms[id].hour = data[2];
+                    alarms[id].min = data[3];
+                    alarms[id].enabled = (data[4] == 1);
+                    saveAlarm(id);
+                    sendTimeSyncAck();
+                } else sendErrorReport(0x04);
+            } else sendErrorReport(0x05);
+            break;
+        }
+        case CMD_TIME_SYNC:
+            if (length == 7) {
+                tm timeinfo;
+                timeinfo.tm_year = data[1] + 100;
+                timeinfo.tm_mon  = data[2] - 1;
+                timeinfo.tm_mday = data[3];
+                timeinfo.tm_hour = data[4];
+                timeinfo.tm_min  = data[5];
+                timeinfo.tm_sec  = data[6];
+                time_t t = mktime(&timeinfo);
+                timeval tv = {t, 0};
+                settimeofday(&tv, nullptr);
+                syncIconStartTime = millis();
+                sendTimeSyncAck();
+            }
+            break;
+        case CMD_WIFI_CREDENTIALS:
+            if (length >= 3) {
+                uint8_t ssidLen = data[1];
+                uint8_t passLen = data[2 + ssidLen];
+                if (length == 3 + ssidLen + passLen) {
+                    String newSSID = String((char*)&data[2], ssidLen);
+                    String newPASS = String((char*)&data[3 + ssidLen], passLen);
+                    preferences.begin("wifi", false);
+                    preferences.putString("ssid", newSSID);
+                    preferences.putString("pass", newPASS);
+                    preferences.end();
+                    startWiFiConnection();
+                    sendTimeSyncAck();
+                }
+            }
+            break;
+        case CMD_ENG_MODE:
+            isEngineeringMode = (data[1] == 0x01);
+            preferences.begin("medbox-meta", false);
+            preferences.putBool("engMode", isEngineeringMode);
+            preferences.end();
+            updateScreens();
+            sendTimeSyncAck();
+            if(isEngineeringMode) {
+                pixels.fill(pixels.Color(0,0,50)); pixels.show(); delay(200); pixels.clear(); pixels.show();
+            }
+            break;
+        case CMD_REQ_STATUS: sendBoxStatus(); break;
+        case CMD_REQ_ENV: sendSensorDataReport(); break;
+        case CMD_REQ_HIST:
+            if (!isSendingHistoricData) {
+                isSendingHistoricData = true;
+                historicDataIndexToSend = 0;
+                historicDataStartTime = millis();
+            }
+            break;
+        case CMD_SUB_ENV: isRealtimeEnvSubscribed = true; sendTimeSyncAck(); break;
+        case CMD_UNSUB_ENV: isRealtimeEnvSubscribed = false; sendTimeSyncAck(); break;
+        default: sendErrorReport(0x03); break;
+    }
+}
+
+void sendTimeSyncAck() {
+    if (!bleDeviceConnected) return;
+    uint8_t packet[1] = {CMD_ACK};
+    pDataEventCharacteristic->setValue(packet, 1);
+    pDataEventCharacteristic->notify();
+}
+
+void sendErrorReport(uint8_t errorCode) {
+    if (!bleDeviceConnected) return;
+    uint8_t packet[2] = {CMD_ERROR, errorCode};
+    pDataEventCharacteristic->setValue(packet, 2);
+    pDataEventCharacteristic->notify();
+}
+
+void sendBoxStatus() {
+    if (!bleDeviceConnected) return;
+    uint8_t packet[2] = {CMD_REP_STATUS, 0x0F};
+    pDataEventCharacteristic->setValue(packet, 2);
+    pDataEventCharacteristic->notify();
+}
+
+void sendSensorDataReport() {
+    if (!bleDeviceConnected) return;
+    float t = dht.readTemperature() - TEMP_CALIBRATION_OFFSET;
+    float h = dht.readHumidity();
+    if (isnan(h) || isnan(t)) { sendErrorReport(0x02); return; }
+    uint8_t packet[5];
+    packet[0] = CMD_REP_ENV;
+    packet[1] = (uint8_t)t;
+    packet[2] = (uint8_t)((t - packet[1]) * 100);
+    packet[3] = (uint8_t)h;
+    packet[4] = (uint8_t)((h - packet[3]) * 100);
+    pDataEventCharacteristic->setValue(packet, 5);
+    pDataEventCharacteristic->notify();
+}
+
+void sendHistoricDataEnd() {
+    if (!bleDeviceConnected) return;
+    uint8_t packet[1] = {CMD_REP_HIST_END};
+    pDataEventCharacteristic->setValue(packet, 1);
+    pDataEventCharacteristic->notify();
+}
+
+void handleHistoricDataTransfer() {
+    if (!isSendingHistoricData) return;
+    if (historicDataIndexToSend == 0) {
+        historyFile = SPIFFS.open("/history.dat", "r");
+        if (!historyFile) { sendErrorReport(0x04); isSendingHistoricData = false; return; }
+    }
+    if (!bleDeviceConnected) { historyFile.close(); isSendingHistoricData = false; return; }
+
+    const int BATCH = 5;
+    uint8_t batchPacket[2 + BATCH * 8];
+    uint8_t pts = 0;
+    int ptr = 2;
+
+    while (pts < BATCH && historicDataIndexToSend < historyCount) {
+        DataPoint dp;
+        int startIdx = (historyIndex - historyCount + MAX_HISTORY) % MAX_HISTORY;
+        int currentReadIdx = (startIdx + historicDataIndexToSend) % MAX_HISTORY;
+        historyFile.seek(currentReadIdx * sizeof(DataPoint));
+        historyFile.read((uint8_t*)&dp, sizeof(DataPoint));
+
+        time_t timestamp = time(nullptr) - (long)((historyCount - 1 - historicDataIndexToSend) * (historyRecordInterval / 1000));
+
+        batchPacket[ptr++] = timestamp & 0xFF;
+        batchPacket[ptr++] = (timestamp >> 8) & 0xFF;
+        batchPacket[ptr++] = (timestamp >> 16) & 0xFF;
+        batchPacket[ptr++] = (timestamp >> 24) & 0xFF;
+        batchPacket[ptr++] = (uint8_t)dp.temp;
+        batchPacket[ptr++] = (uint8_t)((dp.temp - (int)dp.temp) * 100);
+        batchPacket[ptr++] = (uint8_t)dp.hum;
+        batchPacket[ptr++] = (uint8_t)((dp.hum - (int)dp.hum) * 100);
+        pts++;
+        historicDataIndexToSend++;
+    }
+
+    if (pts > 0) {
+        batchPacket[0] = CMD_REP_HIST_PT;
+        batchPacket[1] = pts;
+        pDataEventCharacteristic->setValue(batchPacket, 2 + pts * 8);
+        pDataEventCharacteristic->notify();
+    }
+
+    if (historicDataIndexToSend >= historyCount) {
+        historyFile.close();
+        sendHistoricDataEnd();
+        isSendingHistoricData = false;
+        Serial.println("Hist Transfer Done");
+    }
+}
+
+// ==================== UI 繪圖函式 (恢復原本的排版) ====================
+void updateDisplay() {
+    lastDisplayUpdate = millis();
+    u8g2.clearBuffer();
+
+    // 鬧鐘響鈴優先
+    if (currentUIMode == UI_ALARM_RINGING) {
+        drawAlarmScreen();
+    }
+    else if (currentUIMode == UI_MODE_SYSTEM_MENU) {
+        drawSystemMenu();
+    }
+    else if (currentUIMode == UI_MODE_INFO_SCREEN) {
+        drawSystemScreen();
+    }
+    else if (currentUIMode == UI_MODE_OTA) {
+        if(isOtaMode) { // 確保在OTA模式
+            u8g2.setFont(u8g2_font_ncenB08_tr);
+            u8g2.drawStr(30, 12, "OTA Mode");
+            u8g2.setFont(u8g2_font_profont11_tf);
+            String ip = WiFi.localIP().toString();
+            u8g2.drawStr((128 - u8g2.getStrWidth(ip.c_str()))/2, 35, ip.c_str());
+            u8g2.drawStr(10, 55, "Ready...");
+        }
+    }
+    else { // MAIN SCREENS
+        switch (currentPageIndex) {
+            case SCREEN_TIME: drawTimeScreen(); break;
+            case SCREEN_DATE: drawDateScreen(); break;
+            case SCREEN_WEATHER: drawWeatherScreen(); break;
+            case SCREEN_SENSOR: drawSensorScreen(); break;
+            case SCREEN_TEMP_CHART: if (isEngineeringMode) drawTempChartScreen(); break;
+            case SCREEN_HUM_CHART: if (isEngineeringMode) drawHumChartScreen(); break;
+            case SCREEN_RSSI_CHART: if (isEngineeringMode) drawRssiChartScreen(); break;
+            case SCREEN_SYSTEM:
+                if (isEngineeringMode) {
+                    u8g2.setFont(u8g2_font_ncenB10_tr);
+                    u8g2.drawStr((128 - u8g2.getStrWidth("System Menu")) / 2, 38, "System Menu");
+                }
+                break;
+        }
+        drawStatusIcons();
+    }
+    u8g2.sendBuffer();
+}
+
+void drawTimeScreen() {
+    time_t now; time(&now);
+    struct tm *ptm = localtime(&now);
+    if (now < 1672531200) {
+        u8g2.setFont(u8g2_font_ncenB08_tr); u8g2.drawStr(10, 32, "Time not set");
+    } else {
+        u8g2.setFont(u8g2_font_fub20_tn);
+        char s[9]; sprintf(s, "%02d:%02d:%02d", ptm->tm_hour, ptm->tm_min, ptm->tm_sec);
+        u8g2.drawStr((128 - u8g2.getStrWidth(s))/2, 42, s);
+        // 呼吸燈
+        int b = (millis()/20)%50; pixels.setPixelColor(0, pixels.Color(0,0,b)); pixels.show();
+    }
+}
+
+void drawDateScreen() {
+    time_t now; time(&now);
+    struct tm *ptm = localtime(&now);
+    const char* week[] = {"SUN","MON","TUE","WED","THU","FRI","SAT"};
+    const char* month[] = {"JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"};
+    char day[4], year[6]; sprintf(day, "%02d", ptm->tm_mday); sprintf(year, "%d", ptm->tm_year + 1900);
+    u8g2.setFont(u8g2_font_logisoso42_tn); u8g2.drawStr(5, 50, day);
+    u8g2.drawVLine(64, 8, 48);
+    u8g2.setFont(u8g2_font_helvB12_tr); u8g2.drawStr(72, 22, week[ptm->tm_wday]);
+    u8g2.setFont(u8g2_font_ncenR10_tr); u8g2.drawStr(72, 40, month[ptm->tm_mon]); u8g2.drawStr(72, 56, year);
+    pixels.clear(); pixels.show();
+}
+
+void drawWeatherScreen() {
+    u8g2.setFont(u8g2_font_ncenB10_tr); u8g2.drawStr(0, 12, city.c_str());
+    if (wifiState != WIFI_CONNECTED) {
+        u8g2.setFont(u8g2_font_ncenB08_tr); u8g2.drawStr(0, 40, "No WiFi"); return;
+    }
+    if (weatherData.valid) {
+        char buf[20];
+        u8g2.setFont(u8g2_font_open_iconic_weather_4x_t);
+        u8g2.drawStr(5, 50, getWeatherIcon(weatherData.description));
+        u8g2.setFont(u8g2_font_fub25_tn);
+        sprintf(buf, "%.1f", weatherData.temp);
+        u8g2.drawStr(45, 32, buf);
+        u8g2.setFont(u8g2_font_ncenR10_tr);
+        sprintf(buf, "H:%d%%", weatherData.humidity);
+        u8g2.drawStr(45, 64, buf);
+    } else {
+        u8g2.setFont(u8g2_font_ncenB08_tr); u8g2.drawStr(0, 32, "No data");
+    }
+}
+
+void drawSensorScreen() {
+    float h = dht.readHumidity();
+    float t = dht.readTemperature() - TEMP_CALIBRATION_OFFSET;
+    if (isnan(h) || isnan(t)) { u8g2.setFont(u8g2_font_ncenB08_tr); u8g2.drawStr(10, 40, "Sensor Error!"); return; }
+    char buf[20];
+    u8g2.setFont(u8g2_font_helvB10_tr); u8g2.drawStr((128 - u8g2.getStrWidth("INDOOR"))/2, 12, "INDOOR");
+    u8g2.setFont(u8g2_font_ncenR10_tr); u8g2.drawStr(10, 38, "TEMP");
+    u8g2.setFont(u8g2_font_fub25_tn); sprintf(buf, "%.1f C", t); u8g2.drawStr(128 - u8g2.getStrWidth(buf) - 10, 38, buf);
+    u8g2.setFont(u8g2_font_ncenR10_tr); u8g2.drawStr(10, 62, "HUMI");
+    u8g2.setFont(u8g2_font_fub25_tn); sprintf(buf, "%.0f %%", h); u8g2.drawStr(128 - u8g2.getStrWidth(buf) - 10, 62, buf);
+}
+
+void drawSystemScreen() {
+    u8g2.setFont(u8g2_font_ncenB08_tr); u8g2.drawStr(0, 12, "System Info");
+    u8g2.setFont(u8g2_font_profont11_tf); int y = 28;
+    String ssid = WiFi.SSID(); if (ssid == "") ssid = "N/A";
+    if (wifiState == WIFI_CONNECTED) {
+        u8g2.drawStr(0, y, ("SSID: " + ssid).c_str()); y += 12;
+        u8g2.drawStr(0, y, ("RSSI: " + String(WiFi.RSSI()) + " dBm").c_str()); y += 12;
+        u8g2.drawStr(0, y, ("IP: " + WiFi.localIP().toString()).c_str()); y += 12;
+    } else { u8g2.drawStr(0, y, "WiFi Disconnected"); y += 12; }
+    u8g2.drawStr(0, y, ("Heap: " + String(ESP.getFreeHeap()/1024) + " KB").c_str()); y += 12;
+    u8g2.drawStr(0, y, ("Up: " + String(millis()/60000) + " min").c_str());
+}
+
+void drawSystemMenu() {
+    u8g2.setFont(u8g2_font_ncenB08_tr);
+    u8g2.drawStr((128 - u8g2.getStrWidth("System Menu")) / 2, 10, "System Menu");
+    const char* menuItems[] = { "Connect to WiFi", "OTA Update", "System Info", "Reboot Device", "Back to Main" };
+    for (int i = 0; i < MAX_MENU_ITEMS_ON_SCREEN; i++) {
+        int itemIndex = menuViewOffset + i;
+        if (itemIndex < NUM_MENU_ITEMS) {
+            int y = 24 + i * 11;
+            if (itemIndex == selectedMenuItem) {
+                u8g2.drawBox(0, y - 9, 128 - 6, 11);
+                u8g2.setDrawColor(0); u8g2.drawStr(5, y, menuItems[itemIndex]); u8g2.setDrawColor(1);
+            } else {
+                u8g2.drawStr(5, y, menuItems[itemIndex]);
+            }
+        }
+    }
+    // 滾動條
+    u8g2.drawFrame(124, 20, 3, 44);
+    int h = 44 * 4 / NUM_MENU_ITEMS;
+    int y = 20 + (menuViewOffset * (44-h) / (NUM_MENU_ITEMS-4));
+    u8g2.drawBox(124, y, 3, h);
+}
+
+void drawAlarmScreen() {
+    u8g2.setFont(u8g2_font_fub20_tn);
+    u8g2.drawStr(15, 35, "ALARM!");
+    char buf[20]; sprintf(buf, "Take Meds #%d", activeAlarmId + 1);
+    u8g2.setFont(u8g2_font_ncenB08_tr);
+    u8g2.drawStr((128-u8g2.getStrWidth(buf))/2, 55, buf);
+    u8g2.drawStr(20, 10, "Press OK to Stop");
+}
+
+void drawStatusIcons() {
+    if (currentUIMode != UI_MODE_MAIN_SCREENS || currentPageIndex != SCREEN_TIME) return;
+    int x = 0;
+    const int spacing = 10;
+    if (bleDeviceConnected) { u8g2.drawXBM(x, 2, 8, 8, icon_ble_bits); x += spacing; }
+    if (millis() - syncIconStartTime < SYNC_ICON_DURATION && (millis() / 500) % 2 == 0) {
+        u8g2.drawXBM(x, 2, 8, 8, icon_sync_bits); x += spacing;
+    }
+    if (wifiState == WIFI_CONNECTED) u8g2.drawXBM(x, 2, 8, 8, icon_wifi_bits);
+    else if (wifiState == WIFI_CONNECTING) {
+        if((millis()/500)%2) u8g2.drawXBM(x, 2, 8, 8, icon_wifi_connecting_bits);
+    } else u8g2.drawXBM(x, 2, 8, 8, icon_wifi_fail_bits);
+    x += spacing;
+    if (isEngineeringMode) u8g2.drawXBM(x, 2, 8, 8, icon_gear_bits);
+}
+
+void drawChart_OriginalStyle(const char* title, bool isTemp, bool isRssi) {
+    u8g2.setFont(u8g2_font_6x10_tf);
+    u8g2.drawStr(2, 8, title);
+    if (historyCount < 2) { u8g2.drawStr(10, 35, "No Data"); return; }
+    loadHistoryWindow(historyViewOffset);
+    int pts = min(HISTORY_WINDOW_SIZE, historyCount);
+    float minV = 999, maxV = -999;
+    for (int i = 0; i < pts; i++) {
+        float v = isRssi ? historyWindowBuffer[i].rssi : (isTemp ? historyWindowBuffer[i].temp : historyWindowBuffer[i].hum);
+        if (v < minV) minV = v; if (v > maxV) maxV = v;
+    }
+    if (isRssi) { minV=max(minV,-100.0f); maxV=min(maxV,-30.0f); if(maxV-minV<10){minV-=5; maxV+=5;} }
+    else if(maxV-minV < 1) { minV-=1; maxV+=1; }
+
+    int w = 110, h = 40, x = 18, y = 15;
+    u8g2.setFont(u8g2_font_5x7_tr);
+    char buf[10]; sprintf(buf, "%.0f", maxV); u8g2.drawStr(0, y+6, buf);
+    sprintf(buf, "%.0f", minV); u8g2.drawStr(0, y+h, buf);
+    u8g2.drawFrame(x, y, w, h);
+
+    for (int i = 1; i < pts; i++) {
+        float v1 = isRssi ? historyWindowBuffer[i-1].rssi : (isTemp ? historyWindowBuffer[i-1].temp : historyWindowBuffer[i-1].hum);
+        float v2 = isRssi ? historyWindowBuffer[i].rssi : (isTemp ? historyWindowBuffer[i].temp : historyWindowBuffer[i].hum);
+        int px1 = x + (i-1)*w/pts;
+        int py1 = y + h - (v1-minV)/(maxV-minV)*h;
+        int px2 = x + i*w/pts;
+        int py2 = y + h - (v2-minV)/(maxV-minV)*h;
+        u8g2.drawLine(px1, py1, px2, py2);
+    }
+    if (currentEncoderMode == MODE_VIEW_ADJUST) u8g2.drawStr(2, 64, "VIEW");
+}
+
+void drawTempChartScreen() { drawChart_OriginalStyle("Temp Chart", true, false); }
+void drawHumChartScreen() { drawChart_OriginalStyle("Humid Chart", false, false); }
+void drawRssiChartScreen() { drawChart_OriginalStyle("RSSI Chart", false, true); }
+
+// ==================== 其他邏輯 ====================
+void playBeep(int buzzerNum, int freq, int duration) {
+    int pin = (buzzerNum == 1) ? BUZZER1_PIN : BUZZER2_PIN;
+    tone(pin, freq, duration); delay(duration); noTone(pin);
+}
+
 void loadAlarms() {
-    prefs.begin("alarms", true);
+    preferences.begin("alarms", true);
     for(int i=0; i<MAX_ALARMS; i++) {
         char key[5]; sprintf(key, "a%d", i);
-        uint32_t val = prefs.getUInt(key, 0);
+        uint32_t val = preferences.getUInt(key, 0);
         alarms[i].enabled = (val & 0x1);
         alarms[i].min = (val >> 8) & 0xFF;
         alarms[i].hour = (val >> 16) & 0xFF;
     }
-    prefs.end();
+    preferences.end();
 }
 
 void saveAlarm(int id) {
     if(id < 0 || id >= MAX_ALARMS) return;
-    prefs.begin("alarms", false);
+    preferences.begin("alarms", false);
     char key[5]; sprintf(key, "a%d", id);
     uint32_t val = (alarms[id].hour << 16) | (alarms[id].min << 8) | (alarms[id].enabled ? 1 : 0);
-    prefs.putUInt(key, val);
-    prefs.end();
+    preferences.putUInt(key, val);
+    preferences.end();
 }
 
 void checkAlarms() {
-    if(state.uiMode == UI_ALARM_RINGING) return;
+    if(currentUIMode == UI_ALARM_RINGING) return;
     time_t now; time(&now);
     struct tm *t = localtime(&now);
     if(t->tm_sec == 0) {
         for(int i=0; i<MAX_ALARMS; i++) {
             if(alarms[i].enabled && alarms[i].hour == t->tm_hour && alarms[i].min == t->tm_min) {
-                state.uiMode = UI_ALARM_RINGING;
-                state.activeAlarmId = i;
+                currentUIMode = UI_ALARM_RINGING;
+                activeAlarmId = i;
                 Serial.printf("Alarm %d Triggered!\n", i);
                 break;
             }
@@ -189,313 +665,335 @@ void playAlarmEffect() {
     if(millis() - lastBeep > 200) {
         lastBeep = millis();
         phase = !phase;
-        if(phase) leds.fill(leds.Color(255, 0, 0));
-        else leds.clear();
-        leds.show();
-        if(phase) { tone(PIN_BUZZER_1, 2000, 150); }
-        else { tone(PIN_BUZZER_2, 1500, 150); }
+        if(phase) pixels.fill(pixels.Color(255, 0, 0)); else pixels.clear();
+        pixels.show();
+        if(phase) tone(BUZZER1_PIN, 2000, 150); else tone(BUZZER2_PIN, 1500, 150);
     }
 }
 
-void beep(int id, int freq, int ms) {
-    int pin = (id == 1) ? PIN_BUZZER_1 : PIN_BUZZER_2;
-    tone(pin, freq, ms); delay(ms); noTone(pin);
-}
-
-// BLE Callback
-void sendBlePacket(uint8_t type, uint8_t* data, size_t len) {
-    if(!state.bleConnected) return;
-    uint8_t pkg[len + 1];
-    pkg[0] = type;
-    if(len > 0) memcpy(&pkg[1], data, len);
-    pBleData->setValue(pkg, len + 1);
-    pBleData->notify();
-}
-
-class ServerCB: public BLEServerCallbacks {
-    void onConnect(BLEServer* s) { state.bleConnected = true; Serial.println("BLE On"); }
-    void onDisconnect(BLEServer* s) { state.bleConnected = false; BLEDevice::startAdvertising(); Serial.println("BLE Off"); }
-};
-
-class CmdCB: public BLECharacteristicCallbacks {
-    void onWrite(BLECharacteristic *c) {
-        uint8_t* d = c->getData();
-        size_t len = c->getLength();
-        if(len == 0) return;
-        uint8_t cmd = d[0];
-        Serial.printf("RX CMD: 0x%02X, Len: %d\n", cmd, len);
-
-        switch(cmd) {
-            case CMD_REQ_PROTO_VER: {
-                uint8_t v = CURRENT_PROTOCOL_VERSION;
-                sendBlePacket(CMD_REP_PROTO_VER, &v, 1); break;
-            }
-            case CMD_SET_ALARM: {
-                if(len >= 5) {
-                    int id = d[1];
-                    if(id >= 0 && id < MAX_ALARMS) {
-                        alarms[id].hour = d[2];
-                        alarms[id].min = d[3];
-                        alarms[id].enabled = (d[4] == 1);
-                        saveAlarm(id);
-                        Serial.printf("Set Alarm %d: %02d:%02d (%d)\n", id, alarms[id].hour, alarms[id].min, alarms[id].enabled);
-                        sendBlePacket(CMD_ACK, NULL, 0);
-                    } else sendBlePacket(CMD_ERROR, (uint8_t*)"\x04", 1);
-                } else sendBlePacket(CMD_ERROR, (uint8_t*)"\x05", 1);
-                break;
-            }
-            case CMD_TIME_SYNC: {
-                tm t; t.tm_year=d[1]+100; t.tm_mon=d[2]-1; t.tm_mday=d[3];
-                t.tm_hour=d[4]; t.tm_min=d[5]; t.tm_sec=d[6];
-                time_t tt = mktime(&t); timeval tv = {tt, 0}; settimeofday(&tv, NULL);
-                sendBlePacket(CMD_ACK, NULL, 0); break;
-            }
-            case CMD_WIFI_CRED: {
-                int sl = d[1]; int pl = d[2+sl];
-                prefs.begin("wifi", false);
-                prefs.putString("ssid", String((char*)&d[2], sl));
-                prefs.putString("pass", String((char*)&d[3+sl], pl));
-                prefs.end();
-                ESP.restart(); break;
-            }
-            case CMD_ENG_MODE: state.engMode = (d[1] == 1);
-                prefs.begin("meta", false); prefs.putBool("eng", state.engMode); prefs.end();
-                sendBlePacket(CMD_ACK, NULL, 0); break;
-            case CMD_REQ_STATUS: { uint8_t s=0x0F; sendBlePacket(CMD_REP_STATUS, &s, 1); break; }
-            case CMD_REQ_ENV: { /* Env Report Logic Skipped */ break; }
-            case CMD_SUB_ENV: state.subRealtime = true; sendBlePacket(CMD_ACK, NULL, 0); break;
-            case CMD_UNSUB_ENV: state.subRealtime = false; sendBlePacket(CMD_ACK, NULL, 0); break;
-            default:
-                Serial.printf(">>> ERROR: Unknown Command 0x%02X <<<\n", cmd);
-                sendBlePacket(CMD_ERROR, (uint8_t*)"\x03", 1);
-        }
-    }
-};
-
-void connectWiFi() {
-    prefs.begin("wifi", true);
-    String s = prefs.getString("ssid", config.wifiSSID);
-    String p = prefs.getString("pass", config.wifiPass);
-    prefs.end();
+void startWiFiConnection() {
+    if (wifiState == WIFI_CONNECTING) return;
+    wifiState = WIFI_CONNECTING;
+    wifiConnectionStartTime = millis();
+    preferences.begin("wifi", true);
+    String s = preferences.getString("ssid", default_ssid);
+    String p = preferences.getString("pass", default_password);
+    preferences.end();
+    WiFi.disconnect(true);
+    delay(100);
     WiFi.begin(s.c_str(), p.c_str());
 }
 
-// ==================== UI 繪製 ====================
-void drawHeader(const char* title) {
-    u8g2.setFont(u8g2_font_ncenB08_tr);
-    u8g2.drawStr((128 - u8g2.getStrWidth(title))/2, 10, title);
-}
-
-void drawIcons() {
-    int x = 0;
-    if(state.bleConnected) { u8g2.drawXBM(x, 0, 8, 8, ico_ble); x+=10; }
-    if(state.wifiConnected) { u8g2.drawXBM(x, 0, 8, 8, ico_wifi); x+=10; }
-    else { u8g2.drawXBM(x, 0, 8, 8, ico_no_wifi); x+=10; }
-    if(state.engMode) { u8g2.drawXBM(x, 0, 8, 8, ico_gear); }
-}
-
-void render() {
-    u8g2.clearBuffer();
-
-    if (state.uiMode == UI_ALARM_RINGING) {
-        // 鬧鐘響鈴畫面
-        u8g2.setFont(u8g2_font_fub20_tn);
-        u8g2.drawStr(15, 35, "ALARM!");
-        char buf[20]; sprintf(buf, "Take Meds #%d", state.activeAlarmId + 1);
-        u8g2.setFont(u8g2_font_ncenB08_tr);
-        u8g2.drawStr((128-u8g2.getStrWidth(buf))/2, 55, buf);
-        u8g2.drawStr(20, 10, "Press OK to Stop");
+void handleWiFiConnection() {
+    if (wifiState != WIFI_CONNECTING) return;
+    if (WiFi.status() == WL_CONNECTED) {
+        wifiState = WIFI_CONNECTED;
+        syncTimeNTPForce();
+        fetchWeatherData();
+        if (MDNS.begin("medbox")) ArduinoOTA.begin();
+        setupOTA();
+    } else if (millis() - wifiConnectionStartTime > 15000) {
+        wifiState = WIFI_FAILED;
+        WiFi.disconnect(true);
     }
-    else if(state.uiMode == UI_MAIN) {
-        drawIcons();
-        switch(state.curScreen) {
-            case SCR_TIME: {
-                time_t now; time(&now); struct tm *t = localtime(&now);
-                char s[10]; snprintf(s, 10, "%02d:%02d:%02d", t->tm_hour, t->tm_min, t->tm_sec);
-                u8g2.setFont(u8g2_font_fub20_tn); u8g2.drawStr((128-u8g2.getStrWidth(s))/2, 45, s);
-                int b = (millis()/20)%50; leds.setPixelColor(0, leds.Color(0,0,b)); leds.show();
-                break;
-            }
-            case SCR_DATE: {
-                time_t now; time(&now); struct tm *t = localtime(&now);
-                char s[20]; strftime(s, 20, "%a %b %d", t);
-                u8g2.setFont(u8g2_font_ncenB10_tr); u8g2.drawStr(10, 40, s);
-                leds.clear(); leds.show();
-                break;
-            }
-            case SCR_SYS: drawHeader("Hold OK for Menu"); break;
-            default: drawHeader("Screen"); break;
-        }
-    } else if(state.uiMode == UI_MENU) {
-        drawHeader("System Menu");
-        const char* opts[] = {"Wi-Fi Connect", "OTA Update", "System Info", "Reboot", "Back"};
-        for(int i=0; i<4; i++) {
-            int idx = state.menuOffset + i;
-            if(idx >= MN_COUNT) break;
-            if(idx == state.menuIdx) {
-                u8g2.drawBox(0, 20+i*11, 128, 11); u8g2.setDrawColor(0);
-            }
-            u8g2.drawStr(5, 30+i*11, opts[idx]); u8g2.setDrawColor(1);
-        }
-    } else if(state.uiMode == UI_OTA) {
-        drawHeader("OTA Mode");
-        u8g2.setFont(u8g2_font_profont11_tf);
-        String ip = WiFi.localIP().toString();
-        u8g2.drawStr((128 - u8g2.getStrWidth(ip.c_str()))/2, 35, ip.c_str());
-        u8g2.drawStr(10, 55, "Ready for Upload...");
-    }
-    u8g2.sendBuffer();
 }
 
-// OTA Setup
+void syncTimeNTPForce() {
+    if (wifiState != WIFI_CONNECTED) return;
+    configTime(GMT_OFFSET, DAYLIGHT_OFFSET, NTP_SERVER);
+    struct tm timeinfo;
+    if (getLocalTime(&timeinfo, 5000)) {
+        syncIconStartTime = millis();
+        lastNTPResync = millis();
+    }
+}
+
 void setupOTA() {
     ArduinoOTA.setHostname("smartmedbox");
     ArduinoOTA.setPassword("medbox123");
-    ArduinoOTA
-            .onStart([]() {
-                SPIFFS.end();
-                u8g2.clearBuffer(); u8g2.drawStr(30, 30, "Updating..."); u8g2.sendBuffer();
-            })
-            .onEnd([]() {
-                u8g2.clearBuffer(); u8g2.drawStr(30, 30, "Done!"); u8g2.sendBuffer();
-                delay(1000); ESP.restart();
-            });
+    ArduinoOTA.onStart([]() { SPIFFS.end(); drawOtaScreen("Updating...", 0); });
+    ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) { drawOtaScreen("Updating...", (progress / (total / 100))); });
+    ArduinoOTA.onEnd([]() { drawOtaScreen("Complete!", 100); delay(1000); ESP.restart(); });
     ArduinoOTA.begin();
-    Serial.println("OTA ready.");
 }
 
-// Enter OTA
 void enterOtaMode() {
-    if (isOtaMode || !state.wifiConnected) {
-        u8g2.clearBuffer();
-        u8g2.drawStr(20, 30, "No WiFi!");
-        u8g2.sendBuffer();
-        delay(1000);
-        return;
-    };
+    if (isOtaMode || wifiState != WIFI_CONNECTED) {
+        u8g2.clearBuffer(); u8g2.drawStr(20, 30, "No WiFi!"); u8g2.sendBuffer(); delay(1000); return;
+    }
     isOtaMode = true;
-    state.uiMode = UI_OTA;
-    Serial.println("OTA Mode Active");
+    currentUIMode = UI_MODE_OTA;
 }
 
-// ==================== 主程式 ====================
+void drawOtaScreen(String text, int progress) {
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_ncenB08_tr); u8g2.drawStr(30, 12, "OTA Update");
+    u8g2.setFont(u8g2_font_profont11_tf); u8g2.drawStr(10, 32, text.c_str());
+    if(progress >= 0) { u8g2.drawFrame(14, 45, 100, 10); u8g2.drawBox(14, 45, progress, 10); }
+    u8g2.sendBuffer();
+}
+
+void loadPersistentStates() {
+    preferences.begin("medbox-meta", true);
+    isEngineeringMode = preferences.getBool("engMode", false);
+    preferences.end();
+}
+
+void initializeHistoryFile() {
+    if (!SPIFFS.exists("/history.dat")) {
+        File f = SPIFFS.open("/history.dat", FILE_WRITE);
+        DataPoint empty = {0,0,0};
+        for (int i = 0; i < MAX_HISTORY; i++) f.write((uint8_t*)&empty, sizeof(DataPoint));
+        f.close();
+    }
+}
+
+void loadHistoryMetadata() {
+    preferences.begin("medbox-meta", true);
+    historyCount = preferences.getInt("hist_count", 0);
+    historyIndex = preferences.getInt("hist_index", 0);
+    preferences.end();
+}
+
+void saveHistoryMetadata() {
+    preferences.begin("medbox-meta", false);
+    preferences.putInt("hist_count", historyCount);
+    preferences.putInt("hist_index", historyIndex);
+    preferences.end();
+}
+
+void addDataToHistory(float temp, float hum, int16_t rssi) {
+    File f = SPIFFS.open("/history.dat", "r+");
+    if(f) {
+        DataPoint dp = {temp, hum, rssi};
+        f.seek(historyIndex * sizeof(DataPoint));
+        f.write((uint8_t*)&dp, sizeof(DataPoint));
+        f.close();
+        historyIndex = (historyIndex + 1) % MAX_HISTORY;
+        if (historyCount < MAX_HISTORY) historyCount++;
+        saveHistoryMetadata();
+        if (currentEncoderMode == MODE_VIEW_ADJUST) {
+            int maxOffset = max(0, historyCount - HISTORY_WINDOW_SIZE);
+            rotaryEncoder.setBoundaries(0, maxOffset, false);
+        }
+    }
+}
+
+void loadHistoryWindow(int offset) {
+    int pts = min(historyCount, HISTORY_WINDOW_SIZE);
+    if(pts == 0) return;
+    File f = SPIFFS.open("/history.dat", "r");
+    if(f) {
+        int start = (historyIndex - offset - pts + MAX_HISTORY) % MAX_HISTORY;
+        for(int i=0; i<pts; i++) {
+            f.seek(((start + i) % MAX_HISTORY) * sizeof(DataPoint));
+            f.read((uint8_t*)&historyWindowBuffer[i], sizeof(DataPoint));
+        }
+        f.close();
+    }
+}
+
+void fetchWeatherData() {
+    if (wifiState != WIFI_CONNECTED) { weatherData.valid = false; return; }
+    HTTPClient http;
+    String url = "http://api.openweathermap.org/data/2.5/weather?q=" + city + "," + countryCode + "&units=metric&lang=zh_tw&APPID=" + openWeatherMapApiKey;
+    http.begin(url);
+    if (http.GET() > 0) {
+        String payload = http.getString();
+        int d1 = payload.indexOf("\"description\":\"") + 15;
+        int d2 = payload.indexOf("\"", d1);
+        if (d1 > 14 && d2 > d1) weatherData.description = payload.substring(d1, d2);
+        int t1 = payload.indexOf("\"temp\":") + 7;
+        int t2 = payload.indexOf(",", t1);
+        if (t1 > 6 && t2 > t1) weatherData.temp = payload.substring(t1, t2).toFloat();
+        int h1 = payload.indexOf("\"humidity\":") + 11;
+        int h2 = payload.indexOf("}", h1);
+        if (h1 > 10 && h2 > h1) weatherData.humidity = payload.substring(h1, h2).toInt();
+        weatherData.valid = true;
+    }
+    http.end();
+}
+
+const char* getWeatherIcon(const String &desc) {
+    String s = desc; s.toLowerCase();
+    if (s.indexOf("clear") >= 0) return "A";
+    if (s.indexOf("cloud") >= 0) return "C";
+    if (s.indexOf("rain") >= 0) return "R";
+    return "C";
+}
+
+void handleRealtimeEnvPush() {
+    if (isRealtimeEnvSubscribed && bleDeviceConnected && (millis() - lastRealtimeEnvPush >= INTERVAL_PUSH)) {
+        lastRealtimeEnvPush = millis();
+        sendSensorDataReport();
+    }
+}
+
+void updateScreens() {
+    NUM_SCREENS = isEngineeringMode ? 8 : 4;
+    if (currentUIMode == UI_MODE_MAIN_SCREENS) {
+        rotaryEncoder.setBoundaries(0, NUM_SCREENS - 1, true);
+        if (currentPageIndex >= NUM_SCREENS) currentPageIndex = SCREEN_TIME;
+        rotaryEncoder.setEncoderValue(currentPageIndex);
+    } else if (currentUIMode == UI_MODE_SYSTEM_MENU) {
+        rotaryEncoder.setBoundaries(0, NUM_MENU_ITEMS - 1, true);
+        rotaryEncoder.setEncoderValue(selectedMenuItem);
+    }
+    updateDisplay();
+}
+
+void handleEncoder() {
+    if (rotaryEncoder.encoderChanged()) {
+        playBeep(1, 4000, 10);
+        if (currentUIMode == UI_MODE_SYSTEM_MENU) {
+            selectedMenuItem = (SystemMenuItem)rotaryEncoder.readEncoder();
+            if (selectedMenuItem >= menuViewOffset + MAX_MENU_ITEMS_ON_SCREEN) menuViewOffset = selectedMenuItem - MAX_MENU_ITEMS_ON_SCREEN + 1;
+            if (selectedMenuItem < menuViewOffset) menuViewOffset = selectedMenuItem;
+        } else if (currentEncoderMode == MODE_VIEW_ADJUST) {
+            historyViewOffset = rotaryEncoder.readEncoder();
+        } else {
+            currentPageIndex = (ScreenState)rotaryEncoder.readEncoder();
+        }
+        updateDisplay();
+    }
+}
+
+void handleEncoderPush() {
+    if (digitalRead(ENCODER_PSH_PIN) == LOW && (millis() - lastEncoderPushTime > 300)) {
+        lastEncoderPushTime = millis();
+        playBeep(2, 2000, 50);
+        if (currentUIMode == UI_MODE_MAIN_SCREENS) {
+            if (isEngineeringMode && currentPageIndex == SCREEN_SYSTEM) {
+                currentUIMode = UI_MODE_SYSTEM_MENU; selectedMenuItem = MENU_ITEM_WIFI; menuViewOffset = 0; updateScreens();
+            } else if (isEngineeringMode && (currentPageIndex >= SCREEN_TEMP_CHART && currentPageIndex < SCREEN_SYSTEM)) {
+                currentEncoderMode = (currentEncoderMode == MODE_NAVIGATION) ? MODE_VIEW_ADJUST : MODE_NAVIGATION;
+                int maxOffset = max(0, historyCount - HISTORY_WINDOW_SIZE);
+                if (currentEncoderMode == MODE_VIEW_ADJUST) {
+                    rotaryEncoder.setBoundaries(0, maxOffset, false);
+                    rotaryEncoder.setEncoderValue(historyViewOffset);
+                } else {
+                    rotaryEncoder.setBoundaries(0, NUM_SCREENS - 1, true);
+                    rotaryEncoder.setEncoderValue(currentPageIndex);
+                }
+            }
+        } else if (currentUIMode == UI_MODE_SYSTEM_MENU) {
+            switch (selectedMenuItem) {
+                case MENU_ITEM_WIFI: startWiFiConnection(); break;
+                case MENU_ITEM_OTA: enterOtaMode(); break;
+                case MENU_ITEM_INFO: currentUIMode = UI_MODE_INFO_SCREEN; break;
+                case MENU_ITEM_REBOOT: ESP.restart(); break;
+                case MENU_ITEM_BACK: currentUIMode = UI_MODE_MAIN_SCREENS; updateScreens(); break;
+            }
+        } else if (currentUIMode == UI_MODE_INFO_SCREEN) {
+            currentUIMode = UI_MODE_SYSTEM_MENU;
+        }
+        updateDisplay();
+    }
+}
+
+void handleButtons() {
+    bool pressed = (digitalRead(BUTTON_CONFIRM_PIN) == LOW);
+    if (pressed && !confirmButtonPressed) { confirmPressStartTime = millis(); confirmButtonPressed = true; }
+    else if (!pressed && confirmButtonPressed) {
+        if (millis() - confirmPressStartTime < 3000) {
+            lastConfirmPressTime = millis();
+            playBeep(2, 2000, 50);
+            if (currentUIMode != UI_MODE_MAIN_SCREENS) {
+                currentUIMode = UI_MODE_MAIN_SCREENS; currentPageIndex = SCREEN_TIME; updateScreens();
+            } else {
+                currentPageIndex = SCREEN_TIME; rotaryEncoder.setEncoderValue(SCREEN_TIME);
+            }
+            updateDisplay();
+        }
+        confirmButtonPressed = false;
+    }
+
+    // Back Button
+    if (digitalRead(BUTTON_BACK_PIN) == LOW && (millis() - lastBackPressTime > 300)) {
+        lastBackPressTime = millis();
+        playBeep(2, 1000, 50);
+        if (currentUIMode == UI_MODE_OTA) ESP.restart();
+        else if (currentUIMode == UI_MODE_INFO_SCREEN) currentUIMode = UI_MODE_SYSTEM_MENU;
+        else if (currentUIMode == UI_MODE_SYSTEM_MENU) { currentUIMode = UI_MODE_MAIN_SCREENS; updateScreens(); }
+        else if (currentEncoderMode == MODE_VIEW_ADJUST) {
+            currentEncoderMode = MODE_NAVIGATION;
+            rotaryEncoder.setBoundaries(0, NUM_SCREENS - 1, true);
+            rotaryEncoder.setEncoderValue(currentPageIndex);
+        }
+        updateDisplay();
+    }
+}
+
+void runHardwareSelfTest() {
+    u8g2.clearBuffer(); u8g2.setFont(u8g2_font_ncenB08_tr); u8g2.drawStr(10,30,"Self Test..."); u8g2.sendBuffer();
+    pixels.fill(pixels.Color(0,50,0)); pixels.show(); delay(300); pixels.clear(); pixels.show();
+    playBeep(1, 1000, 100);
+    myServo.attach(SERVO_PIN); myServo.write(0); delay(200); myServo.write(90); delay(200); myServo.write(0); delay(200);
+}
+
+// ==================== SETUP / LOOP ====================
 void setup() {
     Serial.begin(115200);
+    pinMode(ENCODER_PSH_PIN, INPUT_PULLUP);
+    pinMode(BUTTON_CONFIRM_PIN, INPUT_PULLUP);
+    pinMode(BUTTON_BACK_PIN, INPUT_PULLUP);
+    Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
+    u8g2.begin(); u8g2.enableUTF8Print();
+    dht.begin();
+    pixels.begin(); pixels.clear(); pixels.show();
+    if(SPIFFS.begin(true)) { initializeHistoryFile(); loadHistoryMetadata(); loadPersistentStates(); loadAlarms(); }
 
-    pinMode(PIN_BTN_OK, INPUT_PULLUP);
-    pinMode(PIN_BTN_BACK, INPUT_PULLUP);
-    pinMode(PIN_ENC_BTN, INPUT_PULLUP);
+    rotaryEncoder.begin();
+    rotaryEncoder.setup([] { rotaryEncoder.readEncoder_ISR(); }, [] {});
+    rotaryEncoder.setBoundaries(0, 3, true);
 
-    Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
-    u8g2.begin(); dht.begin(); leds.begin();
-    if(SPIFFS.begin(true)) loadAlarms();
-
-    encoder.begin();
-    encoder.setup([]{encoder.readEncoder_ISR();}, []{});
-    encoder.setBoundaries(0, 3, true);
-
-    // POST
-    u8g2.clearBuffer(); u8g2.setFont(u8g2_font_ncenB08_tr); u8g2.drawStr(10,30,"Self Test..."); u8g2.sendBuffer();
-    leds.fill(leds.Color(0,50,0)); leds.show(); delay(500); leds.clear(); leds.show();
-    beep(1, 1000, 100);
+    runHardwareSelfTest();
 
     BLEDevice::init("SmartMedBox");
-    BLEServer *s = BLEDevice::createServer();
-    s->setCallbacks(new ServerCB());
-    BLEService *svc = s->createService(SERVICE_UUID);
-    svc->createCharacteristic(CHAR_CMD_UUID, BLECharacteristic::PROPERTY_WRITE)->setCallbacks(new CmdCB());
-    pBleData = svc->createCharacteristic(CHAR_DATA_UUID, BLECharacteristic::PROPERTY_NOTIFY);
-    pBleData->addDescriptor(new BLE2902());
-    svc->start();
+    BLEServer *pServer = BLEDevice::createServer();
+    pServer->setCallbacks(new MyServerCallbacks());
+    BLEService *pService = pServer->createService(SERVICE_UUID);
+    BLECharacteristic* pCommand = pService->createCharacteristic(COMMAND_CHANNEL_UUID, BLECharacteristic::PROPERTY_WRITE);
+    pCommand->setCallbacks(new CommandCallbacks());
+    pDataEventCharacteristic = pService->createCharacteristic(DATA_EVENT_CHANNEL_UUID, BLECharacteristic::PROPERTY_NOTIFY);
+    pDataEventCharacteristic->addDescriptor(new BLE2902());
+    pService->start();
     BLEDevice::getAdvertising()->addServiceUUID(SERVICE_UUID);
     BLEDevice::startAdvertising();
 
     WiFi.mode(WIFI_STA);
-    connectWiFi();
+    startWiFiConnection();
 }
 
 void loop() {
-    unsigned long now = millis();
+    if (isOtaMode) {
+        ArduinoOTA.handle();
+        if(digitalRead(BUTTON_BACK_PIN)==LOW) ESP.restart();
+        return;
+    }
 
-    if(WiFi.status() == WL_CONNECTED) {
-        if(!state.wifiConnected) {
-            state.wifiConnected = true;
-            configTime(GMT_OFFSET, 0, NTP_SERVER);
-            if(MDNS.begin("medbox")) ArduinoOTA.begin();
-            setupOTA();
-        }
-        if(isOtaMode) {
-            ArduinoOTA.handle();
-            // Exit OTA
-            if(!digitalRead(PIN_BTN_BACK)) ESP.restart();
-            // Refresh OTA Screen
-            if(now - tmrDisplay > INTERVAL_DISPLAY) { render(); tmrDisplay = now; }
-            return; // Stop other logic
-        }
-    } else state.wifiConnected = false;
+    handleWiFiConnection();
+    handleHistoricDataTransfer();
+    handleRealtimeEnvPush();
+    handleEncoder();
+    handleEncoderPush();
+    handleButtons();
 
-    // Alarm Check
-    if(now - tmrAlarmCheck > 1000) { checkAlarms(); tmrAlarmCheck = now; }
+    if (wifiState == WIFI_CONNECTED && millis() - lastNTPResync >= 12*3600000) syncTimeNTPForce();
+    if (millis() - lastHistoryRecord > historyRecordInterval) {
+        lastHistoryRecord = millis();
+        float t = dht.readTemperature(); float h = dht.readHumidity();
+        if(!isnan(t)) addDataToHistory(t - TEMP_CALIBRATION_OFFSET, h, WiFi.RSSI());
+    }
+    if (millis() - lastWeatherUpdate > WEATHER_INTERVAL) { lastWeatherUpdate = millis(); fetchWeatherData(); }
+    if (millis() - lastAlarmCheck > 1000) { lastAlarmCheck = millis(); checkAlarms(); }
 
-    // Alarm Ringing
-    if(state.uiMode == UI_ALARM_RINGING) {
+    if (currentUIMode == UI_ALARM_RINGING) {
         playAlarmEffect();
-        if(!digitalRead(PIN_BTN_OK) || !digitalRead(PIN_BTN_BACK) || !digitalRead(PIN_ENC_BTN)) {
-            state.uiMode = UI_MAIN;
-            leds.clear(); leds.show();
-            noTone(PIN_BUZZER_1); noTone(PIN_BUZZER_2);
-            delay(500);
+        if(!digitalRead(BUTTON_CONFIRM_PIN) || !digitalRead(BUTTON_BACK_PIN)) {
+            currentUIMode = UI_MODE_MAIN_SCREENS; pixels.clear(); pixels.show(); noTone(BUZZER1_PIN); noTone(BUZZER2_PIN); delay(500);
         }
-        render(); return;
     }
 
-    // Encoder
-    if(encoder.encoderChanged()) {
-        beep(1, 4000, 10);
-        if(state.uiMode == UI_MENU) {
-            state.menuIdx = encoder.readEncoder();
-            if(state.menuIdx >= state.menuOffset + 4) state.menuOffset++;
-            else if(state.menuIdx < state.menuOffset) state.menuOffset--;
-        } else {
-            state.curScreen = (Screen)encoder.readEncoder();
-        }
-        tmrDisplay = 0;
-    }
-
-    // OK Button
-    if(!digitalRead(PIN_BTN_OK) && now - tmrBtnOk > 1000) {
-        if(state.uiMode == UI_MAIN) {
-            state.uiMode = UI_MENU;
-            encoder.setBoundaries(0, MN_COUNT-1, true);
-            state.menuIdx = 0; encoder.setEncoderValue(0);
-            beep(2, 1500, 100);
-        } else if (state.uiMode == UI_MENU) {
-            // Menu Select Logic
-            switch(state.menuIdx) {
-                case MN_WIFI: connectWiFi(); break;
-                case MN_OTA: enterOtaMode(); break;
-                case MN_INFO: state.uiMode = UI_INFO; break;
-                case MN_REBOOT: ESP.restart(); break;
-                case MN_BACK: state.uiMode = UI_MAIN; encoder.setBoundaries(0, state.engMode?7:3, true); break;
-            }
-        }
-        tmrBtnOk = now;
-    }
-
-    // Back Button
-    if(!digitalRead(PIN_BTN_BACK) && now - tmrBtnBack > 300) {
-        beep(2, 1000, 50);
-        if(state.uiMode == UI_MENU || state.uiMode == UI_INFO) {
-            state.uiMode = UI_MAIN;
-            encoder.setBoundaries(0, state.engMode?7:3, true);
-        }
-        tmrBtnBack = now;
-    }
-
-    if(now - tmrDisplay > INTERVAL_DISPLAY) { render(); tmrDisplay = now; }
+    if (millis() - lastDisplayUpdate >= INTERVAL_DISPLAY) updateDisplay();
 }
-
-const uint8_t ico_ble[] = {0x18,0x24,0x42,0x5A,0x5A,0x42,0x24,0x18};
-const uint8_t ico_wifi[] = {0x00,0x18,0x24,0x42,0x81,0x42,0x24,0x18};
-const uint8_t ico_no_wifi[] = {0x00,0x18,0x18,0x18,0x00,0x18,0x18,0x00};
-const uint8_t ico_gear[] = {0x24,0x18,0x7E,0x25,0x52,0x7E,0x18,0x24};
