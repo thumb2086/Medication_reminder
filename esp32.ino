@@ -1,12 +1,14 @@
 /*
-SmartMedBox Firmware v20.5
+SmartMedBox Firmware v20.6
 硬體: ESP32-C6
 IDE: esp32 by Espressif Systems v3.0.0+
 板子: ESP32C6 Dev Module, 8MB with spiffs (3MB APP/1.5MB SPIFFS)
 
-v20.5 更新內容:
-[核心修正] 修正 BLE 回呼函式以相容 ESP32 Core v3.0.0+ 的 API 變更，解決編譯錯誤。
-[程式碼優化] 移除未使用的全域變數。
+v20.6 更新內容:
+[硬體配置] 全面更新腳位定義以符合新的硬體佈局。
+[硬體支援] 新增對第二個蜂鳴器 (GPIO 11) 的支援，實現雙通道音效回饋。
+[硬體支援] WS2812B 燈板 LED 數量更新為 64 顆。
+[系統優化] 開機自檢中的伺服馬達測試更新為 0-180 度完整行程掃描。
 */
 
 #include <Arduino.h>
@@ -29,22 +31,23 @@ v20.5 更新內容:
 #include <ESP32Servo.h>         // 需安裝程式庫: ESP32Servo
 #include <Adafruit_NeoPixel.h>  // 需安裝程式庫: Adafruit NeoPixel
 
-// ==================== 腳位定義 ====================
+// ==================== 腳位定義 (v20.6 全面更新) ====================
 #define I2C_SDA_PIN 22
 #define I2C_SCL_PIN 21
-#define ENCODER_A_PIN GPIO_NUM_18
-#define ENCODER_B_PIN GPIO_NUM_19
-#define ENCODER_PSH_PIN GPIO_NUM_23
-#define BUTTON_CONFIRM_PIN 4
-#define BUTTON_BACK_PIN 9           // v20.4 新增: Back 鍵腳位
-#define DHT_PIN 20                  // v20.4 修改: DHT11 腳位
+#define ENCODER_A_PIN GPIO_NUM_19
+#define ENCODER_B_PIN GPIO_NUM_18
+#define ENCODER_PSH_PIN GPIO_NUM_20
+#define BUTTON_CONFIRM_PIN 23
+#define BUTTON_BACK_PIN 9
+#define DHT_PIN 13
 #define DHT_TYPE DHT11
 
-// v20.4 新增: 新硬體腳位
+// 新硬體腳位
 #define BUZZER_PIN 10
+#define BUZZER_PIN_2 11             // v20.6 新增: 第二個蜂鳴器
 #define SERVO_PIN 3
-#define WS2812_PIN 2
-#define NUM_LEDS 8 // 假設燈板有8顆 LED
+#define WS2812_PIN 15
+#define NUM_LEDS 64                 // v20.6 修改: 燈板有64顆 LED
 
 // ==================== Wi-Fi & NTP & OTA ====================
 const char* default_ssid = "charlie phone";
@@ -69,15 +72,15 @@ const int DAYLIGHT_OFFSET = 0;
 #define CMD_REQUEST_STATUS          0x20
 #define CMD_REQUEST_ENV             0x30
 #define CMD_REQUEST_HISTORIC        0x31
-#define CMD_ENABLE_REALTIME         0x32 // v20.4 新增
-#define CMD_DISABLE_REALTIME        0x33 // v20.4 新增
+#define CMD_ENABLE_REALTIME         0x32
+#define CMD_DISABLE_REALTIME        0x33
 #define CMD_REPORT_STATUS           0x80
 #define CMD_REPORT_TAKEN            0x81
 #define CMD_TIME_SYNC_ACK           0x82
 #define CMD_REPORT_ENV              0x90
 #define CMD_REPORT_HISTORIC_POINT   0x91
 #define CMD_REPORT_HISTORIC_END     0x92
-#define CMD_REPORT_REALTIME         0x93 // v20.4 新增
+#define CMD_REPORT_REALTIME         0x93
 #define CMD_ERROR                   0xEE
 
 // ==================== 圖示 (XBM) ====================
@@ -96,7 +99,7 @@ BLECharacteristic *pDataEventCharacteristic = NULL;
 Preferences preferences;
 File historyFile;
 
-// v20.4 新增: 新硬體物件
+// 新硬體物件
 Servo sg90;
 Adafruit_NeoPixel pixels(NUM_LEDS, WS2812_PIN, NEO_GRB + NEO_KHZ800);
 
@@ -147,7 +150,6 @@ const unsigned long NTP_RESYNC_INTERVAL = 12 * 3600000;
 unsigned long lastWeatherUpdate = 0;
 const unsigned long WEATHER_INTERVAL = 600000;
 
-// v20.4 新增: 新狀態變數
 unsigned long lastBackPressTime = 0;
 bool isRealtimeEnabled = false;
 unsigned long lastRealtimeSend = 0;
@@ -193,7 +195,6 @@ void loadPersistentStates();
 void handleWiFiConnection();
 void startWiFiConnection();
 
-// v20.4 新增: 新功能函式宣告
 void runPOST();
 void playTickSound();
 void playConfirmSound();
@@ -210,20 +211,16 @@ class MyServerCallbacks: public BLEServerCallbacks {
     }
     void onDisconnect(BLEServer* pServer) {
         bleDeviceConnected = false;
-        isRealtimeEnabled = false; // 連線中斷時關閉即時回報
+        isRealtimeEnabled = false;
         Serial.println("BLE Disconnected");
         BLEDevice::startAdvertising();
     }
 };
 
-// v20.5 修正: 修正 BLE 回呼函式以相容 ESP32 Core v3.0.0+
 class CommandCallbacks: public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) {
-        // 在 ESP32 Core v3.0.0+ 中，getValue() 回傳的是 Arduino String 物件
         String value = pCharacteristic->getValue();
-
         if (value.length() > 0) {
-            // String.c_str() 回傳 const char*，需轉型為 uint8_t* 傳入處理函式
             handleCommand((uint8_t*)value.c_str(), value.length());
         }
     }
@@ -342,7 +339,7 @@ void sendRealtimeSensorData() {
     float t = dht.readTemperature() - TEMP_CALIBRATION_OFFSET;
     float h = dht.readHumidity();
     if (isnan(h) || isnan(t)) {
-        return; // 即時模式下忽略錯誤
+        return;
     }
     uint8_t packet[5];
     packet[0] = CMD_REPORT_REALTIME;
@@ -446,8 +443,9 @@ void sendErrorReport(uint8_t errorCode) {
 void setup() {
     Serial.begin(115200);
     delay(1000);
-    Serial.println("\n--- SmartMedBox Firmware v20.5 ---");
+    Serial.println("\n--- SmartMedBox Firmware v20.6 ---"); // v20.6 修改
 
+    // v20.6 修改: 根據新腳位配置
     pinMode(ENCODER_PSH_PIN, INPUT_PULLUP);
     pinMode(BUTTON_CONFIRM_PIN, INPUT_PULLUP);
     pinMode(BUTTON_BACK_PIN, INPUT_PULLUP);
@@ -456,7 +454,7 @@ void setup() {
     u8g2.begin();
     u8g2.enableUTF8Print();
 
-    runPOST(); // 開機自檢
+    runPOST();
 
     dht.begin();
     if (!SPIFFS.begin(true)) {
@@ -475,7 +473,7 @@ void setup() {
     u8g2.setFont(u8g2_font_ncenB10_tr);
     u8g2.drawStr((128 - u8g2.getStrWidth("SmartMedBox"))/2, 30, "SmartMedBox");
     u8g2.setFont(u8g2_font_ncenB08_tr);
-    u8g2.drawStr((128 - u8g2.getStrWidth("v20.5"))/2, 45, "v20.5");
+    u8g2.drawStr((128 - u8g2.getStrWidth("v20.6"))/2, 45, "v20.6"); // v20.6 修改
     u8g2.sendBuffer();
     delay(2000);
 
@@ -515,7 +513,6 @@ void setup() {
 void loop() {
     if (isOtaMode) {
         ArduinoOTA.handle();
-        // OTA 模式下使用 Back 鍵退出
         if (digitalRead(BUTTON_BACK_PIN) == LOW && (millis() - lastBackPressTime > 500)) {
             lastBackPressTime = millis();
             playConfirmSound();
@@ -558,38 +555,41 @@ void loop() {
     }
 }
 
-// ==================== v20.4 新增功能函式 ====================
+// ==================== 功能函式 ====================
 void runPOST() { // Power-On Self-Test
-    // 1. 初始化硬體
     sg90.attach(SERVO_PIN);
     pixels.begin();
     pixels.setBrightness(50);
     pixels.clear();
     pixels.show();
 
-    // 初始化蜂鳴器腳位
+    // v20.6 修改: 初始化兩個蜂鳴器腳位
     pinMode(BUZZER_PIN, OUTPUT);
     digitalWrite(BUZZER_PIN, LOW);
+    pinMode(BUZZER_PIN_2, OUTPUT);
+    digitalWrite(BUZZER_PIN_2, LOW);
 
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_ncenB08_tr);
     u8g2.drawStr((128 - u8g2.getStrWidth("Hardware Check..."))/2, 38, "Hardware Check...");
     u8g2.sendBuffer();
 
-    // 2. 測試燈光 (紅->綠->藍)
     pixels.fill(pixels.Color(255, 0, 0)); pixels.show(); delay(300);
     pixels.fill(pixels.Color(0, 255, 0)); pixels.show(); delay(300);
     pixels.fill(pixels.Color(0, 0, 255)); pixels.show(); delay(300);
     pixels.clear(); pixels.show();
 
-    // 3. 測試聲音 (使用標準 tone 函式)
-    tone(BUZZER_PIN, 1000, 100); delay(200);
-    tone(BUZZER_PIN, 1500, 100); delay(200);
+    tone(BUZZER_PIN, 1000, 100);
+    tone(BUZZER_PIN_2, 1000, 100); // v20.6 新增
+    delay(200);
+    tone(BUZZER_PIN, 1500, 100);
+    tone(BUZZER_PIN_2, 1500, 100); // v20.6 新增
+    delay(200);
 
-    // 4. 測試馬達
-    sg90.write(0); delay(300);
-    sg90.write(90); delay(300);
-    sg90.write(0); delay(300);
+    // v20.6 修改: 測試 180 度伺服馬達完整行程
+    sg90.write(0); delay(500);
+    sg90.write(180); delay(500);
+    sg90.write(0); delay(500);
 
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_ncenB08_tr);
@@ -599,13 +599,16 @@ void runPOST() { // Power-On Self-Test
 }
 
 void playTickSound() {
-    tone(BUZZER_PIN, 2000, 20); // 2000Hz, 20ms
+    tone(BUZZER_PIN, 2000, 20);
+    tone(BUZZER_PIN_2, 2000, 20); // v20.6 新增
 }
 
 void playConfirmSound() {
     tone(BUZZER_PIN, 1500, 50);
+    tone(BUZZER_PIN_2, 1500, 50); // v20.6 新增
     delay(60);
     tone(BUZZER_PIN, 1000, 50);
+    tone(BUZZER_PIN_2, 1000, 50); // v20.6 新增
 }
 
 void handleRealtimeData() {
@@ -628,14 +631,11 @@ void handleBackButton() {
         lastBackPressTime = millis();
         playConfirmSound();
 
-        // 依據目前狀態決定 Back 鍵行為
         if (currentUIMode == UI_MODE_SYSTEM_MENU || currentUIMode == UI_MODE_INFO_SCREEN) {
             returnToMainScreen();
         } else if (currentUIMode == UI_MODE_MAIN_SCREENS && currentEncoderMode == MODE_VIEW_ADJUST) {
-            // 從圖表縮放模式回到導航模式
             currentEncoderMode = MODE_NAVIGATION;
         } else {
-            // 若已在主畫面，按 Back 回到時間頁面
             currentPageIndex = SCREEN_TIME;
             rotaryEncoder.setEncoderValue(SCREEN_TIME);
         }
@@ -793,9 +793,9 @@ void drawSystemMenu() {
             int y = 24 + i * 11;
             if (itemIndex == selectedMenuItem) {
                 u8g2.drawBox(0, y - 9, 128 - 6, 11);
-                u8g2.setDrawColor(0); // Reverse color for selected item
+                u8g2.setDrawColor(0);
                 u8g2.drawStr(5, y, menuItems[itemIndex]);
-                u8g2.setDrawColor(1); // Restore color
+                u8g2.setDrawColor(1);
             } else {
                 u8g2.drawStr(5, y, menuItems[itemIndex]);
             }
@@ -874,7 +874,7 @@ void updateScreens() {
 // ==================== 按鍵與旋鈕處理 ====================
 void handleEncoder() {
     if (rotaryEncoder.encoderChanged()) {
-        playTickSound(); // 聲音回饋
+        playTickSound();
         if (currentUIMode == UI_MODE_SYSTEM_MENU) {
             selectedMenuItem = (SystemMenuItem)rotaryEncoder.readEncoder();
             if (selectedMenuItem >= menuViewOffset + MAX_MENU_ITEMS_ON_SCREEN) {
@@ -895,7 +895,7 @@ void handleEncoder() {
 void handleEncoderPush() {
     if (digitalRead(ENCODER_PSH_PIN) == LOW && (millis() - lastEncoderPushTime > 300)) {
         lastEncoderPushTime = millis();
-        playConfirmSound(); // 聲音回饋
+        playConfirmSound();
         switch (currentUIMode) {
             case UI_MODE_MAIN_SCREENS:
                 if (isEngineeringMode && currentPageIndex == SCREEN_SYSTEM) {
@@ -945,14 +945,12 @@ void handleButtons() {
     } else if (!isPressed && confirmButtonPressed) {
         if (millis() - confirmPressStartTime < 3000) {
             lastConfirmPressTime = millis();
-            playConfirmSound(); // 聲音回饋
-            // 確認鍵作為 "Home" 鍵返回主畫面
+            playConfirmSound();
             returnToMainScreen();
         }
         confirmButtonPressed = false;
     }
     if (confirmButtonPressed && (millis() - confirmPressStartTime >= 3000)) {
-        // 長按3秒進入 OTA 模式
         playConfirmSound();
         enterOtaMode();
         confirmButtonPressed = false;
