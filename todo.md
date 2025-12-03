@@ -1,5 +1,9 @@
 # To-Do List
 
+- [ ] **測試與除錯**:
+    - [ ] 移除 `MainViewModel` 中的模擬數據 (`loadSimulatedData`)。
+    - [ ] 移除 `MainViewModel` 中為了測試圖表而強制設定 `isBleConnected = true` 的邏輯。
+
 - [ ] **App 功能擴充**:
     - [ ] **支援 ESP32 v21.0 鬧鐘功能**:
         - [ ] 實作 `CMD_SET_ALARM (0x41)` 指令，將 App 設定的提醒時間同步到藥盒。

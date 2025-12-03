@@ -18,6 +18,8 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
+import kotlin.math.cos
+import kotlin.math.sin
 
 data class SensorDataPoint(val timestamp: Long, val temperature: Float, val humidity: Float)
 
@@ -59,6 +61,8 @@ class MainViewModel @Inject constructor(application: Application) : ViewModel() 
     init {
         viewModelScope.launch {
             loadAllData()
+            // TODO: Remove this after testing chart
+            loadSimulatedData()
         }
     }
 
@@ -203,6 +207,23 @@ class MainViewModel @Inject constructor(application: Application) : ViewModel() 
                 Log.e("MainViewModel", "Failed to parse daily status data", e)
             }
         }
+    }
+
+    // TODO: Remove this function after testing
+    private fun loadSimulatedData() {
+        val now = System.currentTimeMillis() / 1000
+        val fakeData = mutableListOf<SensorDataPoint>()
+        // Generate 20 points, one every 5 minutes for the last 100 minutes
+        for (i in 0 until 20) {
+            val time = now - (19 - i) * 300 // 300 seconds = 5 minutes
+            // Temp varies around 25C (22-28)
+            val temp = 25f + (sin(i.toDouble() / 3.0).toFloat() * 3f) + ((Math.random() - 0.5).toFloat() * 1f)
+            // Humidity varies around 60% (50-70)
+            val hum = 60f + (cos(i.toDouble() / 3.0).toFloat() * 10f) + ((Math.random() - 0.5).toFloat() * 5f)
+            fakeData.add(SensorDataPoint(time, temp, hum))
+        }
+        _historicSensorData.value = fakeData
+        _isBleConnected.value = true // Force UI to show chart
     }
 
     enum class BleAction {
