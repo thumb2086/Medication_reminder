@@ -64,7 +64,7 @@ class HistoryFragment : Fragment() {
 
                                 if (data.position == DayPosition.MonthDate) {
                                     val dateStr = formatter.format(data.date)
-                                    dotView.isVisible = statusMap[dateStr] == MainViewModel.STATUS_ALL_TAKEN
+                                    dotView.isVisible = statusMap[dateStr] == AppRepository.STATUS_ALL_TAKEN
                                 } else {
                                     dotView.isVisible = false
                                 }

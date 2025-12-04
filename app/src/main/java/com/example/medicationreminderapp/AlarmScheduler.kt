@@ -19,9 +19,11 @@ class AlarmScheduler(private val context: Context) {
             val intent = Intent(context, AlarmReceiver::class.java).apply {
                 putExtra("medicationName", medication.name)
                 putExtra("dosage", medication.dosage)
+                putExtra("notificationId", medication.slotNumber) // Pass slotNumber as notificationId
             }
 
-            val requestCode = medication.id + index
+            // Make request code unique for each alarm time
+            val requestCode = medication.id * 100 + index 
 
             val pendingIntent = PendingIntent.getBroadcast(
                 context,
@@ -41,7 +43,7 @@ class AlarmScheduler(private val context: Context) {
 
     fun cancel(medication: Medication) {
         medication.times.keys.forEachIndexed { index, _ ->
-            val requestCode = medication.id + index
+            val requestCode = medication.id * 100 + index
             val intent = Intent(context, AlarmReceiver::class.java)
             val pendingIntent = PendingIntent.getBroadcast(
                 context,

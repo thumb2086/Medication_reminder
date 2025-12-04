@@ -1,6 +1,12 @@
 # 更新日誌
 
 ## 架構優化
+*   **0099:** **實作 Repository 模式並解決 Hilt 注入限制。**
+    *   **架構重構:** 建立了單例 `AppRepository`，將所有資料邏輯（SharedPreferences、藥物列表、溫濕度歷史、服藥狀態）從 `MainViewModel` 中抽離。
+    *   **Hilt 修正:** 解決了 `MedicationTakenReceiver` 無法直接注入 `ViewModel` 的 Dagger Hilt 限制。現在，Receiver 透過 Hilt EntryPoint 注入 `AppRepository`，而 `MainViewModel` 也改為依賴這個 Repository，確保了資料存取的單一性與架構的正確性。
+*   **0098:** **修復通知「我已服用」後的數據同步與通知取消問題。**
+    *   **問題:** `MedicationTakenReceiver` 錯誤地實例化了新的 `MainViewModel`，導致服藥事件無法更新到應用程式的單例 ViewModel 中，服藥紀錄和圖表無法更新。此外，通知有時無法自動消失。
+    *   **修正:** 在 `MedicationTakenReceiver.kt` 中導入了 Hilt 的 `EntryPoint` 模式，以確保廣播接收器可以存取到正確的單例 `MainViewModel` 和 `BluetoothLeManager` 實例。同時，確保了 `notificationId` 被正確用於取消通知，解決了通知殘留的問題。
 *   **0092:** **實作即時環境數據訂閱機制與圖表優化。**
     *   **協定升級:** 新增 `0x32` (訂閱) 與 `0x33` (取消訂閱) 指令。App 連線後會自動訂閱，藥盒將每 5 秒主動推送即時溫濕度 (`0x90`)，不再依賴 App 輪詢，大幅降低延遲與頻寬消耗。
     *   **App 優化:**

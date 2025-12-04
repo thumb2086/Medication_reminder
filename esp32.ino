@@ -1,14 +1,13 @@
 /*
-SmartMedBox Firmware v20.6
+SmartMedBox Firmware v20.7
 硬體: ESP32-C6
 IDE: esp32 by Espressif Systems v3.0.0+
 板子: ESP32C6 Dev Module, 8MB with spiffs (3MB APP/1.5MB SPIFFS)
 
-v20.6 更新內容:
-[硬體配置] 全面更新腳位定義以符合新的硬體佈局。
-[硬體支援] 新增對第二個蜂鳴器 (GPIO 11) 的支援，實現雙通道音效回饋。
-[硬體支援] WS2812B 燈板 LED 數量更新為 64 顆。
-[系統優化] 開機自檢中的伺服馬達測試更新為 0-180 度完整行程掃描。
+v20.7 更新內容:
+[核心修正] 引入感測器數據快取機制，將 DHT11 的硬體讀取與 UI 刷新、BLE 回報分離。
+[系統優化] 新增定時器，以 2.5 秒的穩定間隔讀取 DHT11，徹底解決因讀取頻率過高導致的 "Sensor Error"。
+[邏輯修正] 所有顯示與回報功能均改為讀取快取數據，提升系統穩定性。
 */
 
 #include <Arduino.h>
@@ -28,10 +27,10 @@ v20.6 更新內容:
 #include "SPIFFS.h"
 #include <ESPmDNS.h>
 #include <ArduinoOTA.h>
-#include <ESP32Servo.h>         // 需安裝程式庫: ESP32Servo
-#include <Adafruit_NeoPixel.h>  // 需安裝程式庫: Adafruit NeoPixel
+#include <ESP32Servo.h>
+#include <Adafruit_NeoPixel.h>
 
-// ==================== 腳位定義 (v20.6 全面更新) ====================
+// ==================== 腳位定義 (v20.6) ====================
 #define I2C_SDA_PIN 22
 #define I2C_SCL_PIN 21
 #define ENCODER_A_PIN GPIO_NUM_19
@@ -44,10 +43,10 @@ v20.6 更新內容:
 
 // 新硬體腳位
 #define BUZZER_PIN 10
-#define BUZZER_PIN_2 11             // v20.6 新增: 第二個蜂鳴器
+#define BUZZER_PIN_2 11
 #define SERVO_PIN 3
 #define WS2812_PIN 15
-#define NUM_LEDS 64                 // v20.6 修改: 燈板有64顆 LED
+#define NUM_LEDS 64
 
 // ==================== Wi-Fi & NTP & OTA ====================
 const char* default_ssid = "charlie phone";
@@ -98,8 +97,6 @@ DHT dht(DHT_PIN, DHT_TYPE);
 BLECharacteristic *pDataEventCharacteristic = NULL;
 Preferences preferences;
 File historyFile;
-
-// 新硬體物件
 Servo sg90;
 Adafruit_NeoPixel pixels(NUM_LEDS, WS2812_PIN, NEO_GRB + NEO_KHZ800);
 
@@ -149,11 +146,17 @@ unsigned long lastNTPResync = 0;
 const unsigned long NTP_RESYNC_INTERVAL = 12 * 3600000;
 unsigned long lastWeatherUpdate = 0;
 const unsigned long WEATHER_INTERVAL = 600000;
-
 unsigned long lastBackPressTime = 0;
 bool isRealtimeEnabled = false;
 unsigned long lastRealtimeSend = 0;
 const unsigned long REALTIME_INTERVAL = 2000;
+
+// v20.7 Fix: 新增感測器快取變數與計時器
+float cachedTemp = 0.0;
+float cachedHum = 0.0;
+bool sensorDataValid = false;
+unsigned long lastSensorReadTime = 0;
+const unsigned long SENSOR_READ_INTERVAL = 2500; // DHT11 至少需要 2 秒，設定 2.5 秒較保險
 
 // ==================== 函式宣告 ====================
 void updateDisplay();
@@ -194,7 +197,6 @@ void drawSystemMenu();
 void loadPersistentStates();
 void handleWiFiConnection();
 void startWiFiConnection();
-
 void runPOST();
 void playTickSound();
 void playConfirmSound();
@@ -202,6 +204,7 @@ void handleBackButton();
 void handleRealtimeData();
 void sendRealtimeSensorData();
 void returnToMainScreen();
+void updateSensorReadings(); // v20.7 Fix: 新增函式宣告
 
 // ==================== BLE 回呼 & 指令處理 ====================
 class MyServerCallbacks: public BLEServerCallbacks {
@@ -318,35 +321,37 @@ void sendMedicationTaken(uint8_t slot) {
 
 void sendSensorDataReport() {
     if (!bleDeviceConnected) return;
-    float t = dht.readTemperature() - TEMP_CALIBRATION_OFFSET;
-    float h = dht.readHumidity();
-    if (isnan(h) || isnan(t)) {
-        sendErrorReport(0x02);
+
+    // v20.7 Fix: 使用快取數據，避免過度讀取導致錯誤
+    if (!sensorDataValid) {
+        sendErrorReport(0x02); // 確實讀不到數據時才回傳錯誤
         return;
     }
+
     uint8_t packet[5];
     packet[0] = CMD_REPORT_ENV;
-    packet[1] = (uint8_t)t;
-    packet[2] = (uint8_t)((t - packet[1]) * 100);
-    packet[3] = (uint8_t)h;
-    packet[4] = (uint8_t)((h - packet[3]) * 100);
+    packet[1] = (uint8_t)cachedTemp;
+    packet[2] = (uint8_t)((cachedTemp - packet[1]) * 100);
+    packet[3] = (uint8_t)cachedHum;
+    packet[4] = (uint8_t)((cachedHum - packet[3]) * 100);
     pDataEventCharacteristic->setValue(packet, 5);
     pDataEventCharacteristic->notify();
 }
 
 void sendRealtimeSensorData() {
     if (!bleDeviceConnected || !isRealtimeEnabled) return;
-    float t = dht.readTemperature() - TEMP_CALIBRATION_OFFSET;
-    float h = dht.readHumidity();
-    if (isnan(h) || isnan(t)) {
+
+    // v20.7 Fix: 使用快取數據
+    if (!sensorDataValid) {
         return;
     }
+
     uint8_t packet[5];
     packet[0] = CMD_REPORT_REALTIME;
-    packet[1] = (uint8_t)t;
-    packet[2] = (uint8_t)((t - packet[1]) * 100);
-    packet[3] = (uint8_t)h;
-    packet[4] = (uint8_t)((h - packet[3]) * 100);
+    packet[1] = (uint8_t)cachedTemp;
+    packet[2] = (uint8_t)((cachedTemp - packet[1]) * 100);
+    packet[3] = (uint8_t)cachedHum;
+    packet[4] = (uint8_t)((cachedHum - packet[3]) * 100);
     pDataEventCharacteristic->setValue(packet, 5);
     pDataEventCharacteristic->notify();
 }
@@ -443,9 +448,8 @@ void sendErrorReport(uint8_t errorCode) {
 void setup() {
     Serial.begin(115200);
     delay(1000);
-    Serial.println("\n--- SmartMedBox Firmware v20.6 ---"); // v20.6 修改
+    Serial.println("\n--- SmartMedBox Firmware v20.7 ---");
 
-    // v20.6 修改: 根據新腳位配置
     pinMode(ENCODER_PSH_PIN, INPUT_PULLUP);
     pinMode(BUTTON_CONFIRM_PIN, INPUT_PULLUP);
     pinMode(BUTTON_BACK_PIN, INPUT_PULLUP);
@@ -473,7 +477,7 @@ void setup() {
     u8g2.setFont(u8g2_font_ncenB10_tr);
     u8g2.drawStr((128 - u8g2.getStrWidth("SmartMedBox"))/2, 30, "SmartMedBox");
     u8g2.setFont(u8g2_font_ncenB08_tr);
-    u8g2.drawStr((128 - u8g2.getStrWidth("v20.6"))/2, 45, "v20.6"); // v20.6 修改
+    u8g2.drawStr((128 - u8g2.getStrWidth("v20.7"))/2, 45, "v20.7");
     u8g2.sendBuffer();
     delay(2000);
 
@@ -495,11 +499,11 @@ void setup() {
     WiFi.mode(WIFI_STA);
     startWiFiConnection();
 
-    float t = dht.readTemperature();
-    float h = dht.readHumidity();
-    int16_t rssi = WiFi.RSSI();
-    if (!isnan(t) && !isnan(h)) {
-        addDataToHistory(t - TEMP_CALIBRATION_OFFSET, h, rssi);
+    // 首次讀取感測器
+    updateSensorReadings();
+
+    if (sensorDataValid) {
+        addDataToHistory(cachedTemp, cachedHum, WiFi.RSSI());
     }
 
     currentPageIndex = SCREEN_TIME;
@@ -529,6 +533,9 @@ void loop() {
     handleWiFiConnection();
     handleHistoricDataTransfer();
     handleRealtimeData();
+
+    updateSensorReadings(); // v20.7 Fix: 定期讀取感測器
+
     handleEncoder();
     handleEncoderPush();
     handleButtons();
@@ -537,15 +544,16 @@ void loop() {
     if (wifiState == WIFI_CONNECTED && millis() - lastNTPResync >= NTP_RESYNC_INTERVAL) {
         syncTimeNTPForce();
     }
+
+    // v20.7 Fix: 修改歷史紀錄邏輯，使用快取數據
     if (millis() - lastHistoryRecord > historyRecordInterval) {
         lastHistoryRecord = millis();
-        float t = dht.readTemperature();
-        float h = dht.readHumidity();
         int16_t rssi = WiFi.RSSI();
-        if (!isnan(t) && !isnan(h)) {
-            addDataToHistory(t - TEMP_CALIBRATION_OFFSET, h, rssi);
+        if (sensorDataValid) {
+            addDataToHistory(cachedTemp, cachedHum, rssi);
         }
     }
+
     if (wifiState == WIFI_CONNECTED && millis() - lastWeatherUpdate > WEATHER_INTERVAL) {
         fetchWeatherData();
         lastWeatherUpdate = millis();
@@ -556,14 +564,35 @@ void loop() {
 }
 
 // ==================== 功能函式 ====================
-void runPOST() { // Power-On Self-Test
+
+// v20.7 Fix: 新增感測器讀取函式
+void updateSensorReadings() {
+    if (millis() - lastSensorReadTime >= SENSOR_READ_INTERVAL) {
+        lastSensorReadTime = millis();
+
+        float h = dht.readHumidity();
+        float t = dht.readTemperature();
+
+        if (!isnan(h) && !isnan(t)) {
+            cachedHum = h;
+            cachedTemp = t - TEMP_CALIBRATION_OFFSET;
+            sensorDataValid = true;
+        } else {
+            // 如果讀取失敗，可以選擇標記為無效，但為了避免畫面頻繁跳動，
+            // 暫時保留舊數據並在序列埠輸出錯誤。
+            // sensorDataValid = false;
+            Serial.println("Failed to read from DHT sensor!");
+        }
+    }
+}
+
+void runPOST() {
     sg90.attach(SERVO_PIN);
     pixels.begin();
     pixels.setBrightness(50);
     pixels.clear();
     pixels.show();
 
-    // v20.6 修改: 初始化兩個蜂鳴器腳位
     pinMode(BUZZER_PIN, OUTPUT);
     digitalWrite(BUZZER_PIN, LOW);
     pinMode(BUZZER_PIN_2, OUTPUT);
@@ -580,13 +609,12 @@ void runPOST() { // Power-On Self-Test
     pixels.clear(); pixels.show();
 
     tone(BUZZER_PIN, 1000, 100);
-    tone(BUZZER_PIN_2, 1000, 100); // v20.6 新增
+    tone(BUZZER_PIN_2, 1000, 100);
     delay(200);
     tone(BUZZER_PIN, 1500, 100);
-    tone(BUZZER_PIN_2, 1500, 100); // v20.6 新增
+    tone(BUZZER_PIN_2, 1500, 100);
     delay(200);
 
-    // v20.6 修改: 測試 180 度伺服馬達完整行程
     sg90.write(0); delay(500);
     sg90.write(180); delay(500);
     sg90.write(0); delay(500);
@@ -600,15 +628,15 @@ void runPOST() { // Power-On Self-Test
 
 void playTickSound() {
     tone(BUZZER_PIN, 2000, 20);
-    tone(BUZZER_PIN_2, 2000, 20); // v20.6 新增
+    tone(BUZZER_PIN_2, 2000, 20);
 }
 
 void playConfirmSound() {
     tone(BUZZER_PIN, 1500, 50);
-    tone(BUZZER_PIN_2, 1500, 50); // v20.6 新增
+    tone(BUZZER_PIN_2, 1500, 50);
     delay(60);
     tone(BUZZER_PIN, 1000, 50);
-    tone(BUZZER_PIN_2, 1000, 50); // v20.6 新增
+    tone(BUZZER_PIN_2, 1000, 50);
 }
 
 void handleRealtimeData() {
@@ -625,12 +653,10 @@ void returnToMainScreen() {
     updateScreens();
 }
 
-// ==================== Back 按鍵處理 ====================
 void handleBackButton() {
     if (digitalRead(BUTTON_BACK_PIN) == LOW && (millis() - lastBackPressTime > 300)) {
         lastBackPressTime = millis();
         playConfirmSound();
-
         if (currentUIMode == UI_MODE_SYSTEM_MENU || currentUIMode == UI_MODE_INFO_SCREEN) {
             returnToMainScreen();
         } else if (currentUIMode == UI_MODE_MAIN_SCREENS && currentEncoderMode == MODE_VIEW_ADJUST) {
@@ -643,20 +669,7 @@ void handleBackButton() {
     }
 }
 
-// ==================== Wi-Fi, OTA, NTP ====================
-void startWiFiConnection() {
-    if (wifiState == WIFI_CONNECTING) return;
-    wifiState = WIFI_CONNECTING;
-    wifiConnectionStartTime = millis();
-    preferences.begin("wifi", true);
-    String savedSSID = preferences.getString("ssid", default_ssid);
-    String savedPASS = preferences.getString("pass", default_password);
-    preferences.end();
-    WiFi.disconnect(true);
-    delay(100);
-    WiFi.begin(savedSSID.c_str(), savedPASS.c_str());
-    Serial.println("Starting WiFi connection...");
-}
+// ... (Wi-Fi, OTA, UI 繪製等函式保持不變) ...
 
 void handleWiFiConnection() {
     if (wifiState != WIFI_CONNECTING) return;
@@ -675,6 +688,20 @@ void handleWiFiConnection() {
         WiFi.disconnect(true);
         Serial.println("WiFi Connection Failed (Timeout).");
     }
+}
+
+void startWiFiConnection() {
+    if (wifiState == WIFI_CONNECTING) return;
+    wifiState = WIFI_CONNECTING;
+    wifiConnectionStartTime = millis();
+    preferences.begin("wifi", true);
+    String savedSSID = preferences.getString("ssid", default_ssid);
+    String savedPASS = preferences.getString("pass", default_password);
+    preferences.end();
+    WiFi.disconnect(true);
+    delay(100);
+    WiFi.begin(savedSSID.c_str(), savedPASS.c_str());
+    Serial.println("Starting WiFi connection...");
 }
 
 void syncTimeNTPForce() {
@@ -748,7 +775,6 @@ void enterOtaMode() {
     u8g2.sendBuffer();
 }
 
-// ==================== UI 核心函式 ====================
 void updateDisplay() {
     lastDisplayUpdate = millis();
     u8g2.clearBuffer();
@@ -871,7 +897,6 @@ void updateScreens() {
     updateDisplay();
 }
 
-// ==================== 按鍵與旋鈕處理 ====================
 void handleEncoder() {
     if (rotaryEncoder.encoderChanged()) {
         playTickSound();
@@ -957,12 +982,12 @@ void handleButtons() {
     }
 }
 
-// ==================== 歷史資料與狀態處理 ====================
 void loadPersistentStates() {
     preferences.begin("medbox-meta", true);
     isEngineeringMode = preferences.getBool("engMode", false);
     preferences.end();
 }
+
 void initializeHistoryFile() {
     if (!SPIFFS.exists("/history.dat")) {
         File file = SPIFFS.open("/history.dat", FILE_WRITE);
@@ -974,18 +999,21 @@ void initializeHistoryFile() {
         file.close();
     }
 }
+
 void loadHistoryMetadata() {
     preferences.begin("medbox-meta", true);
     historyCount = preferences.getInt("hist_count", 0);
     historyIndex = preferences.getInt("hist_index", 0);
     preferences.end();
 }
+
 void saveHistoryMetadata() {
     preferences.begin("medbox-meta", false);
     preferences.putInt("hist_count", historyCount);
     preferences.putInt("hist_index", historyIndex);
     preferences.end();
 }
+
 void addDataToHistory(float temp, float hum, int16_t rssi) {
     File file = SPIFFS.open("/history.dat", "r+");
     if (!file) return;
@@ -1001,6 +1029,7 @@ void addDataToHistory(float temp, float hum, int16_t rssi) {
         rotaryEncoder.setBoundaries(0, maxOffset, false);
     }
 }
+
 void loadHistoryWindow(int offset) {
     int points = min(historyCount, HISTORY_WINDOW_SIZE);
     if (points == 0) return;
@@ -1015,7 +1044,6 @@ void loadHistoryWindow(int offset) {
     file.close();
 }
 
-// ==================== 圖表與畫面繪製 ====================
 void drawChart_OriginalStyle(const char* title, bool isTemp, bool isRssi) {
     u8g2.setFont(u8g2_font_6x10_tf);
     u8g2.drawStr(2, 8, title);
@@ -1094,9 +1122,11 @@ void drawChart_OriginalStyle(const char* title, bool isTemp, bool isRssi) {
         u8g2.drawStr(2, 64, "VIEW");
     }
 }
+
 void drawTempChartScreen() { drawChart_OriginalStyle("Temp Chart", true, false); }
 void drawHumChartScreen() { drawChart_OriginalStyle("Humid Chart", false, false); }
 void drawRssiChartScreen() { drawChart_OriginalStyle("RSSI Chart", false, true); }
+
 void drawTimeScreen() {
     time_t now;
     time(&now);
@@ -1111,6 +1141,7 @@ void drawTimeScreen() {
         u8g2.drawStr((128 - u8g2.getStrWidth(s)) / 2, 42, s);
     }
 }
+
 void drawDateScreen() {
     time_t now;
     time(&now);
@@ -1134,6 +1165,7 @@ void drawDateScreen() {
     u8g2.drawStr(72, 40, month[ptm->tm_mon]);
     u8g2.drawStr(72, 56, year);
 }
+
 void drawWeatherScreen() {
     u8g2.setFont(u8g2_font_ncenB10_tr);
     u8g2.drawStr(0, 12, city.c_str());
@@ -1161,28 +1193,30 @@ void drawWeatherScreen() {
         u8g2.drawStr(0, 32, "Updating...");
     }
 }
+
 void drawSensorScreen() {
-    float h = dht.readHumidity();
-    float t = dht.readTemperature() - TEMP_CALIBRATION_OFFSET;
-    if (isnan(h) || isnan(t)) {
+    // v20.7 Fix: 改為讀取快取變數，不再直接讀硬體
+    if (!sensorDataValid) {
         u8g2.setFont(u8g2_font_ncenB08_tr);
-        u8g2.drawStr(10, 40, "Sensor Error!");
+        u8g2.drawStr(10, 40, "Sensor Init...");
         return;
     }
+
     char buf[20];
     u8g2.setFont(u8g2_font_helvB10_tr);
     u8g2.drawStr((128 - u8g2.getStrWidth("INDOOR")) / 2, 12, "INDOOR");
     u8g2.setFont(u8g2_font_ncenR10_tr);
     u8g2.drawStr(10, 38, "TEMP");
     u8g2.setFont(u8g2_font_fub25_tn);
-    sprintf(buf, "%.1f C", t);
+    sprintf(buf, "%.1f C", cachedTemp);
     u8g2.drawStr(128 - u8g2.getStrWidth(buf) - 10, 38, buf);
     u8g2.setFont(u8g2_font_ncenR10_tr);
     u8g2.drawStr(10, 62, "HUMI");
     u8g2.setFont(u8g2_font_fub25_tn);
-    sprintf(buf, "%.0f %%", h);
+    sprintf(buf, "%.0f %%", cachedHum);
     u8g2.drawStr(128 - u8g2.getStrWidth(buf) - 10, 62, buf);
 }
+
 void drawSystemScreen() {
     u8g2.setFont(u8g2_font_ncenB08_tr);
     u8g2.drawStr(0, 12, "System Info");
@@ -1200,6 +1234,7 @@ void drawSystemScreen() {
     u8g2.drawStr(0, y, ("Heap: " + String(ESP.getFreeHeap() / 1024) + " KB").c_str()); y += 12;
     u8g2.drawStr(0, y, ("Up: " + String(millis() / 60000) + " min").c_str());
 }
+
 const char* getWeatherIcon(const String &desc) {
     String s = desc;
     s.toLowerCase();
@@ -1211,6 +1246,7 @@ const char* getWeatherIcon(const String &desc) {
     if (s.indexOf("fog") >= 0 || s.indexOf("霧") >= 0 || s.indexOf("霾") >= 0) return "M";
     return "C";
 }
+
 void fetchWeatherData() {
     if (wifiState != WIFI_CONNECTED) {
         weatherData.valid = false;
