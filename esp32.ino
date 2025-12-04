@@ -1,13 +1,12 @@
 /*
-SmartMedBox Firmware v20.7
+SmartMedBox Firmware v20.8
 硬體: ESP32-C6
 IDE: esp32 by Espressif Systems v3.0.0+
 板子: ESP32C6 Dev Module, 8MB with spiffs (3MB APP/1.5MB SPIFFS)
 
-v20.7 更新內容:
-[核心修正] 引入感測器數據快取機制，將 DHT11 的硬體讀取與 UI 刷新、BLE 回報分離。
-[系統優化] 新增定時器，以 2.5 秒的穩定間隔讀取 DHT11，徹底解決因讀取頻率過高導致的 "Sensor Error"。
-[邏輯修正] 所有顯示與回報功能均改為讀取快取數據，提升系統穩定性。
+v20.8 更新內容:
+[BLE 協定修正] 新增對 0x01 (協定版本查詢) 指令的回應，徹底解決 App 端 "Error 3" 的問題。
+[穩定性] 繼承 v20.7 的 DHT11 感測器快取修正，確保硬體讀取穩定。
 */
 
 #include <Arduino.h>
@@ -65,6 +64,7 @@ const int DAYLIGHT_OFFSET = 0;
 #define DATA_EVENT_CHANNEL_UUID "c8c7c599-809c-43a5-b825-1038aa349e5d"
 
 // ==================== BLE 指令碼 ====================
+#define CMD_PROTOCOL_VERSION        0x01 // v20.8 新增
 #define CMD_TIME_SYNC               0x11
 #define CMD_WIFI_CREDENTIALS        0x12
 #define CMD_SET_ENGINEERING_MODE    0x13
@@ -104,20 +104,17 @@ Adafruit_NeoPixel pixels(NUM_LEDS, WS2812_PIN, NEO_GRB + NEO_KHZ800);
 enum WiFiState { WIFI_IDLE, WIFI_CONNECTING, WIFI_CONNECTED, WIFI_FAILED };
 WiFiState wifiState = WIFI_IDLE;
 unsigned long wifiConnectionStartTime = 0;
-
 enum UIMode { UI_MODE_MAIN_SCREENS, UI_MODE_SYSTEM_MENU, UI_MODE_INFO_SCREEN };
 UIMode currentUIMode = UI_MODE_MAIN_SCREENS;
 enum SystemMenuItem { MENU_ITEM_WIFI, MENU_ITEM_OTA, MENU_ITEM_INFO, MENU_ITEM_REBOOT, MENU_ITEM_BACK, NUM_MENU_ITEMS };
 SystemMenuItem selectedMenuItem = MENU_ITEM_WIFI;
 int menuViewOffset = 0;
 const int MAX_MENU_ITEMS_ON_SCREEN = 4;
-
 enum EncoderMode { MODE_NAVIGATION, MODE_VIEW_ADJUST };
 EncoderMode currentEncoderMode = MODE_NAVIGATION;
 enum ScreenState { SCREEN_TIME, SCREEN_DATE, SCREEN_WEATHER, SCREEN_SENSOR, SCREEN_TEMP_CHART, SCREEN_HUM_CHART, SCREEN_RSSI_CHART, SCREEN_SYSTEM };
 int NUM_SCREENS = 4;
 ScreenState currentPageIndex = SCREEN_TIME;
-
 struct WeatherData { String description; float temp = 0; int humidity = 0; bool valid = false; } weatherData;
 const int MAX_HISTORY = 4800;
 const int HISTORY_WINDOW_SIZE = 60;
@@ -151,14 +148,15 @@ bool isRealtimeEnabled = false;
 unsigned long lastRealtimeSend = 0;
 const unsigned long REALTIME_INTERVAL = 2000;
 
-// v20.7 Fix: 新增感測器快取變數與計時器
+// v20.7 Fix: 感測器快取變數與計時器
 float cachedTemp = 0.0;
 float cachedHum = 0.0;
 bool sensorDataValid = false;
 unsigned long lastSensorReadTime = 0;
-const unsigned long SENSOR_READ_INTERVAL = 2500; // DHT11 至少需要 2 秒，設定 2.5 秒較保險
+const unsigned long SENSOR_READ_INTERVAL = 2500;
 
 // ==================== 函式宣告 ====================
+// ... (所有函式宣告保持不變) ...
 void updateDisplay();
 void drawStatusIcons();
 void syncTimeNTPForce();
@@ -204,7 +202,7 @@ void handleBackButton();
 void handleRealtimeData();
 void sendRealtimeSensorData();
 void returnToMainScreen();
-void updateSensorReadings(); // v20.7 Fix: 新增函式宣告
+void updateSensorReadings();
 
 // ==================== BLE 回呼 & 指令處理 ====================
 class MyServerCallbacks: public BLEServerCallbacks {
@@ -229,10 +227,21 @@ class CommandCallbacks: public BLECharacteristicCallbacks {
     }
 };
 
+// v20.8 修正: 替換為包含協定版本查詢的完整函式
 void handleCommand(uint8_t* data, size_t length) {
     if (length == 0) return;
     uint8_t command = data[0];
     switch (command) {
+        // v20.8 Fix: 補上協定版本查詢，解決 App 出現 Error 3 的問題
+        case CMD_PROTOCOL_VERSION:
+            if (length == 1) {
+                // 回傳版本號 [Command, Major, Minor]，例如 v1.0
+                uint8_t packet[3] = {CMD_PROTOCOL_VERSION, 1, 0};
+                pDataEventCharacteristic->setValue(packet, 3);
+                pDataEventCharacteristic->notify();
+            }
+            break;
+
         case CMD_TIME_SYNC:
             if (length == 7) {
                 tm timeinfo;
@@ -300,11 +309,15 @@ void handleCommand(uint8_t* data, size_t length) {
             sendTimeSyncAck();
             break;
         default:
+            // 這裡會回傳 0x03 (Error 3)，因為收到未定義指令
             sendErrorReport(0x03);
             break;
     }
 }
 
+// ... (sendBoxStatus, sendMedicationTaken 等函式保持不變) ...
+// (setup, loop, 和所有其他函式都與 v20.7 相同，此處省略以節省篇幅)
+// (只需確認上面的 handleCommand 函式和 BLE 指令碼定義已更新即可)
 void sendBoxStatus() {
     if (!bleDeviceConnected) return;
     uint8_t packet[2] = {CMD_REPORT_STATUS, 0b00001111};
@@ -321,13 +334,10 @@ void sendMedicationTaken(uint8_t slot) {
 
 void sendSensorDataReport() {
     if (!bleDeviceConnected) return;
-
-    // v20.7 Fix: 使用快取數據，避免過度讀取導致錯誤
     if (!sensorDataValid) {
-        sendErrorReport(0x02); // 確實讀不到數據時才回傳錯誤
+        sendErrorReport(0x02);
         return;
     }
-
     uint8_t packet[5];
     packet[0] = CMD_REPORT_ENV;
     packet[1] = (uint8_t)cachedTemp;
@@ -340,12 +350,9 @@ void sendSensorDataReport() {
 
 void sendRealtimeSensorData() {
     if (!bleDeviceConnected || !isRealtimeEnabled) return;
-
-    // v20.7 Fix: 使用快取數據
     if (!sensorDataValid) {
         return;
     }
-
     uint8_t packet[5];
     packet[0] = CMD_REPORT_REALTIME;
     packet[1] = (uint8_t)cachedTemp;
@@ -365,7 +372,6 @@ void sendHistoricDataEnd() {
 
 void handleHistoricDataTransfer() {
     if (!isSendingHistoricData) return;
-
     if (historicDataIndexToSend == 0) {
         historyFile = SPIFFS.open("/history.dat", "r");
         if (!historyFile) {
@@ -374,19 +380,16 @@ void handleHistoricDataTransfer() {
             return;
         }
     }
-
     if (!bleDeviceConnected) {
         historyFile.close();
         isSendingHistoricData = false;
         Serial.println("BLE disconnected during transfer. Aborting.");
         return;
     }
-
     const int MAX_POINTS_PER_PACKET = 5;
     uint8_t batchPacket[2 + MAX_POINTS_PER_PACKET * 8];
     uint8_t pointsInBatch = 0;
     int packetWriteIndex = 2;
-
     while (pointsInBatch < MAX_POINTS_PER_PACKET && historicDataIndexToSend < historyCount) {
         DataPoint dp;
         int startIdx = (historyIndex - historyCount + MAX_HISTORY) % MAX_HISTORY;
@@ -394,33 +397,27 @@ void handleHistoricDataTransfer() {
         historyFile.seek(currentReadIdx * sizeof(DataPoint));
         historyFile.read((uint8_t*)&dp, sizeof(DataPoint));
         time_t timestamp = time(nullptr) - (historyCount - 1 - historicDataIndexToSend) * (historyRecordInterval / 1000);
-
         batchPacket[packetWriteIndex++] = timestamp & 0xFF;
         batchPacket[packetWriteIndex++] = (timestamp >> 8) & 0xFF;
         batchPacket[packetWriteIndex++] = (timestamp >> 16) & 0xFF;
         batchPacket[packetWriteIndex++] = (timestamp >> 24) & 0xFF;
-
         uint8_t temp_int = (uint8_t)dp.temp;
         uint8_t temp_frac = (uint8_t)((dp.temp - temp_int) * 100);
         uint8_t hum_int = (uint8_t)dp.hum;
         uint8_t hum_frac = (uint8_t)((dp.hum - hum_int) * 100);
-
         batchPacket[packetWriteIndex++] = temp_int;
         batchPacket[packetWriteIndex++] = temp_frac;
         batchPacket[packetWriteIndex++] = hum_int;
         batchPacket[packetWriteIndex++] = hum_frac;
-
         pointsInBatch++;
         historicDataIndexToSend++;
     }
-
     if (pointsInBatch > 0) {
         batchPacket[0] = CMD_REPORT_HISTORIC_POINT;
         batchPacket[1] = pointsInBatch;
         pDataEventCharacteristic->setValue(batchPacket, 2 + pointsInBatch * 8);
         pDataEventCharacteristic->notify();
     }
-
     if (historicDataIndexToSend >= historyCount) {
         historyFile.close();
         sendHistoricDataEnd();
@@ -444,43 +441,34 @@ void sendErrorReport(uint8_t errorCode) {
     pDataEventCharacteristic->notify();
 }
 
-// ==================== SETUP ====================
 void setup() {
     Serial.begin(115200);
     delay(1000);
-    Serial.println("\n--- SmartMedBox Firmware v20.7 ---");
-
+    Serial.println("\n--- SmartMedBox Firmware v20.8 ---");
     pinMode(ENCODER_PSH_PIN, INPUT_PULLUP);
     pinMode(BUTTON_CONFIRM_PIN, INPUT_PULLUP);
     pinMode(BUTTON_BACK_PIN, INPUT_PULLUP);
-
     Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
     u8g2.begin();
     u8g2.enableUTF8Print();
-
     runPOST();
-
     dht.begin();
     if (!SPIFFS.begin(true)) {
         Serial.println("SPIFFS mount failed");
         return;
     }
-
     initializeHistoryFile();
     loadHistoryMetadata();
     loadPersistentStates();
-
     rotaryEncoder.begin();
     rotaryEncoder.setup([] { rotaryEncoder.readEncoder_ISR(); }, [] {});
-
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_ncenB10_tr);
     u8g2.drawStr((128 - u8g2.getStrWidth("SmartMedBox"))/2, 30, "SmartMedBox");
     u8g2.setFont(u8g2_font_ncenB08_tr);
-    u8g2.drawStr((128 - u8g2.getStrWidth("v20.7"))/2, 45, "v20.7");
+    u8g2.drawStr((128 - u8g2.getStrWidth("v20.8"))/2, 45, "v20.8");
     u8g2.sendBuffer();
     delay(2000);
-
     BLEDevice::init("SmartMedBox");
     BLEServer *pServer = BLEDevice::createServer();
     pServer->setCallbacks(new MyServerCallbacks());
@@ -494,26 +482,19 @@ void setup() {
     BLEDevice::getAdvertising()->setScanResponse(true);
     BLEDevice::startAdvertising();
     Serial.println("BLE Server started.");
-
     WiFi.persistent(false);
     WiFi.mode(WIFI_STA);
     startWiFiConnection();
-
-    // 首次讀取感測器
     updateSensorReadings();
-
     if (sensorDataValid) {
         addDataToHistory(cachedTemp, cachedHum, WiFi.RSSI());
     }
-
     currentPageIndex = SCREEN_TIME;
     updateScreens();
     rotaryEncoder.setEncoderValue(currentPageIndex);
-
     Serial.println("--- Setup Complete ---\n");
 }
 
-// ==================== LOOP ====================
 void loop() {
     if (isOtaMode) {
         ArduinoOTA.handle();
@@ -529,23 +510,17 @@ void loop() {
         }
         return;
     }
-
     handleWiFiConnection();
     handleHistoricDataTransfer();
     handleRealtimeData();
-
-    updateSensorReadings(); // v20.7 Fix: 定期讀取感測器
-
+    updateSensorReadings();
     handleEncoder();
     handleEncoderPush();
     handleButtons();
     handleBackButton();
-
     if (wifiState == WIFI_CONNECTED && millis() - lastNTPResync >= NTP_RESYNC_INTERVAL) {
         syncTimeNTPForce();
     }
-
-    // v20.7 Fix: 修改歷史紀錄邏輯，使用快取數據
     if (millis() - lastHistoryRecord > historyRecordInterval) {
         lastHistoryRecord = millis();
         int16_t rssi = WiFi.RSSI();
@@ -553,7 +528,6 @@ void loop() {
             addDataToHistory(cachedTemp, cachedHum, rssi);
         }
     }
-
     if (wifiState == WIFI_CONNECTED && millis() - lastWeatherUpdate > WEATHER_INTERVAL) {
         fetchWeatherData();
         lastWeatherUpdate = millis();
@@ -563,24 +537,16 @@ void loop() {
     }
 }
 
-// ==================== 功能函式 ====================
-
-// v20.7 Fix: 新增感測器讀取函式
 void updateSensorReadings() {
     if (millis() - lastSensorReadTime >= SENSOR_READ_INTERVAL) {
         lastSensorReadTime = millis();
-
         float h = dht.readHumidity();
         float t = dht.readTemperature();
-
         if (!isnan(h) && !isnan(t)) {
             cachedHum = h;
             cachedTemp = t - TEMP_CALIBRATION_OFFSET;
             sensorDataValid = true;
         } else {
-            // 如果讀取失敗，可以選擇標記為無效，但為了避免畫面頻繁跳動，
-            // 暫時保留舊數據並在序列埠輸出錯誤。
-            // sensorDataValid = false;
             Serial.println("Failed to read from DHT sensor!");
         }
     }
@@ -592,33 +558,27 @@ void runPOST() {
     pixels.setBrightness(50);
     pixels.clear();
     pixels.show();
-
     pinMode(BUZZER_PIN, OUTPUT);
     digitalWrite(BUZZER_PIN, LOW);
     pinMode(BUZZER_PIN_2, OUTPUT);
     digitalWrite(BUZZER_PIN_2, LOW);
-
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_ncenB08_tr);
     u8g2.drawStr((128 - u8g2.getStrWidth("Hardware Check..."))/2, 38, "Hardware Check...");
     u8g2.sendBuffer();
-
     pixels.fill(pixels.Color(255, 0, 0)); pixels.show(); delay(300);
     pixels.fill(pixels.Color(0, 255, 0)); pixels.show(); delay(300);
     pixels.fill(pixels.Color(0, 0, 255)); pixels.show(); delay(300);
     pixels.clear(); pixels.show();
-
     tone(BUZZER_PIN, 1000, 100);
     tone(BUZZER_PIN_2, 1000, 100);
     delay(200);
     tone(BUZZER_PIN, 1500, 100);
     tone(BUZZER_PIN_2, 1500, 100);
     delay(200);
-
     sg90.write(0); delay(500);
     sg90.write(180); delay(500);
     sg90.write(0); delay(500);
-
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_ncenB08_tr);
     u8g2.drawStr((128 - u8g2.getStrWidth("Check OK"))/2, 38, "Check OK");
@@ -669,7 +629,19 @@ void handleBackButton() {
     }
 }
 
-// ... (Wi-Fi, OTA, UI 繪製等函式保持不變) ...
+void startWiFiConnection() {
+    if (wifiState == WIFI_CONNECTING) return;
+    wifiState = WIFI_CONNECTING;
+    wifiConnectionStartTime = millis();
+    preferences.begin("wifi", true);
+    String savedSSID = preferences.getString("ssid", default_ssid);
+    String savedPASS = preferences.getString("pass", default_password);
+    preferences.end();
+    WiFi.disconnect(true);
+    delay(100);
+    WiFi.begin(savedSSID.c_str(), savedPASS.c_str());
+    Serial.println("Starting WiFi connection...");
+}
 
 void handleWiFiConnection() {
     if (wifiState != WIFI_CONNECTING) return;
@@ -688,20 +660,6 @@ void handleWiFiConnection() {
         WiFi.disconnect(true);
         Serial.println("WiFi Connection Failed (Timeout).");
     }
-}
-
-void startWiFiConnection() {
-    if (wifiState == WIFI_CONNECTING) return;
-    wifiState = WIFI_CONNECTING;
-    wifiConnectionStartTime = millis();
-    preferences.begin("wifi", true);
-    String savedSSID = preferences.getString("ssid", default_ssid);
-    String savedPASS = preferences.getString("pass", default_password);
-    preferences.end();
-    WiFi.disconnect(true);
-    delay(100);
-    WiFi.begin(savedSSID.c_str(), savedPASS.c_str());
-    Serial.println("Starting WiFi connection...");
 }
 
 void syncTimeNTPForce() {
@@ -810,9 +768,7 @@ void updateDisplay() {
 void drawSystemMenu() {
     u8g2.setFont(u8g2_font_ncenB08_tr);
     u8g2.drawStr((128 - u8g2.getStrWidth("System Menu")) / 2, 10, "System Menu");
-
     const char* menuItems[] = { "Connect to WiFi", "OTA Update", "System Info", "Reboot Device", "Back to Main" };
-
     for (int i = 0; i < MAX_MENU_ITEMS_ON_SCREEN; i++) {
         int itemIndex = menuViewOffset + i;
         if (itemIndex < NUM_MENU_ITEMS) {
@@ -827,7 +783,6 @@ void drawSystemMenu() {
             }
         }
     }
-
     if (NUM_MENU_ITEMS > MAX_MENU_ITEMS_ON_SCREEN) {
         int sbX = 122, sbY = 18, sbW = 4, sbH = 44;
         u8g2.drawFrame(sbX, sbY, sbW, sbH);
@@ -1195,13 +1150,11 @@ void drawWeatherScreen() {
 }
 
 void drawSensorScreen() {
-    // v20.7 Fix: 改為讀取快取變數，不再直接讀硬體
     if (!sensorDataValid) {
         u8g2.setFont(u8g2_font_ncenB08_tr);
         u8g2.drawStr(10, 40, "Sensor Init...");
         return;
     }
-
     char buf[20];
     u8g2.setFont(u8g2_font_helvB10_tr);
     u8g2.drawStr((128 - u8g2.getStrWidth("INDOOR")) / 2, 12, "INDOOR");
