@@ -205,18 +205,13 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
                     if (data.size > 1) listener?.onEngineeringModeUpdate(data[1].toInt() == 0x01)
                 }
                 0x90 -> {
-                    // FIX: Correctly parse 4 separate uint8_t values (T_int, T_frac, H_int, H_frac)
+                    // Protocol V2: Parse temp/humidity as 2-byte signed integers (value * 100)
                     if (data.size >= 5) {
-                        val tempInt = data[1].toInt() and 0xFF
-                        val tempFrac = data[2].toInt() and 0xFF
-                        val humInt = data[3].toInt() and 0xFF
-                        val humFrac = data[4].toInt() and 0xFF
-                        
-                        val temperatureCorrected = tempInt + tempFrac / 100.0f
-                        val humidityCorrected = humInt + humFrac / 100.0f
-                        
-                        Log.d(TAG, "Realtime Sensor: T=$temperatureCorrected, H=$humidityCorrected")
-                        listener?.onSensorData(temperatureCorrected, humidityCorrected)
+                        val buffer = ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN)
+                        val temperature = buffer.getShort(1) / 100.0f
+                        val humidity = buffer.getShort(3) / 100.0f
+                        Log.d(TAG, "Realtime Sensor (V2): T=$temperature, H=$humidity")
+                        listener?.onSensorData(temperature, humidity)
                     }
                 }
                 0x91 -> {
