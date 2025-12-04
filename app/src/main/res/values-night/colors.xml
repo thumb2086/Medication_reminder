@@ -1,3 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Chart Colors (Dark Mode) -->
+    <!-- Lighter Red for visibility on dark background -->
+    <color name="temp_color">#F2B8B5</color> 
+    <!-- Lighter Blue for visibility on dark background -->
+    <color name="humidity_color">#A0E6FF</color>
 </resources>

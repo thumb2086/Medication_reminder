@@ -68,6 +68,7 @@
     <color name="primaryContainer_cinnamoroll">#A0E6FF</color>
     <color name="onPrimaryContainer_cinnamoroll">#000000</color>
 
-    <color name="temp_color">#1C1B1F</color>
-    <color name="humidity_color">#1C1B1F</color>
+    <!-- Chart Colors -->
+    <color name="temp_color">#B3261E</color>
+    <color name="humidity_color">#006CBA</color>
 </resources>

@@ -145,10 +145,10 @@ class EnvironmentFragment : Fragment() {
             this.color = color
             this.axisDependency = axisDependency
             this.valueTextColor = color
-            this.lineWidth = 2f
+            this.lineWidth = 3f // Slightly thicker line for better visibility
             
-            // Restore circles for better visibility on single data point
-            this.setDrawCircles(true) 
+            // Don't draw circles by default (only for single point)
+            this.setDrawCircles(false)
             this.setDrawCircleHole(true) // Hollow circle looks nicer with fill
             this.circleRadius = 4f // Moderate size
             this.circleHoleRadius = 2f
@@ -222,6 +222,11 @@ class EnvironmentFragment : Fragment() {
 
         tempDataSet.values = tempEntries
         humidityDataSet.values = humidityEntries
+
+        // Only show circles if there is only one data point to make it visible
+        val showCircles = dataPoints.size == 1
+        tempDataSet.setDrawCircles(showCircles)
+        humidityDataSet.setDrawCircles(showCircles)
 
         binding.lineChart.data.notifyDataChanged()
         binding.lineChart.notifyDataSetChanged()

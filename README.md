@@ -94,6 +94,9 @@ To enable interaction between the app and the pillbox, we have defined a bidirec
 
 ## Recent Updates
 
+*   **0101:** **Corrected Chart Line Colors and Display Style.**
+    *   **Style Adjustment:** Adjusted the environment monitoring chart to a "Line Chart" style. Circles are now hidden when multiple data points exist to show a smooth curve, and are only shown when there is a single data point to ensure visibility.
+    *   **Color Optimization:** Updated `colors.xml` and `values-night/colors.xml` to set contrasting colors for temperature and humidity lines in both light and dark modes, resolving the issue where lines were invisible in dark mode.
 *   **0100:** **Fixed Real-time Sensor Data Parsing.**
     *   **Problem:** Real-time sensor data (`0x90`) was still being parsed using the legacy protocol (integer + fraction), leading to incorrect values (e.g., 140.9%).
     *   **Fix:** Updated the parsing logic in `BluetoothLeManager` to align with Protocol V2 (2-byte signed integer / 100), ensuring consistency with historic data parsing (`0x91`).
