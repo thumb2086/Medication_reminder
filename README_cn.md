@@ -177,6 +177,10 @@
 `POST_NOTIFICATIONS`, `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`, `ACCESS_FINE_LOCATION`, `SCHEDULE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED`, `VIBRATE`
 
 ## 最近更新
+
+*   **0100:** **修復即時溫濕度數據解析錯誤。**
+    *   **問題:** 藍牙接收到的即時數據 (`0x90`) 仍使用舊版協定解析 (整數+小數)，導致數值顯示異常 (如 140.9%)。
+    *   **修正:** 更新 `BluetoothLeManager` 中的解析邏輯，使其與歷史數據 (`0x91`) 一致，採用 Protocol V2 標準 (2-byte 帶號整數 / 100)。
 *   **0099:** **實作 Repository 模式並解決 Hilt 注入限制。**
     *   **架構重構:** 建立了單例 `AppRepository`，將所有資料邏輯（SharedPreferences、藥物列表、溫濕度歷史、服藥狀態）從 `MainViewModel` 中抽離。
     *   **Hilt 修正:** 解決了 `MedicationTakenReceiver` 無法直接注入 `ViewModel` 的 Dagger Hilt 限制。現在，Receiver 透過 Hilt EntryPoint 注入 `AppRepository`，而 `MainViewModel` 也改為依賴這個 Repository，確保了資料存取的單一性與架構的正確性。
@@ -280,9 +284,9 @@
 *   **0017:** 解決了 IDE 中出現的 XML 資源解析錯誤。
 *   **0016:** 恢復了編輯和刪除藥物提醒的功能。
 *   **0015:** 修正了新增藥物後，藥物列表不會立即更新的 UI 問題。
-*   **0014:** 處理了 IDE 中關於 `MedicationListAdapter.kt` 和 `ReminderSettingsFragment.kt` 的過時警告。
-*   **0013:** 清理了專案中的所有警告。
-*   **0012:** 清理了專案中的所有警告。
+*   **0014:** Handled outdated warnings in the IDE.
+*   **0013:** Cleaned up all warnings in the project.
+*   **0012:** Cleaned up all warnings in the project.
 *   **0011:** 修正了因缺少 `androidx.preference:preference-ktx` 依賴項而導致的資源連結錯誤。
 *   **0010:** 新增了設定頁面和藥物列表頁面。
 *   **0009:** 優化了藥物提醒表單的驗證。

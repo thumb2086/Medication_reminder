@@ -94,6 +94,9 @@ To enable interaction between the app and the pillbox, we have defined a bidirec
 
 ## Recent Updates
 
+*   **0100:** **Fixed Real-time Sensor Data Parsing.**
+    *   **Problem:** Real-time sensor data (`0x90`) was still being parsed using the legacy protocol (integer + fraction), leading to incorrect values (e.g., 140.9%).
+    *   **Fix:** Updated the parsing logic in `BluetoothLeManager` to align with Protocol V2 (2-byte signed integer / 100), ensuring consistency with historic data parsing (`0x91`).
 *   **0099:** **Implemented Repository Pattern and Fixed Hilt Injection Limitations.**
     *   **Architecture Refactor:** Created a singleton `AppRepository` to centralize all data logic (SharedPreferences, medication lists, sensor history, and medication status), decoupling it from the `MainViewModel`.
     *   **Hilt Fix:** Resolved a Dagger Hilt limitation that prevented direct injection of ViewModels into a `BroadcastReceiver`. The receiver now injects the `AppRepository` via a Hilt EntryPoint, ensuring a single source of truth and correct architectural practice.
