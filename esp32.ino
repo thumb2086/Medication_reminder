@@ -1,12 +1,14 @@
 /*
-SmartMedBox Firmware v20.8
+SmartMedBox Firmware v20.9
 硬體: ESP32-C6
 IDE: esp32 by Espressif Systems v3.0.0+
 板子: ESP32C6 Dev Module, 8MB with spiffs (3MB APP/1.5MB SPIFFS)
 
-v20.8 更新內容:
-[BLE 協定修正] 新增對 0x01 (協定版本查詢) 指令的回應，徹底解決 App 端 "Error 3" 的問題。
-[穩定性] 繼承 v20.7 的 DHT11 感測器快取修正，確保硬體讀取穩定。
+v20.9 更新內容:
+[BLE 協定修正] 新增對 0x14 (查詢工程模式) 指令的回應，解決 App 端潛在的 "Error 3"。
+[除錯優化] 新增 BLE 指令接收日誌，便於未來問題追蹤。
+[程式碼優化] 引入 FIRMWARE_VERSION 全域常數，統一管理版本號。
+[UI 增強] 系統資訊頁面現在會顯示韌體版本。
 */
 
 #include <Arduino.h>
@@ -28,6 +30,9 @@ v20.8 更新內容:
 #include <ArduinoOTA.h>
 #include <ESP32Servo.h>
 #include <Adafruit_NeoPixel.h>
+
+// v20.9 新增: 統一管理版本號
+const char* FIRMWARE_VERSION = "v20.9";
 
 // ==================== 腳位定義 (v20.6) ====================
 #define I2C_SDA_PIN 22
@@ -64,10 +69,11 @@ const int DAYLIGHT_OFFSET = 0;
 #define DATA_EVENT_CHANNEL_UUID "c8c7c599-809c-43a5-b825-1038aa349e5d"
 
 // ==================== BLE 指令碼 ====================
-#define CMD_PROTOCOL_VERSION        0x01 // v20.8 新增
+#define CMD_PROTOCOL_VERSION        0x01
 #define CMD_TIME_SYNC               0x11
 #define CMD_WIFI_CREDENTIALS        0x12
 #define CMD_SET_ENGINEERING_MODE    0x13
+#define CMD_REQUEST_ENG_MODE_STATUS 0x14 // v20.9 新增
 #define CMD_REQUEST_STATUS          0x20
 #define CMD_REQUEST_ENV             0x30
 #define CMD_REQUEST_HISTORIC        0x31
@@ -76,12 +82,14 @@ const int DAYLIGHT_OFFSET = 0;
 #define CMD_REPORT_STATUS           0x80
 #define CMD_REPORT_TAKEN            0x81
 #define CMD_TIME_SYNC_ACK           0x82
+#define CMD_REPORT_ENG_MODE_STATUS  0x84 // v20.9 新增: 工程模式狀態回報
 #define CMD_REPORT_ENV              0x90
 #define CMD_REPORT_HISTORIC_POINT   0x91
 #define CMD_REPORT_HISTORIC_END     0x92
 #define CMD_REPORT_REALTIME         0x93
 #define CMD_ERROR                   0xEE
 
+// ... (圖示、全域物件、狀態數據等保持不變) ...
 // ==================== 圖示 (XBM) ====================
 const unsigned char icon_ble_bits[] U8X8_PROGMEM = {0x18, 0x24, 0x42, 0x5A, 0x5A, 0x42, 0x24, 0x18};
 const unsigned char icon_sync_bits[] U8X8_PROGMEM = {0x00, 0x3C, 0x46, 0x91, 0x11, 0x26, 0x3C, 0x00};
@@ -147,8 +155,6 @@ unsigned long lastBackPressTime = 0;
 bool isRealtimeEnabled = false;
 unsigned long lastRealtimeSend = 0;
 const unsigned long REALTIME_INTERVAL = 2000;
-
-// v20.7 Fix: 感測器快取變數與計時器
 float cachedTemp = 0.0;
 float cachedHum = 0.0;
 bool sensorDataValid = false;
@@ -156,7 +162,6 @@ unsigned long lastSensorReadTime = 0;
 const unsigned long SENSOR_READ_INTERVAL = 2500;
 
 // ==================== 函式宣告 ====================
-// ... (所有函式宣告保持不變) ...
 void updateDisplay();
 void drawStatusIcons();
 void syncTimeNTPForce();
@@ -227,15 +232,17 @@ class CommandCallbacks: public BLECharacteristicCallbacks {
     }
 };
 
-// v20.8 修正: 替換為包含協定版本查詢的完整函式
+// v20.9 修正: 替換為包含除錯與 0x14 指令的完整函式
 void handleCommand(uint8_t* data, size_t length) {
     if (length == 0) return;
     uint8_t command = data[0];
+
+    // [新增] 除錯訊息：印出收到的指令，這樣就知道 Error 3 是誰觸發的
+    Serial.printf("BLE RX: CMD=0x%02X, Len=%d\n", command, length);
+
     switch (command) {
-        // v20.8 Fix: 補上協定版本查詢，解決 App 出現 Error 3 的問題
         case CMD_PROTOCOL_VERSION:
             if (length == 1) {
-                // 回傳版本號 [Command, Major, Minor]，例如 v1.0
                 uint8_t packet[3] = {CMD_PROTOCOL_VERSION, 1, 0};
                 pDataEventCharacteristic->setValue(packet, 3);
                 pDataEventCharacteristic->notify();
@@ -284,6 +291,17 @@ void handleCommand(uint8_t* data, size_t length) {
                 sendTimeSyncAck();
             }
             break;
+
+            // [新增] 0x14: 請求工程模式狀態 (App 初始化通常會問這個)
+        case CMD_REQUEST_ENG_MODE_STATUS:
+            if (length == 1) {
+                uint8_t status = isEngineeringMode ? 0x01 : 0x00;
+                uint8_t packet[2] = {CMD_REPORT_ENG_MODE_STATUS, status};
+                pDataEventCharacteristic->setValue(packet, 2);
+                pDataEventCharacteristic->notify();
+            }
+            break;
+
         case CMD_REQUEST_STATUS:
             sendBoxStatus();
             break;
@@ -309,15 +327,14 @@ void handleCommand(uint8_t* data, size_t length) {
             sendTimeSyncAck();
             break;
         default:
-            // 這裡會回傳 0x03 (Error 3)，因為收到未定義指令
+            // 這裡觸發了 Error 3
+            Serial.printf("Error: Unknown Command 0x%02X\n", command); // [新增] 讓你知道錯在哪
             sendErrorReport(0x03);
             break;
     }
 }
 
-// ... (sendBoxStatus, sendMedicationTaken 等函式保持不變) ...
-// (setup, loop, 和所有其他函式都與 v20.7 相同，此處省略以節省篇幅)
-// (只需確認上面的 handleCommand 函式和 BLE 指令碼定義已更新即可)
+// ... (其他函式保持不變) ...
 void sendBoxStatus() {
     if (!bleDeviceConnected) return;
     uint8_t packet[2] = {CMD_REPORT_STATUS, 0b00001111};
@@ -444,7 +461,7 @@ void sendErrorReport(uint8_t errorCode) {
 void setup() {
     Serial.begin(115200);
     delay(1000);
-    Serial.println("\n--- SmartMedBox Firmware v20.8 ---");
+    Serial.printf("\n--- SmartMedBox Firmware %s ---\n", FIRMWARE_VERSION);
     pinMode(ENCODER_PSH_PIN, INPUT_PULLUP);
     pinMode(BUTTON_CONFIRM_PIN, INPUT_PULLUP);
     pinMode(BUTTON_BACK_PIN, INPUT_PULLUP);
@@ -466,7 +483,8 @@ void setup() {
     u8g2.setFont(u8g2_font_ncenB10_tr);
     u8g2.drawStr((128 - u8g2.getStrWidth("SmartMedBox"))/2, 30, "SmartMedBox");
     u8g2.setFont(u8g2_font_ncenB08_tr);
-    u8g2.drawStr((128 - u8g2.getStrWidth("v20.8"))/2, 45, "v20.8");
+    // v20.9 修改: 使用常數顯示版本
+    u8g2.drawStr((128 - u8g2.getStrWidth(FIRMWARE_VERSION))/2, 45, FIRMWARE_VERSION);
     u8g2.sendBuffer();
     delay(2000);
     BLEDevice::init("SmartMedBox");
@@ -679,63 +697,26 @@ void setupOTA() {
     ArduinoOTA.setHostname("smartmedbox");
     ArduinoOTA.setPassword("medbox123");
     ArduinoOTA
-            .onStart( [] {
-                SPIFFS.end();
-                String type = (ArduinoOTA.getCommand() == U_FLASH) ? "sketch" : "filesystem";
-                drawOtaScreen("Updating " + type, 0);
-            })
-            .onProgress([](unsigned int progress, unsigned int total) {
-                drawOtaScreen("Updating...", (progress / (total / 100)));
-            })
-            .onEnd( [] {
-                drawOtaScreen("Complete!", 100);
-                delay(1000);
-                ESP.restart();
-            })
-            .onError([](ota_error_t error) {
-                String msg;
-                if (error == OTA_AUTH_ERROR) msg = "Auth Failed";
-                else if (error == OTA_BEGIN_ERROR) msg = "Begin Failed";
-                else if (error == OTA_CONNECT_ERROR) msg = "Connect Failed";
-                else if (error == OTA_RECEIVE_ERROR) msg = "Receive Failed";
-                else if (error == OTA_END_ERROR) msg = "End Failed";
-                drawOtaScreen("Error: " + msg);
-                delay(3000);
-                ESP.restart();
-            });
+            .onStart( [] { SPIFFS.end(); String type = (ArduinoOTA.getCommand() == U_FLASH) ? "sketch" : "filesystem"; drawOtaScreen("Updating " + type, 0); })
+            .onProgress([](unsigned int progress, unsigned int total) { drawOtaScreen("Updating...", (progress / (total / 100))); })
+            .onEnd( [] { drawOtaScreen("Complete!", 100); delay(1000); ESP.restart(); })
+            .onError([](ota_error_t error) { String msg; if (error == OTA_AUTH_ERROR) msg = "Auth Failed"; else if (error == OTA_BEGIN_ERROR) msg = "Begin Failed"; else if (error == OTA_CONNECT_ERROR) msg = "Connect Failed"; else if (error == OTA_RECEIVE_ERROR) msg = "Receive Failed"; else if (error == OTA_END_ERROR) msg = "End Failed"; drawOtaScreen("Error: " + msg); delay(3000); ESP.restart(); });
     ArduinoOTA.begin();
     Serial.println("OTA service ready.");
 }
 
 void enterOtaMode() {
     if (isOtaMode || wifiState != WIFI_CONNECTED) {
-        u8g2.clearBuffer();
-        u8g2.setFont(u8g2_font_ncenB08_tr);
-        u8g2.drawStr((128 - u8g2.getStrWidth("Need WiFi for OTA")) / 2, 38, "Need WiFi for OTA");
-        u8g2.sendBuffer();
-        delay(2000);
-        currentUIMode = UI_MODE_MAIN_SCREENS;
-        updateScreens();
-        return;
+        u8g2.clearBuffer(); u8g2.setFont(u8g2_font_ncenB08_tr); u8g2.drawStr((128 - u8g2.getStrWidth("Need WiFi for OTA")) / 2, 38, "Need WiFi for OTA"); u8g2.sendBuffer(); delay(2000);
+        currentUIMode = UI_MODE_MAIN_SCREENS; updateScreens(); return;
     };
-    isOtaMode = true;
-    Serial.println("Entering OTA mode...");
-    lastBackPressTime = millis();
-    BLEDevice::deinit(true);
-    String ip = WiFi.localIP().toString();
-    u8g2.clearBuffer();
-    u8g2.setFont(u8g2_font_ncenB08_tr);
-    u8g2.drawStr(0, 12, "OTA Update Mode");
-    u8g2.setFont(u8g2_font_profont11_tf);
-    u8g2.drawStr(0, 28, "smartmedbox.local");
-    u8g2.drawStr(0, 42, ("IP: " + ip).c_str());
-    u8g2.drawStr(0, 56, "Press BACK to exit");
-    u8g2.sendBuffer();
+    isOtaMode = true; Serial.println("Entering OTA mode..."); lastBackPressTime = millis(); BLEDevice::deinit(true); String ip = WiFi.localIP().toString();
+    u8g2.clearBuffer(); u8g2.setFont(u8g2_font_ncenB08_tr); u8g2.drawStr(0, 12, "OTA Update Mode"); u8g2.setFont(u8g2_font_profont11_tf); u8g2.drawStr(0, 28, "smartmedbox.local");
+    u8g2.drawStr(0, 42, ("IP: " + ip).c_str()); u8g2.drawStr(0, 56, "Press BACK to exit"); u8g2.sendBuffer();
 }
 
 void updateDisplay() {
-    lastDisplayUpdate = millis();
-    u8g2.clearBuffer();
+    lastDisplayUpdate = millis(); u8g2.clearBuffer();
     switch (currentUIMode) {
         case UI_MODE_MAIN_SCREENS:
             switch (currentPageIndex) {
@@ -746,46 +727,28 @@ void updateDisplay() {
                 case SCREEN_TEMP_CHART: if (isEngineeringMode) drawTempChartScreen(); break;
                 case SCREEN_HUM_CHART: if (isEngineeringMode) drawHumChartScreen(); break;
                 case SCREEN_RSSI_CHART: if (isEngineeringMode) drawRssiChartScreen(); break;
-                case SCREEN_SYSTEM:
-                    if (isEngineeringMode) {
-                        u8g2.setFont(u8g2_font_ncenB10_tr);
-                        u8g2.drawStr((128 - u8g2.getStrWidth("System Menu")) / 2, 38, "System Menu");
-                    }
-                    break;
+                case SCREEN_SYSTEM: if (isEngineeringMode) { u8g2.setFont(u8g2_font_ncenB10_tr); u8g2.drawStr((128 - u8g2.getStrWidth("System Menu")) / 2, 38, "System Menu"); } break;
             }
             break;
-        case UI_MODE_SYSTEM_MENU:
-            drawSystemMenu();
-            break;
-        case UI_MODE_INFO_SCREEN:
-            drawSystemScreen();
-            break;
+        case UI_MODE_SYSTEM_MENU: drawSystemMenu(); break;
+        case UI_MODE_INFO_SCREEN: drawSystemScreen(); break;
     }
-    drawStatusIcons();
-    u8g2.sendBuffer();
+    drawStatusIcons(); u8g2.sendBuffer();
 }
 
 void drawSystemMenu() {
-    u8g2.setFont(u8g2_font_ncenB08_tr);
-    u8g2.drawStr((128 - u8g2.getStrWidth("System Menu")) / 2, 10, "System Menu");
+    u8g2.setFont(u8g2_font_ncenB08_tr); u8g2.drawStr((128 - u8g2.getStrWidth("System Menu")) / 2, 10, "System Menu");
     const char* menuItems[] = { "Connect to WiFi", "OTA Update", "System Info", "Reboot Device", "Back to Main" };
     for (int i = 0; i < MAX_MENU_ITEMS_ON_SCREEN; i++) {
         int itemIndex = menuViewOffset + i;
         if (itemIndex < NUM_MENU_ITEMS) {
             int y = 24 + i * 11;
-            if (itemIndex == selectedMenuItem) {
-                u8g2.drawBox(0, y - 9, 128 - 6, 11);
-                u8g2.setDrawColor(0);
-                u8g2.drawStr(5, y, menuItems[itemIndex]);
-                u8g2.setDrawColor(1);
-            } else {
-                u8g2.drawStr(5, y, menuItems[itemIndex]);
-            }
+            if (itemIndex == selectedMenuItem) { u8g2.drawBox(0, y - 9, 128 - 6, 11); u8g2.setDrawColor(0); u8g2.drawStr(5, y, menuItems[itemIndex]); u8g2.setDrawColor(1); }
+            else { u8g2.drawStr(5, y, menuItems[itemIndex]); }
         }
     }
     if (NUM_MENU_ITEMS > MAX_MENU_ITEMS_ON_SCREEN) {
-        int sbX = 122, sbY = 18, sbW = 4, sbH = 44;
-        u8g2.drawFrame(sbX, sbY, sbW, sbH);
+        int sbX = 122, sbY = 18, sbW = 4, sbH = 44; u8g2.drawFrame(sbX, sbY, sbW, sbH);
         int handleH = max(3, (int)((float)sbH * MAX_MENU_ITEMS_ON_SCREEN / NUM_MENU_ITEMS));
         int handleY = sbY + (int)((float)(sbH - handleH) * menuViewOffset / (NUM_MENU_ITEMS - MAX_MENU_ITEMS_ON_SCREEN));
         u8g2.drawBox(sbX, handleY, sbW, handleH);
@@ -793,57 +756,31 @@ void drawSystemMenu() {
 }
 
 void drawOtaScreen(String text, int progress) {
-    u8g2.clearBuffer();
-    u8g2.setFont(u8g2_font_ncenB08_tr);
-    u8g2.drawStr((128 - u8g2.getStrWidth("OTA Update")) / 2, 12, "OTA Update");
-    u8g2.setFont(u8g2_font_profont11_tf);
-    u8g2.drawStr((128 - u8g2.getStrWidth(text.c_str())) / 2, 32, text.c_str());
-    if (progress >= 0) {
-        u8g2.drawFrame(14, 45, 100, 10);
-        u8g2.drawBox(14, 45, progress, 10);
-    }
+    u8g2.clearBuffer(); u8g2.setFont(u8g2_font_ncenB08_tr); u8g2.drawStr((128 - u8g2.getStrWidth("OTA Update")) / 2, 12, "OTA Update");
+    u8g2.setFont(u8g2_font_profont11_tf); u8g2.drawStr((128 - u8g2.getStrWidth(text.c_str())) / 2, 32, text.c_str());
+    if (progress >= 0) { u8g2.drawFrame(14, 45, 100, 10); u8g2.drawBox(14, 45, progress, 10); }
     u8g2.sendBuffer();
 }
 
 void drawStatusIcons() {
     if (currentUIMode != UI_MODE_MAIN_SCREENS || currentPageIndex != SCREEN_TIME) return;
-    int x = 0;
-    const int spacing = 10;
-    if (bleDeviceConnected) {
-        u8g2.drawXBM(x, 2, 8, 8, icon_ble_bits);
-        x += spacing;
-    }
-    if (millis() - syncIconStartTime < SYNC_ICON_DURATION && (millis() / 500) % 2 == 0) {
-        u8g2.drawXBM(x, 2, 8, 8, icon_sync_bits);
-        x += spacing;
-    }
+    int x = 0; const int spacing = 10;
+    if (bleDeviceConnected) { u8g2.drawXBM(x, 2, 8, 8, icon_ble_bits); x += spacing; }
+    if (millis() - syncIconStartTime < SYNC_ICON_DURATION && (millis() / 500) % 2 == 0) { u8g2.drawXBM(x, 2, 8, 8, icon_sync_bits); x += spacing; }
     switch (wifiState) {
-        case WIFI_CONNECTED:
-            u8g2.drawXBM(x, 2, 8, 8, icon_wifi_bits);
-            break;
-        case WIFI_CONNECTING:
-            if ((millis() / 500) % 2 == 0) {
-                u8g2.drawXBM(x, 2, 8, 8, icon_wifi_connecting_bits);
-            }
-            break;
-        default:
-            u8g2.drawXBM(x, 2, 8, 8, icon_wifi_fail_bits);
-            break;
+        case WIFI_CONNECTED: u8g2.drawXBM(x, 2, 8, 8, icon_wifi_bits); break;
+        case WIFI_CONNECTING: if ((millis() / 500) % 2 == 0) { u8g2.drawXBM(x, 2, 8, 8, icon_wifi_connecting_bits); } break;
+        default: u8g2.drawXBM(x, 2, 8, 8, icon_wifi_fail_bits); break;
     }
     x += spacing;
-    if (isEngineeringMode) {
-        u8g2.drawXBM(x, 2, 8, 8, icon_gear_bits);
-        x += spacing;
-    }
+    if (isEngineeringMode) { u8g2.drawXBM(x, 2, 8, 8, icon_gear_bits); x += spacing; }
 }
 
 void updateScreens() {
     NUM_SCREENS = isEngineeringMode ? 8 : 4;
     if (currentUIMode == UI_MODE_MAIN_SCREENS) {
         rotaryEncoder.setBoundaries(0, NUM_SCREENS - 1, true);
-        if (currentPageIndex >= NUM_SCREENS) {
-            currentPageIndex = SCREEN_TIME;
-        }
+        if (currentPageIndex >= NUM_SCREENS) { currentPageIndex = SCREEN_TIME; }
         rotaryEncoder.setEncoderValue(currentPageIndex);
     } else if (currentUIMode == UI_MODE_SYSTEM_MENU) {
         rotaryEncoder.setBoundaries(0, NUM_MENU_ITEMS - 1, true);
@@ -857,12 +794,8 @@ void handleEncoder() {
         playTickSound();
         if (currentUIMode == UI_MODE_SYSTEM_MENU) {
             selectedMenuItem = (SystemMenuItem)rotaryEncoder.readEncoder();
-            if (selectedMenuItem >= menuViewOffset + MAX_MENU_ITEMS_ON_SCREEN) {
-                menuViewOffset = selectedMenuItem - MAX_MENU_ITEMS_ON_SCREEN + 1;
-            }
-            if (selectedMenuItem < menuViewOffset) {
-                menuViewOffset = selectedMenuItem;
-            }
+            if (selectedMenuItem >= menuViewOffset + MAX_MENU_ITEMS_ON_SCREEN) { menuViewOffset = selectedMenuItem - MAX_MENU_ITEMS_ON_SCREEN + 1; }
+            if (selectedMenuItem < menuViewOffset) { menuViewOffset = selectedMenuItem; }
         } else if (currentEncoderMode == MODE_VIEW_ADJUST) {
             historyViewOffset = rotaryEncoder.readEncoder();
         } else {
@@ -874,44 +807,22 @@ void handleEncoder() {
 
 void handleEncoderPush() {
     if (digitalRead(ENCODER_PSH_PIN) == LOW && (millis() - lastEncoderPushTime > 300)) {
-        lastEncoderPushTime = millis();
-        playConfirmSound();
+        lastEncoderPushTime = millis(); playConfirmSound();
         switch (currentUIMode) {
             case UI_MODE_MAIN_SCREENS:
-                if (isEngineeringMode && currentPageIndex == SCREEN_SYSTEM) {
-                    currentUIMode = UI_MODE_SYSTEM_MENU;
-                    selectedMenuItem = MENU_ITEM_WIFI;
-                    menuViewOffset = 0;
-                    updateScreens();
-                } else if (isEngineeringMode && (currentPageIndex >= SCREEN_TEMP_CHART && currentPageIndex < SCREEN_SYSTEM)) {
-                    currentEncoderMode = (currentEncoderMode == MODE_NAVIGATION) ? MODE_VIEW_ADJUST : MODE_NAVIGATION;
-                }
+                if (isEngineeringMode && currentPageIndex == SCREEN_SYSTEM) { currentUIMode = UI_MODE_SYSTEM_MENU; selectedMenuItem = MENU_ITEM_WIFI; menuViewOffset = 0; updateScreens(); }
+                else if (isEngineeringMode && (currentPageIndex >= SCREEN_TEMP_CHART && currentPageIndex < SCREEN_SYSTEM)) { currentEncoderMode = (currentEncoderMode == MODE_NAVIGATION) ? MODE_VIEW_ADJUST : MODE_NAVIGATION; }
                 break;
             case UI_MODE_SYSTEM_MENU:
                 switch (selectedMenuItem) {
-                    case MENU_ITEM_WIFI:
-                        u8g2.clearBuffer(); u8g2.setFont(u8g2_font_ncenB10_tr); u8g2.drawStr((128-u8g2.getStrWidth("Starting WiFi..."))/2,38,"Starting WiFi..."); u8g2.sendBuffer(); delay(1000);
-                        startWiFiConnection();
-                        returnToMainScreen();
-                        break;
-                    case MENU_ITEM_OTA:
-                        enterOtaMode();
-                        break;
-                    case MENU_ITEM_INFO:
-                        currentUIMode = UI_MODE_INFO_SCREEN;
-                        break;
-                    case MENU_ITEM_REBOOT:
-                        u8g2.clearBuffer(); u8g2.setFont(u8g2_font_ncenB10_tr); u8g2.drawStr((128-u8g2.getStrWidth("Rebooting..."))/2,38,"Rebooting..."); u8g2.sendBuffer(); delay(1000);
-                        ESP.restart();
-                        break;
-                    case MENU_ITEM_BACK:
-                        returnToMainScreen();
-                        break;
+                    case MENU_ITEM_WIFI: u8g2.clearBuffer(); u8g2.setFont(u8g2_font_ncenB10_tr); u8g2.drawStr((128-u8g2.getStrWidth("Starting WiFi..."))/2,38,"Starting WiFi..."); u8g2.sendBuffer(); delay(1000); startWiFiConnection(); returnToMainScreen(); break;
+                    case MENU_ITEM_OTA: enterOtaMode(); break;
+                    case MENU_ITEM_INFO: currentUIMode = UI_MODE_INFO_SCREEN; break;
+                    case MENU_ITEM_REBOOT: u8g2.clearBuffer(); u8g2.setFont(u8g2_font_ncenB10_tr); u8g2.drawStr((128-u8g2.getStrWidth("Rebooting..."))/2,38,"Rebooting..."); u8g2.sendBuffer(); delay(1000); ESP.restart(); break;
+                    case MENU_ITEM_BACK: returnToMainScreen(); break;
                 }
                 break;
-            case UI_MODE_INFO_SCREEN:
-                currentUIMode = UI_MODE_SYSTEM_MENU;
-                break;
+            case UI_MODE_INFO_SCREEN: currentUIMode = UI_MODE_SYSTEM_MENU; break;
         }
         updateDisplay();
     }
@@ -919,163 +830,85 @@ void handleEncoderPush() {
 
 void handleButtons() {
     bool isPressed = (digitalRead(BUTTON_CONFIRM_PIN) == LOW);
-    if (isPressed && !confirmButtonPressed) {
-        confirmPressStartTime = millis();
-        confirmButtonPressed = true;
-    } else if (!isPressed && confirmButtonPressed) {
-        if (millis() - confirmPressStartTime < 3000) {
-            lastConfirmPressTime = millis();
-            playConfirmSound();
-            returnToMainScreen();
-        }
+    if (isPressed && !confirmButtonPressed) { confirmPressStartTime = millis(); confirmButtonPressed = true; }
+    else if (!isPressed && confirmButtonPressed) {
+        if (millis() - confirmPressStartTime < 3000) { lastConfirmPressTime = millis(); playConfirmSound(); returnToMainScreen(); }
         confirmButtonPressed = false;
     }
-    if (confirmButtonPressed && (millis() - confirmPressStartTime >= 3000)) {
-        playConfirmSound();
-        enterOtaMode();
-        confirmButtonPressed = false;
-    }
+    if (confirmButtonPressed && (millis() - confirmPressStartTime >= 3000)) { playConfirmSound(); enterOtaMode(); confirmButtonPressed = false; }
 }
 
 void loadPersistentStates() {
-    preferences.begin("medbox-meta", true);
-    isEngineeringMode = preferences.getBool("engMode", false);
-    preferences.end();
+    preferences.begin("medbox-meta", true); isEngineeringMode = preferences.getBool("engMode", false); preferences.end();
 }
 
 void initializeHistoryFile() {
     if (!SPIFFS.exists("/history.dat")) {
-        File file = SPIFFS.open("/history.dat", FILE_WRITE);
-        if (!file) return;
-        DataPoint empty = {0, 0, 0};
-        for (int i = 0; i < MAX_HISTORY; i++) {
-            file.write((uint8_t*)&empty, sizeof(DataPoint));
-        }
-        file.close();
+        File file = SPIFFS.open("/history.dat", FILE_WRITE); if (!file) return;
+        DataPoint empty = {0, 0, 0}; for (int i = 0; i < MAX_HISTORY; i++) { file.write((uint8_t*)&empty, sizeof(DataPoint)); } file.close();
     }
 }
 
 void loadHistoryMetadata() {
-    preferences.begin("medbox-meta", true);
-    historyCount = preferences.getInt("hist_count", 0);
-    historyIndex = preferences.getInt("hist_index", 0);
-    preferences.end();
+    preferences.begin("medbox-meta", true); historyCount = preferences.getInt("hist_count", 0); historyIndex = preferences.getInt("hist_index", 0); preferences.end();
 }
 
 void saveHistoryMetadata() {
-    preferences.begin("medbox-meta", false);
-    preferences.putInt("hist_count", historyCount);
-    preferences.putInt("hist_index", historyIndex);
-    preferences.end();
+    preferences.begin("medbox-meta", false); preferences.putInt("hist_count", historyCount); preferences.putInt("hist_index", historyIndex); preferences.end();
 }
 
 void addDataToHistory(float temp, float hum, int16_t rssi) {
-    File file = SPIFFS.open("/history.dat", "r+");
-    if (!file) return;
-    DataPoint dp = {temp, hum, rssi};
-    file.seek(historyIndex * sizeof(DataPoint));
-    file.write((uint8_t*)&dp, sizeof(DataPoint));
-    file.close();
-    historyIndex = (historyIndex + 1) % MAX_HISTORY;
-    if (historyCount < MAX_HISTORY) historyCount++;
+    File file = SPIFFS.open("/history.dat", "r+"); if (!file) return;
+    DataPoint dp = {temp, hum, rssi}; file.seek(historyIndex * sizeof(DataPoint)); file.write((uint8_t*)&dp, sizeof(DataPoint)); file.close();
+    historyIndex = (historyIndex + 1) % MAX_HISTORY; if (historyCount < MAX_HISTORY) historyCount++;
     saveHistoryMetadata();
-    if (currentEncoderMode == MODE_VIEW_ADJUST) {
-        int maxOffset = max(0, historyCount - HISTORY_WINDOW_SIZE);
-        rotaryEncoder.setBoundaries(0, maxOffset, false);
-    }
+    if (currentEncoderMode == MODE_VIEW_ADJUST) { int maxOffset = max(0, historyCount - HISTORY_WINDOW_SIZE); rotaryEncoder.setBoundaries(0, maxOffset, false); }
 }
 
 void loadHistoryWindow(int offset) {
-    int points = min(historyCount, HISTORY_WINDOW_SIZE);
-    if (points == 0) return;
-    File file = SPIFFS.open("/history.dat", "r");
-    if (!file) return;
+    int points = min(historyCount, HISTORY_WINDOW_SIZE); if (points == 0) return;
+    File file = SPIFFS.open("/history.dat", "r"); if (!file) return;
     int startIdx = (historyIndex - offset - points + MAX_HISTORY) % MAX_HISTORY;
     for (int i = 0; i < points; i++) {
         int idx = (startIdx + i) % MAX_HISTORY;
-        file.seek(idx * sizeof(DataPoint));
-        file.read((uint8_t*)&historyWindowBuffer[i], sizeof(DataPoint));
+        file.seek(idx * sizeof(DataPoint)); file.read((uint8_t*)&historyWindowBuffer[i], sizeof(DataPoint));
     }
     file.close();
 }
 
 void drawChart_OriginalStyle(const char* title, bool isTemp, bool isRssi) {
-    u8g2.setFont(u8g2_font_6x10_tf);
-    u8g2.drawStr(2, 8, title);
-    if (historyCount < 2) {
-        u8g2.setFont(u8g2_font_6x10_tf);
-        u8g2.drawStr(10, 35, "No Data");
-        return;
-    }
-    loadHistoryWindow(historyViewOffset);
-    int displayCount = min(HISTORY_WINDOW_SIZE, historyCount);
-    if (displayCount < 2) {
-        u8g2.drawStr(10, 35, "Insufficient Data");
-        return;
-    }
+    u8g2.setFont(u8g2_font_6x10_tf); u8g2.drawStr(2, 8, title);
+    if (historyCount < 2) { u8g2.setFont(u8g2_font_6x10_tf); u8g2.drawStr(10, 35, "No Data"); return; }
+    loadHistoryWindow(historyViewOffset); int displayCount = min(HISTORY_WINDOW_SIZE, historyCount);
+    if (displayCount < 2) { u8g2.drawStr(10, 35, "Insufficient Data"); return; }
     float minVal = 999, maxVal = -999;
     for (int i = 0; i < displayCount; i++) {
         float val = isRssi ? historyWindowBuffer[i].rssi : (isTemp ? historyWindowBuffer[i].temp : historyWindowBuffer[i].hum);
-        if (val < minVal) minVal = val;
-        if (val > maxVal) maxVal = val;
+        if (val < minVal) minVal = val; if (val > maxVal) maxVal = val;
     }
     if (isRssi) {
-        minVal = max(minVal, -100.0f);
-        maxVal = min(maxVal, -30.0f);
-        if (maxVal - minVal < 10) {
-            float mid = (minVal + maxVal) / 2;
-            minVal = mid - 5;
-            maxVal = mid + 5;
-        }
-    } else if (isTemp && maxVal - minVal < 1) {
-        float mid = (minVal + maxVal) / 2;
-        minVal = mid - 0.5;
-        maxVal = mid + 0.5;
-    } else if (!isTemp && maxVal - minVal < 2) {
-        float mid = (minVal + maxVal) / 2;
-        minVal = mid - 1;
-        maxVal = mid + 1;
-    }
-    float range = maxVal - minVal;
-    if (range < 0.1) range = 1;
+        minVal = max(minVal, -100.0f); maxVal = min(maxVal, -30.0f);
+        if (maxVal - minVal < 10) { float mid = (minVal + maxVal) / 2; minVal = mid - 5; maxVal = mid + 5; }
+    } else if (isTemp && maxVal - minVal < 1) { float mid = (minVal + maxVal) / 2; minVal = mid - 0.5; maxVal = mid + 0.5; }
+    else if (!isTemp && maxVal - minVal < 2) { float mid = (minVal + maxVal) / 2; minVal = mid - 1; maxVal = mid + 1; }
+    float range = maxVal - minVal; if (range < 0.1) range = 1;
     int chartX = 18, chartY = 15, chartW = 128 - chartX - 2, chartH = 40;
-    u8g2.setFont(u8g2_font_5x7_tr);
-    char buf[12];
-    if (isRssi) {
-        sprintf(buf, "%d", (int)maxVal);
-        u8g2.drawStr(0, chartY + 5, buf);
-        sprintf(buf, "%d", (int)minVal);
-        u8g2.drawStr(0, chartY + chartH, buf);
-    } else {
-        sprintf(buf, isTemp ? "%.1f" : "%.0f", maxVal);
-        u8g2.drawStr(0, chartY + 5, buf);
-        sprintf(buf, isTemp ? "%.1f" : "%.0f", minVal);
-        u8g2.drawStr(0, chartY + chartH, buf);
-    }
+    u8g2.setFont(u8g2_font_5x7_tr); char buf[12];
+    if (isRssi) { sprintf(buf, "%d", (int)maxVal); u8g2.drawStr(0, chartY + 5, buf); sprintf(buf, "%d", (int)minVal); u8g2.drawStr(0, chartY + chartH, buf); }
+    else { sprintf(buf, isTemp ? "%.1f" : "%.0f", maxVal); u8g2.drawStr(0, chartY + 5, buf); sprintf(buf, isTemp ? "%.1f" : "%.0f", minVal); u8g2.drawStr(0, chartY + chartH, buf); }
     u8g2.drawFrame(chartX, chartY, chartW, chartH);
     int lastX = -1, lastY = -1;
     for (int i = 0; i < displayCount; i++) {
         float val = isRssi ? historyWindowBuffer[i].rssi : (isTemp ? historyWindowBuffer[i].temp : historyWindowBuffer[i].hum);
-        int x = chartX + (i * chartW / displayCount);
-        int y = chartY + chartH - 1 - ((val - minVal) / range * (chartH - 2));
+        int x = chartX + (i * chartW / displayCount); int y = chartY + chartH - 1 - ((val - minVal) / range * (chartH - 2));
         if (lastX >= 0) u8g2.drawLine(lastX, lastY, x, y);
-        lastX = x;
-        lastY = y;
+        lastX = x; lastY = y;
     }
-    char countStr[20];
-    sprintf(countStr, "[%d/%d]", displayCount, historyCount);
-    u8g2.drawStr(128 - u8g2.getStrWidth(countStr) - 2, 10, countStr);
+    char countStr[20]; sprintf(countStr, "[%d/%d]", displayCount, historyCount); u8g2.drawStr(128 - u8g2.getStrWidth(countStr) - 2, 10, countStr);
     char offsetStr[10];
-    if (historyViewOffset == 0) {
-        strcpy(offsetStr, "Now");
-    } else {
-        float hours = (historyViewOffset * historyRecordInterval) / 3600000.0;
-        sprintf(offsetStr, "-%.1fh", hours);
-    }
+    if (historyViewOffset == 0) { strcpy(offsetStr, "Now"); } else { float hours = (historyViewOffset * historyRecordInterval) / 3600000.0; sprintf(offsetStr, "-%.1fh", hours); }
     u8g2.drawStr(128 - u8g2.getStrWidth(offsetStr) - 2, 64, offsetStr);
-    if (currentEncoderMode == MODE_VIEW_ADJUST) {
-        u8g2.drawStr(2, 64, "VIEW");
-    }
+    if (currentEncoderMode == MODE_VIEW_ADJUST) { u8g2.drawStr(2, 64, "VIEW"); }
 }
 
 void drawTempChartScreen() { drawChart_OriginalStyle("Temp Chart", true, false); }
@@ -1083,96 +916,51 @@ void drawHumChartScreen() { drawChart_OriginalStyle("Humid Chart", false, false)
 void drawRssiChartScreen() { drawChart_OriginalStyle("RSSI Chart", false, true); }
 
 void drawTimeScreen() {
-    time_t now;
-    time(&now);
-    if (now < 1672531200) {
-        u8g2.setFont(u8g2_font_ncenB08_tr);
-        u8g2.drawStr(10, 32, "Time not set");
-    } else {
-        struct tm * ptm = localtime(&now);
-        u8g2.setFont(u8g2_font_fub20_tn);
-        char s[9];
-        sprintf(s, "%02d:%02d:%02d", ptm->tm_hour, ptm->tm_min, ptm->tm_sec);
-        u8g2.drawStr((128 - u8g2.getStrWidth(s)) / 2, 42, s);
-    }
+    time_t now; time(&now);
+    if (now < 1672531200) { u8g2.setFont(u8g2_font_ncenB08_tr); u8g2.drawStr(10, 32, "Time not set"); }
+    else { struct tm * ptm = localtime(&now); u8g2.setFont(u8g2_font_fub20_tn); char s[9]; sprintf(s, "%02d:%02d:%02d", ptm->tm_hour, ptm->tm_min, ptm->tm_sec); u8g2.drawStr((128 - u8g2.getStrWidth(s)) / 2, 42, s); }
 }
 
 void drawDateScreen() {
-    time_t now;
-    time(&now);
-    if (now < 1672531200) {
-        u8g2.setFont(u8g2_font_ncenB08_tr);
-        u8g2.drawStr(10, 32, "Time not set");
-        return;
-    }
-    struct tm * ptm = localtime(&now);
-    const char * week[] = {"SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
-    const char * month[] = {"JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"};
-    char day[4], year[6];
-    sprintf(day, "%02d", ptm->tm_mday);
-    sprintf(year, "%d", ptm->tm_year + 1900);
-    u8g2.setFont(u8g2_font_logisoso42_tn);
-    u8g2.drawStr(5, 50, day);
-    u8g2.drawVLine(64, 8, 48);
-    u8g2.setFont(u8g2_font_helvB12_tr);
-    u8g2.drawStr(72, 22, week[ptm->tm_wday]);
-    u8g2.setFont(u8g2_font_ncenR10_tr);
-    u8g2.drawStr(72, 40, month[ptm->tm_mon]);
-    u8g2.drawStr(72, 56, year);
+    time_t now; time(&now);
+    if (now < 1672531200) { u8g2.setFont(u8g2_font_ncenB08_tr); u8g2.drawStr(10, 32, "Time not set"); return; }
+    struct tm * ptm = localtime(&now); const char * week[] = {"SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"}; const char * month[] = {"JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"};
+    char day[4], year[6]; sprintf(day, "%02d", ptm->tm_mday); sprintf(year, "%d", ptm->tm_year + 1900);
+    u8g2.setFont(u8g2_font_logisoso42_tn); u8g2.drawStr(5, 50, day); u8g2.drawVLine(64, 8, 48);
+    u8g2.setFont(u8g2_font_helvB12_tr); u8g2.drawStr(72, 22, week[ptm->tm_wday]); u8g2.setFont(u8g2_font_ncenR10_tr);
+    u8g2.drawStr(72, 40, month[ptm->tm_mon]); u8g2.drawStr(72, 56, year);
 }
 
 void drawWeatherScreen() {
-    u8g2.setFont(u8g2_font_ncenB10_tr);
-    u8g2.drawStr(0, 12, city.c_str());
-    if (wifiState != WIFI_CONNECTED) {
-        u8g2.setFont(u8g2_font_ncenB08_tr);
-        u8g2.drawStr(0, 40, "No WiFi");
-        return;
-    }
+    u8g2.setFont(u8g2_font_ncenB10_tr); u8g2.drawStr(0, 12, city.c_str());
+    if (wifiState != WIFI_CONNECTED) { u8g2.setFont(u8g2_font_ncenB08_tr); u8g2.drawStr(0, 40, "No WiFi"); return; }
     if (weatherData.valid) {
-        char buf[20];
-        const char* icon = getWeatherIcon(weatherData.description);
-        u8g2.setFont(u8g2_font_open_iconic_weather_4x_t);
-        u8g2.drawStr(5, 50, icon);
-        u8g2.setFont(u8g2_font_fub25_tn);
-        sprintf(buf, "%.1f", weatherData.temp);
-        u8g2.drawStr(45, 32, buf);
+        char buf[20]; const char* icon = getWeatherIcon(weatherData.description);
+        u8g2.setFont(u8g2_font_open_iconic_weather_4x_t); u8g2.drawStr(5, 50, icon);
+        u8g2.setFont(u8g2_font_fub25_tn); sprintf(buf, "%.1f", weatherData.temp); u8g2.drawStr(45, 32, buf);
         u8g2.drawCircle(45 + u8g2.getStrWidth(buf) + 4, 15, 3);
-        u8g2.setFont(u8g2_font_unifont_t_chinese2);
-        u8g2.drawStr(45, 50, weatherData.description.c_str());
-        u8g2.setFont(u8g2_font_ncenR10_tr);
-        sprintf(buf, "H:%d%%", weatherData.humidity);
-        u8g2.drawStr(45, 64, buf);
-    } else {
-        u8g2.setFont(u8g2_font_ncenB08_tr);
-        u8g2.drawStr(0, 32, "Updating...");
-    }
+        u8g2.setFont(u8g2_font_unifont_t_chinese2); u8g2.drawStr(45, 50, weatherData.description.c_str());
+        u8g2.setFont(u8g2_font_ncenR10_tr); sprintf(buf, "H:%d%%", weatherData.humidity); u8g2.drawStr(45, 64, buf);
+    } else { u8g2.setFont(u8g2_font_ncenB08_tr); u8g2.drawStr(0, 32, "Updating..."); }
 }
 
 void drawSensorScreen() {
-    if (!sensorDataValid) {
-        u8g2.setFont(u8g2_font_ncenB08_tr);
-        u8g2.drawStr(10, 40, "Sensor Init...");
-        return;
-    }
+    if (!sensorDataValid) { u8g2.setFont(u8g2_font_ncenB08_tr); u8g2.drawStr(10, 40, "Sensor Init..."); return; }
     char buf[20];
-    u8g2.setFont(u8g2_font_helvB10_tr);
-    u8g2.drawStr((128 - u8g2.getStrWidth("INDOOR")) / 2, 12, "INDOOR");
-    u8g2.setFont(u8g2_font_ncenR10_tr);
-    u8g2.drawStr(10, 38, "TEMP");
-    u8g2.setFont(u8g2_font_fub25_tn);
-    sprintf(buf, "%.1f C", cachedTemp);
-    u8g2.drawStr(128 - u8g2.getStrWidth(buf) - 10, 38, buf);
-    u8g2.setFont(u8g2_font_ncenR10_tr);
-    u8g2.drawStr(10, 62, "HUMI");
-    u8g2.setFont(u8g2_font_fub25_tn);
-    sprintf(buf, "%.0f %%", cachedHum);
-    u8g2.drawStr(128 - u8g2.getStrWidth(buf) - 10, 62, buf);
+    u8g2.setFont(u8g2_font_helvB10_tr); u8g2.drawStr((128 - u8g2.getStrWidth("INDOOR")) / 2, 12, "INDOOR");
+    u8g2.setFont(u8g2_font_ncenR10_tr); u8g2.drawStr(10, 38, "TEMP");
+    u8g2.setFont(u8g2_font_fub25_tn); sprintf(buf, "%.1f C", cachedTemp); u8g2.drawStr(128 - u8g2.getStrWidth(buf) - 10, 38, buf);
+    u8g2.setFont(u8g2_font_ncenR10_tr); u8g2.drawStr(10, 62, "HUMI");
+    u8g2.setFont(u8g2_font_fub25_tn); sprintf(buf, "%.0f %%", cachedHum); u8g2.drawStr(128 - u8g2.getStrWidth(buf) - 10, 62, buf);
 }
 
+// v20.9 修改: 在系統資訊頁面顯示韌體版本
 void drawSystemScreen() {
     u8g2.setFont(u8g2_font_ncenB08_tr);
     u8g2.drawStr(0, 12, "System Info");
+    // 加入這行顯示版本
+    u8g2.drawStr(128 - u8g2.getStrWidth(FIRMWARE_VERSION), 12, FIRMWARE_VERSION);
+
     u8g2.setFont(u8g2_font_profont11_tf);
     int y = 28;
     String ssid = WiFi.SSID();
@@ -1189,8 +977,7 @@ void drawSystemScreen() {
 }
 
 const char* getWeatherIcon(const String &desc) {
-    String s = desc;
-    s.toLowerCase();
+    String s = desc; s.toLowerCase();
     if (s.indexOf("clear") >= 0 || s.indexOf("晴") >= 0) return "A";
     if (s.indexOf("cloud") >= 0 || s.indexOf("雲") >= 0 || s.indexOf("阴") >= 0) return "C";
     if (s.indexOf("rain") >= 0 || s.indexOf("雨") >= 0) return "R";
@@ -1201,10 +988,7 @@ const char* getWeatherIcon(const String &desc) {
 }
 
 void fetchWeatherData() {
-    if (wifiState != WIFI_CONNECTED) {
-        weatherData.valid = false;
-        return;
-    }
+    if (wifiState != WIFI_CONNECTED) { weatherData.valid = false; return; }
     HTTPClient http;
     String url = "http://api.openweathermap.org/data/2.5/weather?q=" + city + "," + countryCode + "&units=metric&lang=zh_tw&APPID=" + openWeatherMapApiKey;
     http.begin(url);
