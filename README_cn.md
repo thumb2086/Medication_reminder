@@ -40,7 +40,7 @@
 *   **View:** 由 `Activity` 和 `Fragment` 組成，負責顯示 UI 及處理使用者互動。
 *   **ViewModel:** `MainViewModel` 負責持有及管理與 UI 相關的數據，它能在螢幕旋轉等配置變更後繼續存在，並與數據層溝通。**現已導入 Hilt 進行依賴注入**。
 *   **Model:**
-    *   **Repository (未來):** 將引入 Repository 層來抽象化數據來源。
+    *   **Repository:** `AppRepository` 作為所有數據的單一來源 (Single Source of Truth)，負責抽象化底層的數據來源。它是一個由 **Hilt** 提供的單例 (Singleton)。
     *   **Data Sources:**
         *   `BluetoothLeManager`: 管理所有 BLE 通訊，**現已改為由 Hilt 注入**。
         *   `SharedPreferences`: 儲存藥物清單、使用者設定等。
@@ -177,6 +177,12 @@
 `POST_NOTIFICATIONS`, `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`, `ACCESS_FINE_LOCATION`, `SCHEDULE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED`, `VIBRATE`
 
 ## 最近更新
+*   **0099:** **實作 Repository 模式並解決 Hilt 注入限制。**
+    *   **架構重構:** 建立了單例 `AppRepository`，將所有資料邏輯（SharedPreferences、藥物列表、溫濕度歷史、服藥狀態）從 `MainViewModel` 中抽離。
+    *   **Hilt 修正:** 解決了 `MedicationTakenReceiver` 無法直接注入 `ViewModel` 的 Dagger Hilt 限制。現在，Receiver 透過 Hilt EntryPoint 注入 `AppRepository`，而 `MainViewModel` 也改為依賴這個 Repository，確保了資料存取的單一性與架構的正確性。
+*   **0098:** **修復通知「我已服用」後的數據同步與通知取消問題。**
+    *   **問題:** `MedicationTakenReceiver` 錯誤地實例化了新的 `MainViewModel`，導致服藥事件無法更新到應用程式的單例 ViewModel 中，服藥紀錄和圖表無法更新。此外，通知有時無法自動消失。
+    *   **修正:** 在 `MedicationTakenReceiver.kt` 中導入了 Hilt 的 `EntryPoint` 模式，以確保廣播接收器可以存取到正確的單例 `MainViewModel` 和 `BluetoothLeManager` 實例。同時，確保了 `notificationId` 被正確用於取消通知，解決了通知殘留的問題。
 *   **0094:** **圖表視覺與互動優化。**
     *   **雙軸顯示:** 實作了溫度 (左軸) 與濕度 (右軸) 的雙 Y 軸顯示，解決了數值範圍差異導致的顯示問題。
     *   **視覺簡化:** 移除了圖表上的圓點，僅保留曲線與填充，使畫面更加現代簡潔。加入進場動畫與下拉刷新動畫。

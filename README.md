@@ -39,7 +39,7 @@ This app adopts the **MVVM (Model-View-ViewModel)** architecture, which separate
 *   **View:** Comprises `Activity` and `Fragment`, responsible for displaying the UI and handling user interactions.
 *   **ViewModel:** The `MainViewModel` holds and manages UI-related data. It survives configuration changes (like screen rotations) and communicates with the data layer. It now uses **Hilt for dependency injection**.
 *   **Model:**
-    *   **Repository (Future):** A repository layer will be introduced to abstract the data sources.
+    *   **Repository:** The `AppRepository` acts as a single source of truth for all app data, abstracting the data sources from the rest of the app. It is provided as a singleton by **Hilt**.
     *   **Data Sources:**
         *   `BluetoothLeManager`: Manages all BLE communications. It's now injected via **Hilt**.
         *   `SharedPreferences`: Stores medication lists, user settings, etc.
@@ -93,6 +93,13 @@ To enable interaction between the app and the pillbox, we have defined a bidirec
 `POST_NOTIFICATIONS`, `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`, `ACCESS_FINE_LOCATION`, `SCHEDULE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED`, `VIBRATE`
 
 ## Recent Updates
+
+*   **0099:** **Implemented Repository Pattern and Fixed Hilt Injection Limitations.**
+    *   **Architecture Refactor:** Created a singleton `AppRepository` to centralize all data logic (SharedPreferences, medication lists, sensor history, and medication status), decoupling it from the `MainViewModel`.
+    *   **Hilt Fix:** Resolved a Dagger Hilt limitation that prevented direct injection of ViewModels into a `BroadcastReceiver`. The receiver now injects the `AppRepository` via a Hilt EntryPoint, ensuring a single source of truth and correct architectural practice.
+*   **0098:** **Fixed Notification Sync and Dismissal Issues After Taking Medication.**
+    *   **Problem:** The `MedicationTakenReceiver` was incorrectly creating a new `MainViewModel` instance, which prevented medication logs and charts from updating. Notifications also sometimes failed to dismiss.
+    *   **Fix:** Implemented a Hilt `EntryPoint` in the receiver to ensure access to the singleton instances of `AppRepository` and `BluetoothLeManager`. Also ensured the `notificationId` was correctly used to cancel the notification.
 *   **0094:** **Chart Visuals and Interaction Improvements.**
     *   **Dual Axis Display:** Implemented dual Y-axis display for temperature (left) and humidity (right), resolving display issues caused by scale differences.
     *   **Visual Simplification:** Removed data point circles from the chart, keeping only the curves and fill for a cleaner, modern look. Added entry and pull-to-refresh animations.
