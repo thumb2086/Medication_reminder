@@ -193,6 +193,9 @@ class ReminderSettingsFragment : Fragment() {
             .setMessage(getString(R.string.confirm_delete_message, med.name))
             .setPositiveButton(R.string.delete) { _, _ ->
                 alarmScheduler.cancel(med)
+                // Sync with ESP32: Disable alarm for this slot
+                syncAlarmToEsp32(med.slotNumber, 0, 0, false)
+                
                 viewModel.deleteMedication(med)
                 Toast.makeText(requireContext(), getString(R.string.medication_deleted, med.name), Toast.LENGTH_SHORT).show()
             }
@@ -357,6 +360,18 @@ class ReminderSettingsFragment : Fragment() {
         if (updatedMed != null) {
             viewModel.updateMedication(updatedMed)
             alarmScheduler.schedule(updatedMed) // Schedule new alarms
+            
+            // Sync with ESP32: Set alarm for this slot
+            // Note: We only sync the FIRST time for simplicity, assuming one medication per slot usually has one primary time
+            // or ESP32 handles only one alarm per slot in this simple protocol.
+            // For better support, we'd need to iterate all times or ESP32 needs to support multiple alarms per slot.
+            // Based on "setupCard", times are stored in a map. Let's pick the first one.
+            val firstTimeInMillis = updatedMed.times.values.firstOrNull()
+            if (firstTimeInMillis != null) {
+                val cal = Calendar.getInstance().apply { timeInMillis = firstTimeInMillis }
+                syncAlarmToEsp32(updatedMed.slotNumber, cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), true)
+            }
+
             Toast.makeText(requireContext(), getString(R.string.medication_updated, updatedMed.name), Toast.LENGTH_SHORT).show()
             resetForm()
         }
@@ -382,9 +397,25 @@ class ReminderSettingsFragment : Fragment() {
 
         if (allFormsValid) {
             viewModel.addMedications(newMedications)
-            newMedications.forEach { alarmScheduler.schedule(it) }
+            newMedications.forEach { med -> 
+                alarmScheduler.schedule(med)
+                
+                // Sync with ESP32
+                val firstTimeInMillis = med.times.values.firstOrNull()
+                if (firstTimeInMillis != null) {
+                    val cal = Calendar.getInstance().apply { timeInMillis = firstTimeInMillis }
+                    syncAlarmToEsp32(med.slotNumber, cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), true)
+                }
+            }
             Toast.makeText(requireContext(), getString(R.string.medications_added_successfully), Toast.LENGTH_SHORT).show()
             resetForm()
+        }
+    }
+
+    private fun syncAlarmToEsp32(slot: Int, hour: Int, minute: Int, enable: Boolean) {
+        val activity = activity as? MainActivity
+        if (activity?.bluetoothLeManager?.isConnected() == true) {
+            activity.bluetoothLeManager?.setAlarm(slot, hour, minute, enable)
         }
     }
 
