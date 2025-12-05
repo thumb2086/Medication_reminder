@@ -70,6 +70,7 @@ To enable interaction between the app and the pillbox, we have defined a bidirec
 8.  **Request Historic Environment Data (0x31):** `[0]: 0x31`
 9.  **Subscribe Realtime Environment Data (0x32):** `[0]: 0x32` - Subscribes to real-time environment data push.
 10. **Unsubscribe Realtime Environment Data (0x33):** `[0]: 0x33` - Unsubscribes from real-time environment data push.
+11. **Set Alarm (0x41):** `[0]: 0x41`, `[1]: Alarm ID (0-3)`, `[2]: Hour`, `[3]: Minute`, `[4]: Enabled (0/1)` - Syncs alarm settings to the pillbox (Protocol v3).
 
 ### Pillbox -> App (Notifications)
 
@@ -93,10 +94,16 @@ To enable interaction between the app and the pillbox, we have defined a bidirec
 `POST_NOTIFICATIONS`, `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`, `ACCESS_FINE_LOCATION`, `SCHEDULE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED`, `VIBRATE`
 
 ## Recent Updates
-
-*   **0101:** **Corrected Chart Line Colors and Display Style.**
-    *   **Style Adjustment:** Adjusted the environment monitoring chart to a "Line Chart" style. Circles are now hidden when multiple data points exist to show a smooth curve, and are only shown when there is a single data point to ensure visibility.
-    *   **Color Optimization:** Updated `colors.xml` and `values-night/colors.xml` to set contrasting colors for temperature and humidity lines in both light and dark modes, resolving the issue where lines were invisible in dark mode.
+*   **0103:** **Implemented Automated Versioning and Branch Management.**
+    *   **Refactor:** Simplified branch structure to `main` and `dev` in `config.gradle.kts`.
+    *   **Automation:** Updated `app/build.gradle.kts` to automatically generate `versionCode` (from git commit count), `versionName` (based on branch and hash), and `archivesBaseName`.
+*   **0102:** **Protocol v3 Support & Bug Fixes.**
+    *   **Protocol Update:** Implemented `Set Alarm (0x41)` to sync alarms with the pillbox.
+    *   **Bug Fix:** Fixed `CMD_REPORT_ENG_MODE_STATUS` definition mismatch in ESP32 firmware.
+    *   **Error Handling:** Added handling for `Error Report (0xEE)` from the pillbox.
+*   **0101:** **Visual Improvements for Charts.**
+    *   **Style:** Switched environment chart to a line chart style, hiding dots for smooth curves when multiple points exist.
+    *   **Colors:** Optimized chart line colors for better visibility in both light and dark modes.
 *   **0100:** **Fixed Real-time Sensor Data Parsing.**
     *   **Problem:** Real-time sensor data (`0x90`) was still being parsed using the legacy protocol (integer + fraction), leading to incorrect values (e.g., 140.9%).
     *   **Fix:** Updated the parsing logic in `BluetoothLeManager` to align with Protocol V2 (2-byte signed integer / 100), ensuring consistency with historic data parsing (`0x91`).
