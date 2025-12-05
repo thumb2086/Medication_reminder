@@ -1,4 +1,4 @@
-// **BluetoothLeManager.kt (V8.12 - Remove unused function)**
+// **BluetoothLeManager.kt (V8.13 - Add Alarm Support & Error Handling)**
 package com.example.medicationreminderapp
 
 import android.annotation.SuppressLint
@@ -37,7 +37,7 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
         fun onStatusUpdate(message: String)
         fun onDeviceConnected()
         fun onDeviceDisconnected()
-        fun onProtocolVersionReported(version: Int) // New callback
+        fun onProtocolVersionReported(version: Int)
         fun onMedicationTaken(slotNumber: Int)
         fun onBoxStatusUpdate(slotMask: Byte)
         fun onTimeSyncAcknowledged()
@@ -191,7 +191,7 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
             Log.d(TAG, "RX: $hexString")
 
             when (data[0].toInt() and 0xFF) {
-                0x71 -> { // New: Protocol version report
+                0x71 -> { // Protocol version report
                     if (data.size > 1) {
                         protocolVersion = data[1].toInt()
                         Log.d(TAG, "Protocol Version: $protocolVersion")
@@ -251,7 +251,21 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
                     Log.d(TAG, "Historic data sync complete")
                     listener?.onHistoricDataComplete() 
                 }
-                0xEE -> { if (data.size > 1) listener?.onError(data[1].toInt()) }
+                0xEE -> {
+                    if (data.size > 1) {
+                        val errorCode = data[1].toInt()
+                        val errorMsg = when(errorCode) {
+                            0x02 -> "感測器錯誤"
+                            0x03 -> "未知指令 (0x03)"
+                            0x04 -> "存取錯誤 (0x04)"
+                            0x05 -> "長度錯誤 (0x05)"
+                            else -> "未知錯誤: $errorCode"
+                        }
+                        Log.e(TAG, "Device Error: $errorMsg")
+                        listener?.onStatusUpdate("裝置錯誤: $errorMsg")
+                        listener?.onError(errorCode)
+                    }
+                }
             }
         }
     }
@@ -338,12 +352,12 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
         }
     }
     
-    // New method to request protocol version from the device
+    // Request protocol version from the device
     fun requestProtocolVersion() {
         sendCommand(byteArrayOf(0x01.toByte()))
     }
     
-    // New: Enable realtime environment data push (CMD_SUBSCRIBE_ENV)
+    // Enable realtime environment data push (CMD_SUBSCRIBE_ENV)
     fun enableRealtimeSensorData() {
         sendCommand(byteArrayOf(0x32.toByte()))
         Log.d(TAG, "TX: Enable Realtime ENV")
@@ -374,6 +388,19 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
         System.arraycopy(passBytes, 0, command, 3 + ssidBytes.size, passBytes.size)
         sendCommand(command)
     }
+    
+    // Set alarm on ESP32
+    fun setAlarm(slot: Int, hour: Int, minute: Int, enable: Boolean) {
+        val command = byteArrayOf(
+            0x41.toByte(),
+            slot.toByte(),
+            hour.toByte(),
+            minute.toByte(),
+            if (enable) 1.toByte() else 0.toByte()
+        )
+        sendCommand(command)
+        Log.d(TAG, "TX: Set Alarm Slot $slot to $hour:$minute, Enable: $enable")
+    }
 
     fun setEngineeringMode(enable: Boolean) {
         val command = byteArrayOf(0x13.toByte(), if (enable) 0x01.toByte() else 0x00.toByte())
@@ -392,8 +419,6 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
     fun requestEnvironmentData() {
         sendCommand(byteArrayOf(0x30.toByte()))
     }
-
-
 
     fun requestHistoricEnvironmentData() {
         sendCommand(byteArrayOf(0x31.toByte()))
