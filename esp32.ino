@@ -1,13 +1,13 @@
 /*
-SmartMedBox Firmware v21.3
+SmartMedBox Firmware v21.4
 硬體: ESP32-C6
 IDE: esp32 by Espressif Systems v3.0.0+
 板子: ESP32C6 Dev Module, 8MB with spiffs (3MB APP/1.5MB SPIFFS)
 
-v21.3 更新內容 (Compiler & Linker Fixes):
-[連結修正] 補全所有函式實作，解決 "undefined reference" 編譯錯誤。
-[結構修正] 調整 BLE 回呼類別的定義順序。
-[參數修正] 修正 OTA 錯誤處理中 drawOtaScreen 函式呼叫時遺漏的參數。
+v21.4 更新內容 (Loop Optimization):
+[性能優化] 重構 loop()，移除鬧鐘響鈴時的 return 阻塞，確保背景任務 (Wi-Fi/BLE) 持續執行。
+[邏輯修正] 避免鬧鐘響鈴時觸發通用的按鍵功能，防止邏輯衝突。
+[穩定性] 繼承 v21.3 的所有編譯與協定修正。
 */
 
 #include <Arduino.h>
@@ -30,7 +30,7 @@ v21.3 更新內容 (Compiler & Linker Fixes):
 #include <ESP32Servo.h>
 #include <Adafruit_NeoPixel.h>
 
-const char* FIRMWARE_VERSION = "v21.3";
+const char* FIRMWARE_VERSION = "v21.4";
 
 // ==================== 腳位定義 (v20.6) ====================
 #define I2C_SDA_PIN 22
@@ -88,6 +88,7 @@ const int DAYLIGHT_OFFSET = 0;
 #define CMD_REPORT_HISTORIC_END     0x92
 #define CMD_ERROR                   0xEE
 
+// ... (圖示、全域物件、狀態數據等保持不變) ...
 // ==================== 圖示 (XBM) ====================
 const unsigned char icon_ble_bits[] U8X8_PROGMEM = {0x18, 0x24, 0x42, 0x5A, 0x5A, 0x42, 0x24, 0x18};
 const unsigned char icon_sync_bits[] U8X8_PROGMEM = {0x00, 0x3C, 0x46, 0x91, 0x11, 0x26, 0x3C, 0x00};
@@ -164,6 +165,7 @@ bool alarmEnabled = false;
 bool isAlarmRinging = false;
 unsigned long lastAlarmCheckTime = 0;
 
+
 // ==================== 函式宣告 (Prototypes) ====================
 void updateDisplay();
 void drawStatusIcons();
@@ -174,7 +176,6 @@ void sendTimeSyncAck();
 void sendErrorReport(uint8_t errorCode);
 void initializeHistoryFile();
 void loadHistoryMetadata();
-void saveHistoryMetadata();
 void addDataToHistory(float temp, float hum, int16_t rssi);
 void loadHistoryWindow(int offset);
 void drawChart_OriginalStyle(const char* title, bool isTemp, bool isRssi);
@@ -398,21 +399,24 @@ void loop() {
         return;
     }
 
+    // [v21.4 修改] 鬧鐘響鈴邏輯 (移除 return，讓它與其他功能並存)
     if (isAlarmRinging) {
+        // 燈光閃爍 (非阻斷式)
         if ((millis() / 200) % 2 == 0) {
             pixels.fill(pixels.Color(255, 0, 0));
         } else {
             pixels.clear();
         }
         pixels.show();
+
+        // 按鍵停止鬧鐘
         if (digitalRead(BUTTON_CONFIRM_PIN) == LOW) {
             isAlarmRinging = false;
             pixels.clear();
             pixels.show();
             Serial.println("Alarm Stopped by user.");
-            delay(500);
+            delay(500); // 這裡用 delay 防彈跳是可以接受的
         }
-        return;
     }
 
     handleWiFiConnection();
@@ -420,9 +424,16 @@ void loop() {
     handleRealtimeData();
     updateSensorReadings();
     checkAlarm();
+
+    // 如果在鬧鐘響時不想讓旋鈕/按鍵干擾，可以在函式內部加判斷
     handleEncoder();
     handleEncoderPush();
-    handleButtons();
+
+    // 若正在響鈴，就不要執行一般的按鍵處理
+    if (!isAlarmRinging) {
+        handleButtons();
+    }
+
     handleBackButton();
 
     if (wifiState == WIFI_CONNECTED && millis() - lastNTPResync >= NTP_RESYNC_INTERVAL) {
@@ -792,6 +803,7 @@ void updateScreens() {
     updateDisplay();
 }
 void handleEncoder() {
+    if (isAlarmRinging) return; // Prevent interaction during alarm
     if (rotaryEncoder.encoderChanged()) {
         playTickSound();
         if (currentUIMode == UI_MODE_SYSTEM_MENU) {
@@ -807,6 +819,7 @@ void handleEncoder() {
     }
 }
 void handleEncoderPush() {
+    if (isAlarmRinging) return; // Prevent interaction during alarm
     if (digitalRead(ENCODER_PSH_PIN) == LOW && (millis() - lastEncoderPushTime > 300)) {
         lastEncoderPushTime = millis(); playConfirmSound();
         switch (currentUIMode) {
@@ -878,9 +891,6 @@ void loadHistoryMetadata() {
     historyCount = preferences.getInt("hist_count", 0);
     historyIndex = preferences.getInt("hist_index", 0);
     preferences.end();
-}
-void saveHistoryMetadata() {
-    // This function is now merged into addDataToHistory to reduce NVS writes
 }
 void initializeHistoryFile() {
     if (!SPIFFS.exists("/history.dat")) {
