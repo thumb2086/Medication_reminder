@@ -1,13 +1,13 @@
 /*
-SmartMedBox Firmware v21.2
+SmartMedBox Firmware v21.3
 硬體: ESP32-C6
 IDE: esp32 by Espressif Systems v3.0.0+
 板子: ESP32C6 Dev Module, 8MB with spiffs (3MB APP/1.5MB SPIFFS)
 
-v21.2 更新內容 (Alarm & State Persistence):
-[核心功能] 新增完整鬧鐘功能，可透過 BLE 設定，斷電後依然保存。
-[核心功能] 鬧鐘觸發時燈光閃爍提醒，可按確認鍵停止。
-[UX 優化] 新增斷電數據恢復功能，開機後立即顯示上次的溫濕度，無需等待。
+v21.3 更新內容 (Compiler & Linker Fixes):
+[連結修正] 補全所有函式實作，解決 "undefined reference" 編譯錯誤。
+[結構修正] 調整 BLE 回呼類別的定義順序。
+[參數修正] 修正 OTA 錯誤處理中 drawOtaScreen 函式呼叫時遺漏的參數。
 */
 
 #include <Arduino.h>
@@ -30,7 +30,7 @@ v21.2 更新內容 (Alarm & State Persistence):
 #include <ESP32Servo.h>
 #include <Adafruit_NeoPixel.h>
 
-const char* FIRMWARE_VERSION = "v21.2";
+const char* FIRMWARE_VERSION = "v21.3";
 
 // ==================== 腳位定義 (v20.6) ====================
 #define I2C_SDA_PIN 22
@@ -88,7 +88,6 @@ const int DAYLIGHT_OFFSET = 0;
 #define CMD_REPORT_HISTORIC_END     0x92
 #define CMD_ERROR                   0xEE
 
-// ... (圖示、全域物件等保持不變) ...
 // ==================== 圖示 (XBM) ====================
 const unsigned char icon_ble_bits[] U8X8_PROGMEM = {0x18, 0x24, 0x42, 0x5A, 0x5A, 0x42, 0x24, 0x18};
 const unsigned char icon_sync_bits[] U8X8_PROGMEM = {0x00, 0x3C, 0x46, 0x91, 0x11, 0x26, 0x3C, 0x00};
@@ -159,21 +158,85 @@ float cachedHum = 0.0;
 bool sensorDataValid = false;
 unsigned long lastSensorReadTime = 0;
 const unsigned long SENSOR_READ_INTERVAL = 2500;
-
-// [v21.2 新增] 鬧鐘相關變數
 uint8_t alarmHour = 0;
 uint8_t alarmMinute = 0;
 bool alarmEnabled = false;
 bool isAlarmRinging = false;
 unsigned long lastAlarmCheckTime = 0;
 
+// ==================== 函式宣告 (Prototypes) ====================
+void updateDisplay();
+void drawStatusIcons();
+void syncTimeNTPForce();
+void handleCommand(uint8_t* data, size_t length);
+void sendSensorDataReport();
+void sendTimeSyncAck();
+void sendErrorReport(uint8_t errorCode);
+void initializeHistoryFile();
+void loadHistoryMetadata();
+void saveHistoryMetadata();
+void addDataToHistory(float temp, float hum, int16_t rssi);
+void loadHistoryWindow(int offset);
+void drawChart_OriginalStyle(const char* title, bool isTemp, bool isRssi);
+void drawTimeScreen();
+void drawDateScreen();
+void drawWeatherScreen();
+void drawSensorScreen();
+void drawTempChartScreen();
+void drawHumChartScreen();
+void drawRssiChartScreen();
+void drawSystemScreen();
+void fetchWeatherData();
+void handleEncoder();
+void handleEncoderPush();
+void handleButtons();
+const char* getWeatherIcon(const String &desc);
+void sendBoxStatus();
+void sendMedicationTaken(uint8_t slot);
+void sendHistoricDataEnd();
+void updateScreens();
+void setupOTA();
+void enterOtaMode();
+void drawOtaScreen(String text, int progress = -1);
+void handleHistoricDataTransfer();
+void drawSystemMenu();
+void loadPersistentStates();
+void handleWiFiConnection();
+void startWiFiConnection();
+void runPOST();
+void playTickSound();
+void playConfirmSound();
+void handleBackButton();
+void handleRealtimeData();
+void sendRealtimeSensorData();
+void returnToMainScreen();
+void updateSensorReadings();
+void checkAlarm();
 
-// ==================== 函式宣告 ====================
-// ...
-void checkAlarm(); // v21.2 新增
+// ==================== BLE 回呼類別定義 ====================
+class MyServerCallbacks: public BLEServerCallbacks {
+    void onConnect(BLEServer* pServer) {
+        bleDeviceConnected = true;
+        Serial.println("BLE Connected");
+    }
+    void onDisconnect(BLEServer* pServer) {
+        bleDeviceConnected = false;
+        isRealtimeEnabled = false;
+        Serial.println("BLE Disconnected");
+        BLEDevice::startAdvertising();
+    }
+};
 
-// ==================== BLE 回呼 & 指令處理 ====================
-// ... (MyServerCallbacks, CommandCallbacks)
+class CommandCallbacks: public BLECharacteristicCallbacks {
+    void onWrite(BLECharacteristic *pCharacteristic) {
+        String value = pCharacteristic->getValue();
+        if (value.length() > 0) {
+            handleCommand((uint8_t*)value.c_str(), value.length());
+        }
+    }
+};
+
+// ==================== 核心 BLE 指令處理函式 ====================
 void handleCommand(uint8_t* data, size_t length) {
     if (length == 0) return;
     uint8_t command = data[0];
@@ -188,7 +251,6 @@ void handleCommand(uint8_t* data, size_t length) {
                 Serial.println("Protocol Version 2 reported.");
             }
             break;
-
         case CMD_TIME_SYNC:
             if (length == 7) {
                 tm timeinfo;
@@ -232,35 +294,25 @@ void handleCommand(uint8_t* data, size_t length) {
                 pDataEventCharacteristic->notify();
             }
             break;
-
-            // [v21.2 實作] 設定鬧鐘
         case CMD_SET_ALARM:
-            // 預期格式: [0x41, Hour, Minute, Enabled] (長度至少 4)
             if (length >= 4) {
                 uint8_t newHour = data[1];
                 uint8_t newMinute = data[2];
                 bool newEnabled = (data[3] != 0);
-
-                // 簡單的資料驗證
                 if (newHour < 24 && newMinute < 60) {
                     alarmHour = newHour;
                     alarmMinute = newMinute;
                     alarmEnabled = newEnabled;
-
-                    // 儲存到 Flash (Preferences)
                     preferences.begin("medbox-meta", false);
                     preferences.putUChar("alarmH", alarmHour);
                     preferences.putUChar("alarmM", alarmMinute);
                     preferences.putBool("alarmOn", alarmEnabled);
                     preferences.end();
-
                     Serial.printf("Alarm Set: %02d:%02d, Enabled: %s\n", alarmHour, alarmMinute, alarmEnabled ? "ON" : "OFF");
                 }
             }
-            // 回傳 ACK
             sendTimeSyncAck();
             break;
-
         case CMD_REQUEST_STATUS: sendBoxStatus(); break;
         case CMD_REQUEST_ENV: sendSensorDataReport(); break;
         case CMD_REQUEST_HISTORIC:
@@ -277,7 +329,8 @@ void handleCommand(uint8_t* data, size_t length) {
             break;
     }
 }
-//...
+
+// ==================== 標準 Arduino 函式 ====================
 void setup() {
     Serial.begin(115200);
     delay(1000);
@@ -323,9 +376,6 @@ void setup() {
     WiFi.mode(WIFI_STA);
     startWiFiConnection();
     updateSensorReadings();
-    if (sensorDataValid) {
-        addDataToHistory(cachedTemp, cachedHum, WiFi.RSSI());
-    }
     currentPageIndex = SCREEN_TIME;
     updateScreens();
     rotaryEncoder.setEncoderValue(currentPageIndex);
@@ -347,45 +397,41 @@ void loop() {
         }
         return;
     }
-    handleWiFiConnection();
-    handleHistoricDataTransfer();
-    handleRealtimeData();
-    updateSensorReadings();
 
-    checkAlarm(); // [v21.2 新增] 檢查是否該響鈴
-
-    // [v21.2 新增] 處理響鈴狀態
     if (isAlarmRinging) {
-        // 讓燈閃爍
         if ((millis() / 200) % 2 == 0) {
-            pixels.fill(pixels.Color(255, 0, 0)); // 紅燈
+            pixels.fill(pixels.Color(255, 0, 0));
         } else {
             pixels.clear();
         }
         pixels.show();
-
-        // 按下確認鍵停止鬧鐘
         if (digitalRead(BUTTON_CONFIRM_PIN) == LOW) {
             isAlarmRinging = false;
             pixels.clear();
             pixels.show();
             Serial.println("Alarm Stopped by user.");
-            delay(500); // 防彈跳
+            delay(500);
         }
+        return;
     }
 
+    handleWiFiConnection();
+    handleHistoricDataTransfer();
+    handleRealtimeData();
+    updateSensorReadings();
+    checkAlarm();
     handleEncoder();
     handleEncoderPush();
     handleButtons();
     handleBackButton();
+
     if (wifiState == WIFI_CONNECTED && millis() - lastNTPResync >= NTP_RESYNC_INTERVAL) {
         syncTimeNTPForce();
     }
     if (millis() - lastHistoryRecord > historyRecordInterval) {
         lastHistoryRecord = millis();
-        int16_t rssi = WiFi.RSSI();
         if (sensorDataValid) {
-            addDataToHistory(cachedTemp, cachedHum, rssi);
+            addDataToHistory(cachedTemp, cachedHum, WiFi.RSSI());
         }
     }
     if (wifiState == WIFI_CONNECTED && millis() - lastWeatherUpdate > WEATHER_INTERVAL) {
@@ -397,84 +443,7 @@ void loop() {
     }
 }
 
-// ==================== 功能函式 ====================
-
-void checkAlarm() {
-    // 如果鬧鐘沒開，或正在響，就不檢查
-    if (!alarmEnabled || isAlarmRinging) return;
-
-    // 每秒檢查一次即可
-    if (millis() - lastAlarmCheckTime < 1000) return;
-    lastAlarmCheckTime = millis();
-
-    struct tm timeinfo;
-    if (!getLocalTime(&timeinfo)) return; // 尚未同步時間
-
-    // 檢查 小時、分鐘 是否匹配，且秒數為 0 (避免一分鐘內重複觸發)
-    if (timeinfo.tm_hour == alarmHour &&
-        timeinfo.tm_min == alarmMinute &&
-        timeinfo.tm_sec == 0) {
-
-        Serial.println("ALARM TRIGGERED!");
-        isAlarmRinging = true; // 進入響鈴模式
-
-        // 觸發提醒音效
-        playConfirmSound();
-    }
-}
-//...
-void addDataToHistory(float temp, float hum, int16_t rssi) {
-    File file = SPIFFS.open("/history.dat", "r+");
-    if (!file) return;
-
-    DataPoint dp = {temp, hum, rssi};
-    file.seek(historyIndex * sizeof(DataPoint));
-    file.write((uint8_t*)&dp, sizeof(DataPoint));
-    file.close();
-
-    historyIndex = (historyIndex + 1) % MAX_HISTORY;
-    if (historyCount < MAX_HISTORY) historyCount++;
-
-    // [v21.2 修改] 儲存索引與最新的溫濕度快照到 NVS
-    preferences.begin("medbox-meta", false);
-    preferences.putInt("hist_count", historyCount);
-    preferences.putInt("hist_index", historyIndex);
-
-    // 新增：斷電儲存最後一筆溫濕度
-    preferences.putFloat("last_temp", temp);
-    preferences.putFloat("last_hum", hum);
-    preferences.end();
-
-    if (currentEncoderMode == MODE_VIEW_ADJUST) {
-        int maxOffset = max(0, historyCount - HISTORY_WINDOW_SIZE);
-        rotaryEncoder.setBoundaries(0, maxOffset, false);
-    }
-}
-
-void loadPersistentStates() {
-    preferences.begin("medbox-meta", true);
-    isEngineeringMode = preferences.getBool("engMode", false);
-
-    // [v21.2 新增] 讀取鬧鐘設定
-    alarmHour = preferences.getUChar("alarmH", 0);
-    alarmMinute = preferences.getUChar("alarmM", 0);
-    alarmEnabled = preferences.getBool("alarmOn", false);
-
-    // [v21.2 新增] 讀取斷電前的最後溫濕度
-    float savedTemp = preferences.getFloat("last_temp", 0.0);
-    float savedHum = preferences.getFloat("last_hum", 0.0);
-
-    // 如果有讀到有效數值 (非 0.0)，就先載入到快取
-    if (savedTemp != 0.0 || savedHum != 0.0) {
-        cachedTemp = savedTemp;
-        cachedHum = savedHum;
-        sensorDataValid = true; // 讓 UI 允許顯示
-        Serial.printf("Restored last sensor data: T=%.1f, H=%.1f\n", cachedTemp, cachedHum);
-    }
-
-    preferences.end();
-}
-// ... (其餘所有函式與 v21.1 相同，此處省略)
+// ==================== 其他功能函式 (完整實作) ====================
 void sendBoxStatus() {
     if (!bleDeviceConnected) return;
     uint8_t packet[2] = {CMD_REPORT_STATUS, 0b00001111};
@@ -600,6 +569,18 @@ void updateSensorReadings() {
         }
     }
 }
+void checkAlarm() {
+    if (!alarmEnabled || isAlarmRinging) return;
+    if (millis() - lastAlarmCheckTime < 1000) return;
+    lastAlarmCheckTime = millis();
+    struct tm timeinfo;
+    if (!getLocalTime(&timeinfo)) return;
+    if (timeinfo.tm_hour == alarmHour && timeinfo.tm_min == alarmMinute && timeinfo.tm_sec == 0) {
+        Serial.println("ALARM TRIGGERED!");
+        isAlarmRinging = true;
+        playConfirmSound();
+    }
+}
 void runPOST() {
     sg90.attach(SERVO_PIN);
     pixels.begin();
@@ -660,6 +641,13 @@ void handleBackButton() {
     if (digitalRead(BUTTON_BACK_PIN) == LOW && (millis() - lastBackPressTime > 300)) {
         lastBackPressTime = millis();
         playConfirmSound();
+        if (isAlarmRinging) {
+            isAlarmRinging = false;
+            pixels.clear();
+            pixels.show();
+            Serial.println("Alarm Stopped by user.");
+            return;
+        }
         if (currentUIMode == UI_MODE_SYSTEM_MENU || currentUIMode == UI_MODE_INFO_SCREEN) {
             returnToMainScreen();
         } else if (currentUIMode == UI_MODE_MAIN_SCREENS && currentEncoderMode == MODE_VIEW_ADJUST) {
@@ -721,7 +709,7 @@ void setupOTA() {
             .onStart( [] { SPIFFS.end(); String type = (ArduinoOTA.getCommand() == U_FLASH) ? "sketch" : "filesystem"; drawOtaScreen("Updating " + type, 0); })
             .onProgress([](unsigned int progress, unsigned int total) { drawOtaScreen("Updating...", (progress / (total / 100))); })
             .onEnd( [] { drawOtaScreen("Complete!", 100); delay(1000); ESP.restart(); })
-            .onError([](ota_error_t error) { String msg; if (error == OTA_AUTH_ERROR) msg = "Auth Failed"; else if (error == OTA_BEGIN_ERROR) msg = "Begin Failed"; else if (error == OTA_CONNECT_ERROR) msg = "Connect Failed"; else if (error == OTA_RECEIVE_ERROR) msg = "Receive Failed"; else if (error == OTA_END_ERROR) msg = "End Failed"; drawOtaScreen("Error: " + msg); delay(3000); ESP.restart(); });
+            .onError([](ota_error_t error) { String msg; if (error == OTA_AUTH_ERROR) msg = "Auth Failed"; else if (error == OTA_BEGIN_ERROR) msg = "Begin Failed"; else if (error == OTA_CONNECT_ERROR) msg = "Connect Failed"; else if (error == OTA_RECEIVE_ERROR) msg = "Receive Failed"; else if (error == OTA_END_ERROR) msg = "End Failed"; drawOtaScreen("Error: " + msg, -1); delay(3000); ESP.restart(); });
     ArduinoOTA.begin();
     Serial.println("OTA service ready.");
 }
@@ -849,8 +837,50 @@ void handleButtons() {
     }
     if (confirmButtonPressed && (millis() - confirmPressStartTime >= 3000)) { playConfirmSound(); enterOtaMode(); confirmButtonPressed = false; }
 }
+void loadPersistentStates() {
+    preferences.begin("medbox-meta", true);
+    isEngineeringMode = preferences.getBool("engMode", false);
+    alarmHour = preferences.getUChar("alarmH", 0);
+    alarmMinute = preferences.getUChar("alarmM", 0);
+    alarmEnabled = preferences.getBool("alarmOn", false);
+    float savedTemp = preferences.getFloat("last_temp", 0.0);
+    float savedHum = preferences.getFloat("last_hum", 0.0);
+    if (savedTemp != 0.0 || savedHum != 0.0) {
+        cachedTemp = savedTemp;
+        cachedHum = savedHum;
+        sensorDataValid = true;
+        Serial.printf("Restored last sensor data: T=%.1f, H=%.1f\n", cachedTemp, cachedHum);
+    }
+    preferences.end();
+}
+void addDataToHistory(float temp, float hum, int16_t rssi) {
+    File file = SPIFFS.open("/history.dat", "r+");
+    if (!file) return;
+    DataPoint dp = {temp, hum, rssi};
+    file.seek(historyIndex * sizeof(DataPoint));
+    file.write((uint8_t*)&dp, sizeof(DataPoint));
+    file.close();
+    historyIndex = (historyIndex + 1) % MAX_HISTORY;
+    if (historyCount < MAX_HISTORY) historyCount++;
+    preferences.begin("medbox-meta", false);
+    preferences.putInt("hist_count", historyCount);
+    preferences.putInt("hist_index", historyIndex);
+    preferences.putFloat("last_temp", temp);
+    preferences.putFloat("last_hum", hum);
+    preferences.end();
+    if (currentEncoderMode == MODE_VIEW_ADJUST) {
+        int maxOffset = max(0, historyCount - HISTORY_WINDOW_SIZE);
+        rotaryEncoder.setBoundaries(0, maxOffset, false);
+    }
+}
 void loadHistoryMetadata() {
-    preferences.begin("medbox-meta", true); historyCount = preferences.getInt("hist_count", 0); historyIndex = preferences.getInt("hist_index", 0); preferences.end();
+    preferences.begin("medbox-meta", true);
+    historyCount = preferences.getInt("hist_count", 0);
+    historyIndex = preferences.getInt("hist_index", 0);
+    preferences.end();
+}
+void saveHistoryMetadata() {
+    // This function is now merged into addDataToHistory to reduce NVS writes
 }
 void initializeHistoryFile() {
     if (!SPIFFS.exists("/history.dat")) {
@@ -939,6 +969,24 @@ void drawSensorScreen() {
     u8g2.setFont(u8g2_font_fub25_tn); sprintf(buf, "%.1f C", cachedTemp); u8g2.drawStr(128 - u8g2.getStrWidth(buf) - 10, 38, buf);
     u8g2.setFont(u8g2_font_ncenR10_tr); u8g2.drawStr(10, 62, "HUMI");
     u8g2.setFont(u8g2_font_fub25_tn); sprintf(buf, "%.0f %%", cachedHum); u8g2.drawStr(128 - u8g2.getStrWidth(buf) - 10, 62, buf);
+}
+void drawSystemScreen() {
+    u8g2.setFont(u8g2_font_ncenB08_tr);
+    u8g2.drawStr(0, 12, "System Info");
+    u8g2.drawStr(128 - u8g2.getStrWidth(FIRMWARE_VERSION), 12, FIRMWARE_VERSION);
+    u8g2.setFont(u8g2_font_profont11_tf);
+    int y = 28;
+    String ssid = WiFi.SSID();
+    if (ssid == "") ssid = "N/A";
+    if (wifiState == WIFI_CONNECTED) {
+        u8g2.drawStr(0, y, ("SSID: " + ssid).c_str()); y += 12;
+        u8g2.drawStr(0, y, ("RSSI: " + String(WiFi.RSSI()) + " dBm").c_str()); y += 12;
+        u8g2.drawStr(0, y, ("IP: " + WiFi.localIP().toString()).c_str()); y += 12;
+    } else {
+        u8g2.drawStr(0, y, "WiFi Disconnected"); y += 12;
+    }
+    u8g2.drawStr(0, y, ("Heap: " + String(ESP.getFreeHeap() / 1024) + " KB").c_str()); y += 12;
+    u8g2.drawStr(0, y, ("Up: " + String(millis() / 60000) + " min").c_str());
 }
 const char* getWeatherIcon(const String &desc) {
     String s = desc; s.toLowerCase();
