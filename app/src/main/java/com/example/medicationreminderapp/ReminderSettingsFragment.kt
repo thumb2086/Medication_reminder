@@ -12,10 +12,14 @@ import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.preference.PreferenceManager
 import com.example.medicationreminderapp.databinding.FragmentReminderSettingsBinding
 import com.example.medicationreminderapp.databinding.MedicationInputItemBinding
 import com.google.android.material.chip.Chip
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -77,15 +81,28 @@ class ReminderSettingsFragment : Fragment() {
     }
 
     private fun setupObservers() {
-        viewModel.bleStatus.observe(viewLifecycleOwner) { status ->
-            val isConnected = status.contains("Connected")
-            binding.bleStatusTextView.text = status
-            binding.connectButton.visibility = if (isConnected) View.GONE else View.VISIBLE
-            binding.disconnectButton.visibility = if (isConnected) View.VISIBLE else View.GONE
-        }
-        viewModel.medicationList.observe(viewLifecycleOwner) {
-            setupMedicationCountSpinner()
-            updateAllSlotSpinners()
+        viewLifecycleOwner.lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.isBleConnected.collect { isConnected ->
+                        binding.connectButton.visibility = if (isConnected) View.GONE else View.VISIBLE
+                        binding.disconnectButton.visibility = if (isConnected) View.VISIBLE else View.GONE
+                    }
+                }
+
+                launch {
+                    viewModel.bleStatus.collect { status ->
+                        binding.bleStatusTextView.text = status
+                    }
+                }
+
+                launch {
+                    viewModel.medicationList.collect { 
+                        setupMedicationCountSpinner()
+                        updateAllSlotSpinners()
+                    }
+                }
+            }
         }
     }
 
@@ -119,7 +136,7 @@ class ReminderSettingsFragment : Fragment() {
     }
 
     private fun showMedicationSelectionDialog(isForEdit: Boolean) {
-        val medications = viewModel.medicationList.value ?: emptyList()
+        val medications = viewModel.medicationList.value
         if (medications.isEmpty()) {
             Toast.makeText(requireContext(), getString(R.string.no_medication_to_modify), Toast.LENGTH_SHORT).show()
             return
@@ -176,6 +193,9 @@ class ReminderSettingsFragment : Fragment() {
             .setMessage(getString(R.string.confirm_delete_message, med.name))
             .setPositiveButton(R.string.delete) { _, _ ->
                 alarmScheduler.cancel(med)
+                // Sync with ESP32: Disable alarm for this slot
+                syncAlarmToEsp32(med.slotNumber, 0, 0, false)
+                
                 viewModel.deleteMedication(med)
                 Toast.makeText(requireContext(), getString(R.string.medication_deleted, med.name), Toast.LENGTH_SHORT).show()
             }
@@ -186,9 +206,9 @@ class ReminderSettingsFragment : Fragment() {
     private fun getAvailableSlots(): List<Int> {
         val allSlots = (1..8).toSet()
         val occupiedSlots = viewModel.medicationList.value
-            ?.map { it.slotNumber }
-            ?.filter { it != editingMedication?.slotNumber }
-            ?.toSet() ?: emptySet()
+            .map { it.slotNumber }
+            .filter { it != editingMedication?.slotNumber }
+            .toSet()
         return (allSlots - occupiedSlots).toList().sorted()
     }
 
@@ -340,6 +360,18 @@ class ReminderSettingsFragment : Fragment() {
         if (updatedMed != null) {
             viewModel.updateMedication(updatedMed)
             alarmScheduler.schedule(updatedMed) // Schedule new alarms
+            
+            // Sync with ESP32: Set alarm for this slot
+            // Note: We only sync the FIRST time for simplicity, assuming one medication per slot usually has one primary time
+            // or ESP32 handles only one alarm per slot in this simple protocol.
+            // For better support, we'd need to iterate all times or ESP32 needs to support multiple alarms per slot.
+            // Based on "setupCard", times are stored in a map. Let's pick the first one.
+            val firstTimeInMillis = updatedMed.times.values.firstOrNull()
+            if (firstTimeInMillis != null) {
+                val cal = Calendar.getInstance().apply { timeInMillis = firstTimeInMillis }
+                syncAlarmToEsp32(updatedMed.slotNumber, cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), true)
+            }
+
             Toast.makeText(requireContext(), getString(R.string.medication_updated, updatedMed.name), Toast.LENGTH_SHORT).show()
             resetForm()
         }
@@ -365,9 +397,25 @@ class ReminderSettingsFragment : Fragment() {
 
         if (allFormsValid) {
             viewModel.addMedications(newMedications)
-            newMedications.forEach { alarmScheduler.schedule(it) }
+            newMedications.forEach { med -> 
+                alarmScheduler.schedule(med)
+                
+                // Sync with ESP32
+                val firstTimeInMillis = med.times.values.firstOrNull()
+                if (firstTimeInMillis != null) {
+                    val cal = Calendar.getInstance().apply { timeInMillis = firstTimeInMillis }
+                    syncAlarmToEsp32(med.slotNumber, cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), true)
+                }
+            }
             Toast.makeText(requireContext(), getString(R.string.medications_added_successfully), Toast.LENGTH_SHORT).show()
             resetForm()
+        }
+    }
+
+    private fun syncAlarmToEsp32(slot: Int, hour: Int, minute: Int, enable: Boolean) {
+        val activity = activity as? MainActivity
+        if (activity?.bluetoothLeManager?.isConnected() == true) {
+            activity.bluetoothLeManager?.setAlarm(slot, hour, minute, enable)
         }
     }
 
@@ -378,7 +426,6 @@ class ReminderSettingsFragment : Fragment() {
         val endDate = cardState.endDate
         val times = cardState.times
         val dosage = cardBinding.dosageSlider.value
-        val notes = cardBinding.notesEditText.text.toString()
 
         if (name.isBlank() || slot == null || startDate == null || endDate == null) {
             Toast.makeText(requireContext(), getString(R.string.please_fill_all_fields), Toast.LENGTH_LONG).show()
@@ -402,10 +449,6 @@ class ReminderSettingsFragment : Fragment() {
         val totalPills = days * dosesPerDay * pillsPerDose
 
         val timesMap = times.values.mapIndexed { index, calendar -> index to calendar.timeInMillis }.toMap()
-
-        if (notes.isNotBlank()) {
-            viewModel.notesMap.value?.put(name, notes)
-        }
 
         return Medication(
             id = medicationId,

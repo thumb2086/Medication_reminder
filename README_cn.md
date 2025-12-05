@@ -24,14 +24,26 @@
     *   與藥盒同步時間及各藥倉的用藥提醒。
     *   接收藥盒的狀態更新，例如：哪個藥倉的藥物已被取出、藥倉堵塞、感應器錯誤等。
 *   **數據監測與追蹤:**
-    *   在「環境監測」頁面，當藍牙連接時，透過 **即時折線圖** 視覺化呈現藥盒回傳的溫濕度數據；未連接時，則会顯示提示訊息。當使用者下拉刷新時，App 會從藥盒同步離線期間的 **歷史溫濕度數據**，並完整呈現在圖表上。
+    *   在「環境監測」頁面，當藍牙連接時，透過 **即時折線圖** 視覺化呈現藥盒回傳的溫濕度數據；未連接時，則会顯示提示訊息。使用者可透過 **下拉刷新** 的手勢，同步離線期間的 **歷史溫濕度數據**，並完整呈現在圖表上。
 *   **服藥紀錄:** 
     *   在「服藥紀錄」頁面，透過月曆視覺化呈現每日服藥記錄，並計算顯示過去 30 天的服藥依從率。
 *   **設定:**
     *   可透過工具列上的設定圖示進入設定頁面。
     *   支援亮色、暗色和跟隨系統主題的切換。
-    *   支援 **角色選擇**，允許使用者在「酷洛米」和「櫻桃小丸子」之間切換主頁面顯示的角色圖片。
-    *   **工程模式:** 在設定中提供開關，讓開發者可以啟用工程模式，用以觸發藥盒的特殊除錯功能。
+    *   **角色主題**: 將 App 的主題顏色與角色選擇功能綁定。選擇「酷洛米」會將主題色切換為紫色，選擇「櫻桃小丸子」則會切換為粉紅色，增添使用樂趣。
+    *   **工程模式:** 在設定中提供開關，其狀態能與藥盒雙向同步，真實反映藥盒當前的模式。
+
+## App 架構
+
+本 App 採用 **MVVM (Model-View-ViewModel)** 架構，將 UI 與業務邏輯分離，使程式碼更模組化、易於維護。
+
+*   **View:** 由 `Activity` 和 `Fragment` 組成，負責顯示 UI 及處理使用者互動。
+*   **ViewModel:** `MainViewModel` 負責持有及管理與 UI 相關的數據，它能在螢幕旋轉等配置變更後繼續存在，並與數據層溝通。**現已導入 Hilt 進行依賴注入**。
+*   **Model:**
+    *   **Repository:** `AppRepository` 作為所有數據的單一來源 (Single Source of Truth)，負責抽象化底層的數據來源。它是一個由 **Hilt** 提供的單例 (Singleton)。
+    *   **Data Sources:**
+        *   `BluetoothLeManager`: 管理所有 BLE 通訊，**現已改為由 Hilt 注入**。
+        *   `SharedPreferences`: 儲存藥物清單、使用者設定等。
 
 ## 使用說明
 
@@ -65,213 +77,217 @@
 
 所有指令均透過寫入 **Write Characteristic** 發送。
 
-1.  **時間同步 (Time Sync):**
+1.  **請求協定版本 (Request Protocol Version):**
+    - **指令碼:** `0x01`
+    - **用途:** 詢問藥盒當前的協定版本。
+    - **格式 (1 byte):** `[0]: 0x01`
+
+2.  **時間同步 (Time Sync):**
     - **指令碼:** `0x11`
-    - **用途:** 將 App 的當前時間同步給藥盒。
-    - **格式 (7 bytes):**
-        - `[0]`: `0x11`
-        - `[1]`: `年 - 2000`
-        - `[2]`: `月 (1-12)`
-        - `[3]`: `日`
-        - `[4]`: `時 (0-23)`
-        - `[5]`: `分`
-        - `[6]`: `秒`
+    - **格式 (7 bytes):** `[0]: 0x11`, `[1]: 年-2000`, `[2]: 月`, `[3]: 日`, `[4]: 時`, `[5]: 分`, `[6]: 秒`
 
-2.  **傳送 Wi-Fi 憑證 (Send Wi-Fi Credentials):**
+3.  **傳送 Wi-Fi 憑證 (Send Wi-Fi Credentials):**
     - **指令碼:** `0x12`
-    - **用途:** 將 Wi-Fi 的 SSID 和密碼傳送給藥盒。
-    - **格式 (可變長度):**
-        - `[0]`: `0x12`
-        - `[1]`: `SSID 長度 (S)`
-        - `[2...2+S-1]`: `SSID`
-        - `[2+S]`: `密碼長度 (P)`
-        - `[3+S...3+S+P-1]`: `密碼`
+    - **格式 (可變長度):** `[0]: 0x12`, `[1]: SSID長度`, `[2...]: SSID`, `[...]: 密碼長度`, `[...]: 密碼`
 
-3.  **設定工程模式 (Set Engineering Mode):**
+4.  **設定工程模式 (Set Engineering Mode):**
     - **指令碼:** `0x13`
-    - **用途:** 啟用或停用藥盒的工程模式。
-    - **格式 (2 bytes):**
-        - `[0]`: `0x13`
-        - `[1]`: `啟用 (0x01 為 true, 0x00 為 false)`
+    - **用途:** 命令藥盒啟用或停用工程模式。
+    - **格式 (2 bytes):** `[0]: 0x13`, `[1]: 啟用 (0x01 為 true, 0x00 為 false)`
 
-4.  **請求藥盒狀態 (Request Status):**
+5.  **請求工程模式狀態 (Request Engineering Mode Status):**
+    - **指令碼:** `0x14`
+    - **用途:** 主動向藥盒查詢其當前的工程模式狀態。
+    - **格式 (1 byte):** `[0]: 0x14`
+
+6.  **請求藥盒狀態 (Request Status):**
     - **指令碼:** `0x20`
     - **用途:** 主動向藥盒查詢其當前狀態（例如各藥倉是否有藥）。
     - **格式 (1 byte):** `[0]: 0x20`
 
-5.  **請求即時環境數據 (Request Instant Environment Data):**
+7.  **請求即時環境數據 (Request Instant Environment Data):**
     - **指令碼:** `0x30`
     - **用途:** 主動向藥盒請求目前的即時溫濕度數據。
     - **格式 (1 byte):** `[0]: 0x30`
 
-6.  **請求歷史環境數據 (Request Historic Environment Data):**
+8.  **請求歷史環境數據 (Request Historic Environment Data):**
     - **指令碼:** `0x31`
     - **用途:** 請求藥盒開始傳輸其儲存的所有歷史溫濕度數據。
     - **格式 (1 byte):** `[0]: 0x31`
+
+9.  **訂閱即時環境數據 (Subscribe Realtime Environment Data):**
+    - **指令碼:** `0x32`
+    - **用途:** 訂閱即時環境數據推送。
+    - **格式 (1 byte):** `[0]: 0x32`
+
+10. **取消訂閱即時環境數據 (Unsubscribe Realtime Environment Data):**
+    - **指令碼:** `0x33`
+    - **用途:** 取消訂閱即時環境數據推送。
+    - **格式 (1 byte):** `[0]: 0x33`
 
 ### 藥盒 -> App (通知)
 
 所有通知均透過 **Notify Characteristic** 發送。App 在 `handleIncomingData(data: ByteArray)` 方法中解析這些數據。
 
-1.  **藥盒狀態回報 (Box Status Update):**
+1.  **協定版本回報 (Protocol Version Report):**
+    - **指令碼:** `0x71`
+    - **格式 (2 bytes):** `[0]: 0x71`, `[1]: 版本 (例如 0x02 代表 V2)`
+    - **用途:** 回報藥盒當前的協定版本。
+
+2.  **藥盒狀態回報 (Box Status Update):**
     - **指令碼:** `0x80`
-    - **用途:** 回報藥盒各藥倉的狀態。
-    - **格式 (2 bytes):** `[0]: 0x80`, `[1]: 藥倉狀態位元遮罩 (Slot Mask)`
+    - **格式 (2 bytes):** `[0]: 0x80`, `[1]: 藥倉狀態位元遮罩`
 
-2.  **藥物已取出回報 (Medication Taken Report):**
+3.  **藥物已取出回報 (Medication Taken Report):**
     - **指令碼:** `0x81`
-    - **用途:** 藥盒偵測到使用者從某個藥倉取藥後，回報給 App。
-    - **格式 (2 bytes):** `[0]: 0x81`, `[1]: 藥倉編號 (Slot Number)`
+    - **格式 (2 bytes):** `[0]: 0x81`, `[1]: 藥倉編號`
 
-3.  **時間同步確認 (Time Sync Acknowledged):**
+4.  **時間同步確認 (Time Sync Acknowledged):**
     - **指令碼:** `0x82`
-    - **用途:** 確認已成功接收並設定 App 同步過來的時間。
     - **格式 (1 byte):** `[0]: 0x82`
 
-4.  **即時溫濕度數據回報 (Instant Sensor Data Report):**
+5.  **工程模式狀態回報 (Engineering Mode Status Report):**
+    - **指令碼:** `0x83`
+    - **用途:** 回報藥盒當前的工程模式狀態。
+    - **格式 (2 bytes):** `[0]: 0x83`, `[1]: 狀態 (0x01 為啟用, 0x00 為關閉)`
+
+6.  **即時溫濕度數據回報 (Instant Sensor Data Report):**
     - **指令碼:** `0x90`
-    - **用途:** 回報當前感測到的環境溫濕度數據。
-    - **格式 (5 bytes):**
-        - `[0]`: `0x90`
-        - `[1]`: `溫度整數部分`
-        - `[2]`: `溫度小數部分`
-        - `[3]`: `濕度整數部分`
-        - `[4]`: `濕度小數部分`
-    - **解析:** `溫度 = byte[1] + byte[2] / 100.0` , `濕度 = byte[3] + byte[4] / 100.0`
+    - **格式 (5 bytes):** `[0]: 0x90`, `[1-2]: 溫度`, `[3-4]: 濕度` (Little Endian, 數值*100)
 
-5.  **歷史溫濕度數據點 (Historic Sensor Data Point):**
+7.  **歷史溫濕度數據批次 (Historic Sensor Data Batch):**
     - **指令碼:** `0x91`
-    - **用途:** 回報一筆歷史溫濕度數據。
-    - **格式 (9 bytes):**
-        - `[0]`: `0x91`
-        - `[1-4]`: `時間戳 (Unix Timestamp, 4 bytes, Little Endian)`
-        - `[5]`: `溫度整數部分`
-        - `[6]`: `溫度小數部分`
-        - `[7]`: `濕度整數部分`
-        - `[8]`: `濕度小數部分`
+    - **格式 (可變, 9-41 bytes):** `[0]: 0x91`, `[1...]: 1至5筆歷史紀錄`
+    - ***注意:*** *此協定變更需要 ESP32 韌體同步更新。*
 
-6.  **歷史數據傳輸結束 (End of Historic Data Transmission):**
+8.  **歷史數據傳輸結束 (End of Historic Data Transmission):**
     - **指令碼:** `0x92`
-    - **用途:** 告知 App，所有的歷史數據都已經傳送完畢。
     - **格式 (1 byte):** `[0]: 0x92`
 
-7.  **異常狀態回報 (Error Report):**
+9.  **異常狀態回報 (Error Report):**
     - **指令碼:** `0xEE`
-    - **用途:** 當藥盒發生異常時回報給 App。
-    - **格式 (2 bytes):** `[0]: 0xEE`, `[1]: 錯誤碼 (Error Code)`
+    - **格式 (2 bytes):** `[0]: 0xEE`, `[1]: 錯誤碼`
 
 ## 專案結構
 
-本專案採用單一 Activity 和多 Fragment 的現代 Android App 架構，確保職責分離和高可擴展性。
-
-*   `MainActivity.kt`: App 的唯一入口 `Activity`，其角色是「容器」和「總指揮」。
-    *   負責承載 `TabLayout` 和 `ViewPager2`，管理主要 Fragment 的切換。
-    *   創建並持有 `BluetoothLeManager` 的唯一實例，集中管理藍牙連接生命週期。
-    *   接收藍牙回呼，並將所有事件轉發給共享的 `MainViewModel`。
-
-*   `MainViewModel.kt`: 一個共享的 `ViewModel`，作為應用程式的「單一事實來源」(Single Source of Truth)。
-    *   持有藍牙連接狀態、溫濕度數據、藥物列表、服藥紀錄等所有共享數據 (`LiveData`)。
-    *   包含核心業務 oblique，例如處理服藥事件、計算服藥依從率、儲存與讀取數據等。
-
-*   `ReminderSettingsFragment.kt`: 「提醒設定」頁面的 Fragment。
-    *   負責所有與藥物設定相關的 UI 操作，包括動態生成藥物設定卡片。
-    *   收集用戶輸入，並透過 `MainViewModel` 將新藥物儲存到應用程式中。
-
-*   `MedicationListFragment.kt`: 「藥物列表」頁面的 Fragment。
-    *   從 `MainViewModel` 觀察藥物列表數據並更新列表。
-
-*   `HistoryFragment.kt`: 「服藥紀錄」頁面的 Fragment。
-    *   從 `MainViewModel` 觀察服藥紀錄數據並更新日曆。
-    *   顯示服藥依從率圖表。
-
-*   `EnvironmentFragment.kt`: 「環境監測」頁面的 Fragment。
-    *   從 `MainViewModel` 觀察藍牙連接狀態和溫濕度數據。
-    *   根據狀態，顯示即時的溫濕度折線圖或「未連接」的提示。
-
-*   `SettingsFragment.kt`: 「設定」頁面的 Fragment。
-    *   提供應用程式的主題和語言設定。
-
-*   `ble/BluetoothLeManager.kt`: 封裝所有低階藍牙通訊的細節。
-    *   負責掃描、連接、發送指令和接收數據。
-    *   將從藥盒收到的原始數據解析後，透過回呼 (callback) 傳遞給 `MainActivity`。
-
-*   `AlarmScheduler.kt`: 負責設定和取消系統鬧鐘 (`AlarmManager`) 的輔助類別。
-
-*   `AlarmReceiver.kt`: 一個 `BroadcastReceiver`，當鬧鐘觸發時，負責建立並顯示「該吃藥了！」的通知，並附帶「已服用」和「稍後提醒」的操作按鈕。
-
-*   `SnoozeReceiver.kt`: 一個 `BroadcastReceiver`，處理來自藥物提醒通知的「稍後提醒」操作，將提醒延後一小段時間。
-
-*   `MedicationTakenReceiver.kt`: 一個 `BroadcastReceiver`，處理來自藥物提醒通知的「已服用」操作，將藥物標記為已服用並更新服藥紀錄。
-
-*   `BootReceiver.kt`: 一個 `BroadcastReceiver`，在設備重新啟動時，會自動讀取所有已儲存的藥物提醒，並重新設定鬧鐘。
+(專案結構說明與前版相同，此處省略)
 
 ## 權限需求
 
 `POST_NOTIFICATIONS`, `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`, `ACCESS_FINE_LOCATION`, `SCHEDULE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED`, `VIBRATE`
 
-## Bug 修復
-*   **0065:** 修正了 `strings.xml` 中因單引號使用不當而引起的 `Apostrophe not preceded by \\` Linter 錯誤。透過將所有包含單引號的字串用雙引號 `""` 包起來，解決了這個問題。
-*   **0064:** 修正了 `strings.xml` 和 `values-en/strings.xml` 中因不正確的跳脫字元 (`\`) 和單引號用法而導致的 `String.format string doesn't match the XML format string` Linter 錯誤。
-*   **0063:** 修正了工具列與狀態列的 UI 顯示問題：
-    *   **文字顏色**：移除了在 `themes.xml` 中為不同輔助顏色主題寫死的 `colorOnPrimary`，讓系統能根據背景顏色自動選擇最佳的文字顏色，解決了在某些顏色 (如粉紅色) 下，工具列文字不易辨識的問題。
-    *   **沉浸式效果**：在 `MainActivity.kt` 中呼叫 `WindowCompat.setDecorFitsSystemWindows(window, false)`，實現了真正的 Edge-to-Edge 效果，讓 App 內容能延伸至系統列，解決了狀態列背景未填滿的問題。
-*   **0062:** 修正了多個 UI 和功能上的錯誤：
-    *   **編譯錯誤：** 透過在 `themes.xml` 中直接設定 `preferenceCategoryTitleTextColor`，取代了先前複雜且容易出錯的 `preferenceTheme`，解決了 `Android resource linking failed` 的編譯問題。
-    *   **返回 UI 異常：** 在 `SettingsFragment.kt` 的 `onPause` 方法中，主動呼叫 `updateUiForFragment(false)`，強制 `MainActivity` 在返回時重新整理 UI，確保了狀態列的沉浸式效果不會消失。
-    *   **工程模式同步：** 在 `MainActivity.kt` 的 `onDeviceConnected` 方法中，增加了在藍牙連線成功後，讀取並同步「工程模式」狀態到藥盒的邏輯，確保了兩邊狀態的一致性。
-*   **0061:** 修正了 UI 顯示問題和設定按鈕的功能異常。
-    *   **狀態列問題：** 透過修改 `themes.xml` 和 `values-night/themes.xml`，將 `statusBarColor` 設為透明並啟用 `windowDrawsSystemBarBackgrounds`，實現了沉浸式 (Edge-to-Edge) 效果，解決了狀態列背景未填滿和顏色不正確的問題。
-    *   **設定按鈕無效：** 取消了 `MainActivity.kt` 中 `onOptionsItemSelected` 函式裡對設定頁面 (`SettingsFragment`) 和 Wi-Fi 設定頁面 (`WiFiConfigFragment`) 導覽邏輯的註解，恢復了設定按鈕的正常功能。
-*   **0059:** 修正了狀態列遮擋工具列標題的問題。透過在 `activity_main.xml` 的 `AppBarLayout` 中加上 `android:fitsSystemWindows="true"` 屬性，確保了工具列會為狀態列預留出正確的空間，解決了內容重疊的問題。
-*   **0058:** 修正了當輔助顏色設為「預設」時，工具列顏色不正確的問題。透過將 `colors.xml` 和 `values-night/colors.xml` 中的 `primary` 和 `colorPrimary` 顏色改回 Material Design 的預設值，確保了在未選擇特殊輔助顏色時，App 會顯示正確的預設主題顏色。
-*   **0057:** 修正了 `MainActivity.kt` 中因 `activity_main.xml` 佈局變更而導致的編譯錯誤。透過註解對已移除元件 (`kuromiImage` 和 `fragment_container`) 的參考，解決了 `Unresolved reference` 的問題，讓專案能重新建置。
-*   **0056:** 復原了 0055 號的 Bug 修復，以解決 `AndroidManifest.xml` 的資源連結失敗問題。
-*   **0055:** 再次修正了圖片遮擋輸入欄位的 UI 問題。透過在 `MainActivity.kt` 中監聽 `ViewPager2` 的頁面切換事件，確保只有在非 `ReminderSettingsFragment` 的頁面，酷洛米圖片才會顯示。
-*   **0054:** 修正了 `ReminderSettingsFragment` 在挖孔螢幕上顯示異常，以及圖片遮擋輸入欄位的 UI 問題。透過在 `MainActivity.kt` 中動態調整圖片可見性，確保了在進入 `ReminderSettingsFragment` 時，圖片會被隱藏，避免遮擋。
-*   **0053:** 修正了輔助顏色在暗色模式下無法正確同步的問題。透過在 `values-night/themes.xml` 中為所有輔助顏色主題加上 `colorPrimary`，並在 `activity_main.xml` 中將 `MaterialToolbar` 的背景顏色設定為 `?attr/colorPrimary`，確保了 Toolbar 顏色能隨著主題動態變更。
-*   **0052:** 為提醒設定頁面新增了中斷藍牙連線的功能，並在 `drawable` 目錄中新增了 `ic_bluetooth_disabled.xml` 圖示。
-*   **0015:** 修正了服藥正確率未更新及服藥紀錄頁面時間顯示不清楚的問題。在 `MedicationTakenReceiver` 和 `MainViewModel` 中實作了正確的服藥率計算邏輯，並修正了 `fragment_history.xml` 中的文字顏色，確保其在淺色主題下可見。
-
 ## 最近更新
 
-*   **0060:** 新增了角色更換功能，讓使用者可以在「酷洛米」和「櫻桃小丸子」之間進行選擇。角色圖片會顯示在「提醒設定」頁面的最下方。
-*   **0049:** 清理了專案中的多個警告，包括刪除未使用的 `ThemeUtils.kt`、將 `SharedPreferences.edit()` 替換為 KTX 擴充函式，以及修正 `fragment_wifi_config.xml` 中的無障礙功能警告。
-*   **0047:** 新增了「工程模式」，並定義了新的藍牙協定 (`0x13`)，讓 App 可以通知藥盒進入或離開工程模式。此功能可透過設定頁面中的開關進行控制。
-*   **0045:** 為設定頁面與 Wi-Fi 設定頁面新增了返回按鈕，並將返回按鈕的邏輯集中到 `MainActivity` 中管理，確保了 UI 的一致性與可預測性。
-*   **0044:** 為藥物提醒通知新增「稍後提醒」與「已服用」操作，讓使用者能直接從通知中心進行互動。此功能由新的 `SnoozeReceiver` 和 `MedicationTakenReceiver` 處理。
-*   **0043:** 修正了 `WiFiConfigFragment` 的背景透明問題，確保介面清晰可見。
-*   **0042:** 新增 Wi-Fi 設定介面，讓使用者可以輸入 Wi-Fi 的 SSID 和密碼，並透過新的藍牙協定 (指令碼 0x12) 將憑證傳送給 ESP32。SSID 輸入框現在會提供之前輸入過的紀錄，方便使用者操作。
-*   **0041:** 修正了無障礙功能警告，為酷洛米圖片加上 `contentDescription`，並將 "..." 替換為標準的省略號字元 (`…`)。
-*   **0040:** 修正了 `themes.xml` 中的資源連結錯誤，並在主畫面上加入酷洛米圖案作為裝飾。
-*   **0039:** 修正了 `MainActivity.kt` 中的多個棄用警告。更新了返回按鈕的處理方式以使用新的 `OnBackPressedDispatcher`，並將地區/語言設定邏輯現代化為使用 `AppCompatDelegate.setApplicationLocales` API，移除了所有相關的已棄用方法。
-*   **0038:** 在設定頁面 (`SettingsFragment`) 新增了返回箭頭。讓使用者可以輕鬆地從設定選單返回到上一個畫面。
-*   **0.037:** 修正了設定頁面 (`SettingsFragment`) 的 UI 顯示問題。先前設定選單的背景是透明的，導致文字與下方的 UI 元件重疊。此問題已透過以編程方式設定一個遵循當前應用程式主題 (亮色/暗色) 的背景顏色來解決，確保了畫面的清晰可見度。
-*   **0036:** 修正了設定圖示在亮色模式下不可見的問題，並將設定頁面中的「主題設定」和「語言設定」合併為一個「外觀」分類，以簡化介面。
-*   **0035:** 在設定頁面中新增了語言切換功能，讓使用者可以手動切換應用程式的顯示語言 (繁體中文、英文或跟隨系統)。
-*   **0034:** 為應用程式新增英文本地化，以支援英語系使用者。
-*   **0033:** 實作了歷史溫濕度數據同步功能。擴充了藍牙協定，允許 App 在連接時，從藥盒同步離線期間記錄的所有溫濕度歷史數據，並在圖表上完整呈現。
-*   **0032:** 修正了專案中的多個編譯錯誤與警告，包含 `SwipeRefreshLayout` 依賴問題、`MainActivity.kt` 中的錯誤，以及清理未使用的程式碼。
+*   **0100:** **修復即時溫濕度數據解析錯誤。**
+    *   **問題:** 藍牙接收到的即時數據 (`0x90`) 仍使用舊版協定解析 (整數+小數)，導致數值顯示異常 (如 140.9%)。
+    *   **修正:** 更新 `BluetoothLeManager` 中的解析邏輯，使其與歷史數據 (`0x91`) 一致，採用 Protocol V2 標準 (2-byte 帶號整數 / 100)。
+*   **0099:** **實作 Repository 模式並解決 Hilt 注入限制。**
+    *   **架構重構:** 建立了單例 `AppRepository`，將所有資料邏輯（SharedPreferences、藥物列表、溫濕度歷史、服藥狀態）從 `MainViewModel` 中抽離。
+    *   **Hilt 修正:** 解決了 `MedicationTakenReceiver` 無法直接注入 `ViewModel` 的 Dagger Hilt 限制。現在，Receiver 透過 Hilt EntryPoint 注入 `AppRepository`，而 `MainViewModel` 也改為依賴這個 Repository，確保了資料存取的單一性與架構的正確性。
+*   **0098:** **修復通知「我已服用」後的數據同步與通知取消問題。**
+    *   **問題:** `MedicationTakenReceiver` 錯誤地實例化了新的 `MainViewModel`，導致服藥事件無法更新到應用程式的單例 ViewModel 中，服藥紀錄和圖表無法更新。此外，通知有時無法自動消失。
+    *   **修正:** 在 `MedicationTakenReceiver.kt` 中導入了 Hilt 的 `EntryPoint` 模式，以確保廣播接收器可以存取到正確的單例 `MainViewModel` 和 `BluetoothLeManager` 實例。同時，確保了 `notificationId` 被正確用於取消通知，解決了通知殘留的問題。
+*   **0094:** **圖表視覺與互動優化。**
+    *   **雙軸顯示:** 實作了溫度 (左軸) 與濕度 (右軸) 的雙 Y 軸顯示，解決了數值範圍差異導致的顯示問題。
+    *   **視覺簡化:** 移除了圖表上的圓點，僅保留曲線與填充，使畫面更加現代簡潔。加入進場動畫與下拉刷新動畫。
+    *   **互動增強:** 新增了 `CustomMarkerView`，當使用者長按圖表時，會顯示選中點的具體時間與數值。
+*   **0093:** **修復藍牙連接時的未知錯誤代碼 3。**
+    *   **問題分析:** 錯誤代碼 3 發生在 Android App 傳送新的「請求協定版本 (0x01)」指令時，但 `esp32.ino` 韌體中尚未實作此指令，導致韌體回報未知指令錯誤 (0x03)。
+    *   **韌體修復:** 在 `esp32.ino` 中新增了 `CMD_REQUEST_PROTOCOL_VERSION (0x01)` 和 `CMD_REPORT_PROTOCOL_VERSION (0x71)` 的定義。
+    *   **邏輯實作:** 在 `handleCommand` 中新增邏輯，當收到 `0x01` 時，回傳當前韌體協定版本 `0x02`，使 App 能夠順利完成協定同步，消除連線錯誤。
+*   **0092:** **實作即時環境數據訂閱機制與圖表優化。**
+    *   **協定升級:** 新增 `0x32` (訂閱) 與 `0x33` (取消訂閱) 指令。
+    *   **App 優化:** `EnvironmentFragment` 改用 `LineChart`，並修正了數據解析邏輯。
+*   **0091:** **修復圖表顯示問題與優化藍牙診斷。**
+    *   **問題修復:** 修正了 `EnvironmentFragment` 中 MPAndroidChart 的精度問題。
+    *   **診斷增強:** 在 `BluetoothLeManager` 中加入了詳細的 Log 輸出。
+*   **0090:** **導入 Hilt 實現依賴注入。**
+    *   **重構範圍:** 為 `MainViewModel` 和 `BluetoothLeManager` 導入 Hilt 依賴注入。
+    *   **程式碼修改:**
+        *   在 `build.gradle.kts` 中設定 Hilt。
+        *   建立 `MedicationReminderApplication` 並在 `AndroidManifest.xml` 中註冊。
+        *   為 `MainActivity` 和 `MainViewModel` 加上 Hilt 註解。
+        *   建立 `AppModule` 來提供 `BluetoothLeManager` 的實例。
+    *   **優點:** 降低了元件之間的耦合度，提高了程式碼的可測試性和可維護性。
+*   **0089:** **將 `MainViewModel` 中的 `LiveData` 重構為 `StateFlow`。**
+    *   **重構範圍:** `isBleConnected`, `bleStatus`, `isEngineeringMode`, `historicSensorData`, `medicationList`, `dailyStatusMap`, and `complianceRate`。
+    *   **UI 層更新:** 同步更新了 `MainActivity` 和所有相關的 Fragment，改為使用 `lifecycleScope.launch` 和 `repeatOnLifecycle` 來收集 `StateFlow` 的更新。
+    *   **優點:** 提高了 UI 狀態管理的可預測性、線程安全性。
+*   **0088:** **引入藍牙協定版本控制並規劃未來優化方向。**
+    *   **協定版本化:** 新增了 `0x01`（請求協定版本）和 `0x71`（回報協定版本）指令。
+    *   **文件更新:** 在 README 檔案中新增了「通訊協定版本化」和「未來優化方向」章節。
+*   **0086:** 實現了 App 與藥盒之間工程模式狀態的雙向同步。
+*   **0085:** 優化了藍牙協定與 App 的數據處理邏輯，引入了歷史數據的批次處理。
+*   **0084:** 調整了歷史溫濕度數據的同步時機，改為由使用者下拉刷新觸發。
+*   **0083:** 優化了溫濕度數據的藍牙傳輸協定。
+*   **0082:** 修正了工具列標題的垂直對齊問題。
+*   **0081:** 修正了工具列標題的顯示問題。
+*   **0080:** 修正了因為標題置中而導致的嚴重錯誤。
+*   **0079:** 清理了 `MainActivity.kt` 中的多個警告。
+*   **0078:** 修正了工具列標題沒有置中的問題。
+*   **0077:** 修正了在設定頁面中，返回按鈕顏色不正確的問題。
+*   **0076:** 徹底解決了工具列在角色主題下，文字與圖示顏色不正確的問題。
+*   **0075:** 再次修正了工具列的文字與圖示顏色問題。
+*   **0074:** 修正了 App 在淺色主題下，工具列和狀態列的文字與圖示顏色不正確的問題。
+*   **0072:** 徹底重新設計了 App 的 UI 並解決了因此產生的建置錯誤。
+*   **0071:** 修正了在淺色主題下，Toolbar 和狀態列上的文字與圖示顏色不正確的問題。
+*   **0070:** 修正了在挖孔螢幕上，狀態列背景無法正確填滿的沉浸式 UI 問題。
+*   **0069:** 將輔助顏色功能與角色選擇功能綁定，並徹底解決了狀態列的沉浸式顯示問題。
+*   **0068:** 徹底重新設計了 App 的 UI 並解決了因此產生的建置錯誤。
+*   **0067:** 修正了 `MainActivity.kt` 中因缺少 `WindowInsetsCompat` 的匯入而導致的編譯錯誤。
+*   **0066:** 再次修正了工具列與狀態列的 UI 顯示問題。
+*   **0065:** 修正了 `strings.xml` 中因單引號使用不當而引起的 Linter 錯誤。
+*   **0064:** 修正了 `strings.xml` 和 `values-en/strings.xml` 中因不正確的跳脫字元和單引號用法而導致的 Linter 錯誤。
+*   **0063:** 修正了工具列與狀態列的 UI 顯示問題。
+*   **0062:** 修正了多個 UI 和功能上的錯誤。
+*   **0061:** 修正了 UI 顯示問題和設定按鈕的功能異常。
+*   **0059:** 修正了狀態列遮擋工具列標題的問題。
+*   **0058:** 修正了當輔助顏色設為「預設」時，工具列顏色不正確的問題。
+*   **0057:** 修正了 `MainActivity.kt` 中因 `activity_main.xml` 佈局變更而導致的編譯錯誤。
+*   **0056:** 復原了 0055 號的 Bug 修復，以解決 `AndroidManifest.xml` 的資源連結失敗問題。
+*   **0055:** 再次修正了圖片遮擋輸入欄位的 UI 問題。
+*   **0054:** 修正了 `ReminderSettingsFragment` 在挖孔螢幕上顯示異常，以及圖片遮擋輸入欄位的 UI 問題。
+*   **0053:** 修正了輔助顏色在暗色模式下無法正確同步的問題。
+*   **0052:** 為提醒設定頁面新增了中斷藍牙連線的功能。
+*   **0015:** 修正了服藥正確率未更新及服藥紀錄頁面時間顯示不清楚的問題。
+*   **0060:** 新增了角色更換功能。
+*   **0049:** 清理了專案中的多個警告。
+*   **0047:** 新增了「工程模式」。
+*   **0045:** 為設定頁面與 Wi-Fi 設定頁面新增了返回按鈕。
+*   **0044:** 為藥物提醒通知新增「稍後提醒」與「已服用」操作。
+*   **0043:** 修正了 `WiFiConfigFragment` 的背景透明問題。
+*   **0042:** 新增 Wi-Fi 設定介面。
+*   **0041:** 修正了無障礙功能警告。
+*   **0040:** 修正了 `themes.xml` 中的資源連結錯誤。
+*   **0039:** 修正了 `MainActivity.kt` 中的多個棄用警告。
+*   **0038:** 在設定頁面新增了返回箭頭。
+*   **0.037:** 修正了設定頁面的 UI 顯示問題。
+*   **0036:** 修正了設定圖示在亮色模式下不可見的問題。
+*   **0035:** 在設定頁面中新增了語言切換功能。
+*   **0034:** 為應用程式新增英文本地化。
+*   **0033:** 實作了歷史溫濕度數據同步功能。
+*   **0032:** 修正了專案中的多個編譯錯誤與警告。
 *   **0031:** 清理了 `app/src/main/java/com/example/medicationreminderapp/ui/` 目錄中所有重複且空白的檔案。
-*   **0030:** 實作了藍牙協定中「App 主動請求溫濕度數據」的功能，並提供 UI 介面讓使用者觸發此操作。
-*   **0029:** 修正了 `app/build.gradle.kts` 中的多個 build 錯誤與警告。處理了 `buildConfigField` 不正確的字串引號問題，並將棄用的 `exec` 方法替換為更現代的 `ProcessBuilder`，確保了 Gradle build script 的穩定性。
-*   **0028:** 修復了因移除 `BluetoothLeManager` 中看似未使用的 `requestStatus()` 和 `syncTime()` 方法而導致的 Build 失敗問題。這兩個方法已被重新加回，確保 `MainActivity` 可以正常呼叫。
-*   **0027:** 移除了 `BluetoothLeManager.kt` 中未被使用的 `sendJson` 方法，進一步清理了藍牙通訊的程式碼。
-*   **0026:** 清理了專案中多個「未使用宣告」的警告，包括移除藍牙模組中已由 JSON 指令取代的舊方法、移除 `HistoryFragment.kt` 中未被使用的屬性，以及清空了 `ui` 套件中重複且無用的檔案內容，顯著提升了程式碼品質。
-*   **0025:** 移除了 `Medication` data class 中未被使用的 `frequency` 欄位及其相關的字串資源，使程式碼更精簡。
-*   **0024:** 修復了 IDE 中的多個警告，包括為圖片資源添加無障礙描述、將硬編碼字串移至資源檔，以及清理了 Kotlin 檔案中未使用的導入和參數，提升了程式碼品質與可維護性。
-*   **0023:** 在服藥紀錄頁面新增了視覺標示功能。現在，當天所有藥物都按時服用後，日曆上對應的日期下方會顯示一個綠色圓點，讓使用者可以更直觀地追蹤自己的服藥狀況。
-*   **0022:** 簡化了版本號碼的設定，並在藥物清單為空時顯示提示訊息。移除了 `app/build.gradle.kts` 中複雜的 Git 版本控制，改為直接從 `config.gradle.kts` 讀取版本資訊。同時，更新了藥物列表頁面，當沒有提醒事項時，會顯示「無提醒」的文字，改善了使用者體驗。
-*   **0021:** 清理了 `SettingsFragment.kt` 中的警告，移除了無用的 `import` 並以更安全的 `let` 區塊取代了不必要的安全呼叫。
-*   **0020:** 恢復了遺失的設定功能，包括設定圖示、主題切換和強調色調整。使用者現在可以從工具列再次存取設定頁面並自訂應用程式的外觀。
-*   **0019:** 解決了 `fragment_reminder_settings.xml` 中的無障礙警告，並清除了 `MainViewModel.kt` 中未使用的參數。
-*   **0018:** 解決了 IDE 中出現的 XML 資源解析錯誤和 Kotlin 檔案中的多個未使用程式碼警告，並透過 Gradle 同步確保了專案狀態的穩定性。
-*   **0017:** 解決了 IDE 中出現的 XML 資源解析錯誤和 Kotlin 檔案中的多個未使用程式碼警告，並透過 Gradle 同步確保了專案狀態的穩定性。
-*   **0016:** 恢復了編輯和刪除藥物提醒的功能，並重新整合了鬧鐘排程功能。現在，鬧鐘不僅在設定時啟用，還會在裝置重新啟動後自動重設。
-*   **0015:** 修正了新增藥物後，藥物列表不會立即更新的 UI 問題。現在透過確保 `LiveData` 接收到新的列表實例而非僅修改現有實例來正確觸發 UI 更新。
-*   **0014:** 處理了 IDE 中關於 `MedicationListAdapter.kt` 和 `ReminderSettingsFragment.kt` 的過時警告，並透過 Gradle 同步刷新了專案狀態。
-*   **0013:** 清理了專案中的所有警告，包括未使用的匯入、參數和命名空間宣告，並修正了字串資源衝突。
-*   **0012:** 清理了專案中的所有警告，包括未使用的匯入、參數和命名空間宣告，並修正了字串資源衝突。
+*   **0030:** 實作了藍牙協定中「App 主動請求溫濕度數據」的功能。
+*   **0029:** 修正了 `app/build.gradle.kts` 中的多個 build 錯誤與警告。
+*   **0028:** 修復了因移除 `BluetoothLeManager` 中看似未使用的 `requestStatus()` 和 `syncTime()` 方法而導致的 Build 失敗問題。
+*   **0027:** 移除了 `BluetoothLeManager.kt` 中未被使用的 `sendJson` 方法。
+*   **0026:** 清理了專案中多個「未使用宣告」的警告。
+*   **0025:** 移除了 `Medication` data class 中未被使用的 `frequency` 欄位。
+*   **0024:** 修復了 IDE 中的多個警告。
+*   **0023:** 在服藥紀錄頁面新增了視覺標示功能。
+*   **0022:** 簡化了版本號碼的設定。
+*   **0021:** 清理了 `SettingsFragment.kt` 中的警告。
+*   **0020:** 恢復了遺失的設定功能。
+*   **0019:** 解決了 `fragment_reminder_settings.xml` 中的無障礙警告。
+*   **0018:** 解決了 IDE 中出現的 XML 資源解析錯誤。
+*   **0017:** 解決了 IDE 中出現的 XML 資源解析錯誤。
+*   **0016:** 恢復了編輯和刪除藥物提醒的功能。
+*   **0015:** 修正了新增藥物後，藥物列表不會立即更新的 UI 問題。
+*   **0014:** Handled outdated warnings in the IDE.
+*   **0013:** Cleaned up all warnings in the project.
+*   **0012:** Cleaned up all warnings in the project.
 *   **0011:** 修正了因缺少 `androidx.preference:preference-ktx` 依賴項而導致的資源連結錯誤。
-*   **0010:** 新增了設定頁面和藥物列表頁面，並恢復了主題設定功能。
-*   **0009:** 優化了藥物提醒表單的驗證，以提供更清晰的錯誤訊息。
+*   **0010:** 新增了設定頁面和藥物列表頁面。
+*   **0009:** 優化了藥物提醒表單的驗證。
 *   **0008:** 修正了因 Gradle 版本目錄不完整而導致的嚴重建置錯誤。

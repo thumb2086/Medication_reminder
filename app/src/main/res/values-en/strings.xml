@@ -116,6 +116,9 @@
     <!-- Charting -->
     <string name="temperature_label">Temperature</string>
     <string name="humidity_label">Humidity</string>
+    <string name="chart_value_temp">%.1f°C</string>
+    <string name="chart_value_humidity">%.0f%%</string>
+    <string name="marker_view_format">%1$s\n%2$s: %3$.1f%4$s</string>
 
 
     <!-- Formatting Strings -->

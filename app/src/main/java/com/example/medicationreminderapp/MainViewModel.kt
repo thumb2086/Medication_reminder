@@ -1,201 +1,103 @@
 package com.example.medicationreminderapp
 
-import android.app.Application
-import android.content.Context.MODE_PRIVATE
-import android.util.Log
-import androidx.core.content.edit
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.medicationreminderapp.util.SingleLiveEvent
-import com.google.gson.Gson
-import com.google.gson.JsonSyntaxException
-import com.google.gson.reflect.TypeToken
-import java.text.SimpleDateFormat
-import java.util.*
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-data class SensorDataPoint(val timestamp: Long, val temperature: Float, val humidity: Float)
+@HiltViewModel
+class MainViewModel @Inject constructor(
+    private val repository: AppRepository
+) : ViewModel() {
 
-class MainViewModel(application: Application) : AndroidViewModel(application) {
+    // StateFlow for UI state (BLE logic remains in ViewModel as it's transient UI state)
+    private val _isBleConnected = MutableStateFlow(false)
+    val isBleConnected: StateFlow<Boolean> = _isBleConnected.asStateFlow()
 
-    // LiveData for UI state
-    val isBleConnected = MutableLiveData<Boolean>(false)
-    val bleStatus = MutableLiveData<String>("Disconnected")
+    private val _bleStatus = MutableStateFlow("Disconnected")
+    val bleStatus: StateFlow<String> = _bleStatus.asStateFlow()
 
-    // LiveData for Sensor Data
-    private val _historicSensorData = MutableLiveData<List<SensorDataPoint>>(emptyList())
-    val historicSensorData: LiveData<List<SensorDataPoint>> = _historicSensorData
+    private val _isEngineeringMode = MutableStateFlow(false)
+    val isEngineeringMode: StateFlow<Boolean> = _isEngineeringMode.asStateFlow()
 
-    private val historicDataBuffer = mutableListOf<SensorDataPoint>()
-
-    // LiveData for App Data
-    val medicationList = MutableLiveData<MutableList<Medication>>(mutableListOf())
-    val dailyStatusMap = MutableLiveData<MutableMap<String, Int>>(mutableMapOf())
-    val notesMap = MutableLiveData<MutableMap<String, String>>(mutableMapOf())
-    val complianceRate = MutableLiveData<Float>(0f)
+    // Delegate Data StateFlows to Repository
+    val historicSensorData: StateFlow<List<SensorDataPoint>> = repository.historicSensorData
+    val medicationList: StateFlow<List<Medication>> = repository.medicationList
+    val dailyStatusMap: StateFlow<Map<String, Int>> = repository.dailyStatusMap
+    val complianceRate: StateFlow<Float> = repository.complianceRate
 
     // Event for triggering BLE actions in Activity
     val requestBleAction = SingleLiveEvent<BleAction>()
 
-    private val sharedPreferences = application.getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-    private val gson = Gson()
-
     init {
-        loadAllData()
+        // Data loading is now handled by Repository's init
+    }
+
+    // --- Public Methods to update state ---
+
+    fun setBleConnectionState(isConnected: Boolean) {
+        _isBleConnected.value = isConnected
+        if (!isConnected) {
+            _bleStatus.value = "Disconnected"
+        }
+    }
+
+    fun setBleStatus(status: String) {
+        _bleStatus.value = status
+    }
+
+    fun setEngineeringMode(isEnabled: Boolean) {
+        _isEngineeringMode.value = isEnabled
     }
 
     fun onRefreshEnvironmentData() {
-        historicDataBuffer.clear()
+        repository.clearHistoricData()
         requestBleAction.value = BleAction.REQUEST_HISTORIC_ENV_DATA
     }
 
-    // Called from MainActivity when a new real-time data point arrives
     fun onNewSensorData(temperature: Float, humidity: Float) {
-        val now = System.currentTimeMillis() / 1000
-        val newDataPoint = SensorDataPoint(now, temperature, humidity)
-        _historicSensorData.value = (_historicSensorData.value ?: emptyList()) + newDataPoint
+        repository.addSensorDataPoint(temperature, humidity)
     }
 
-    // Called from MainActivity to buffer historic data points
     fun addHistoricSensorData(timestamp: Long, temperature: Float, humidity: Float) {
-        historicDataBuffer.add(SensorDataPoint(timestamp, temperature, humidity))
+        repository.bufferHistoricData(timestamp, temperature, humidity)
     }
 
-    // Called from MainActivity when all historic data has been received
     fun onHistoricDataSyncCompleted() {
-        _historicSensorData.value = historicDataBuffer.sortedBy { it.timestamp }.toList()
-        bleStatus.value = "Historic data sync complete"
+        repository.commitHistoricDataBuffer()
+        _bleStatus.value = "Historic data sync complete"
     }
 
     fun addMedications(newMedications: List<Medication>) {
-        val currentList = medicationList.value ?: mutableListOf()
-        val newList = currentList.toMutableList().apply {
-            addAll(newMedications)
+        viewModelScope.launch {
+            repository.addMedications(newMedications)
         }
-        medicationList.value = newList
-        saveMedicationData() // Save the updated list
     }
 
     fun updateMedication(updatedMed: Medication) {
-        val currentList = medicationList.value ?: return
-        val newList = currentList.map {
-            if (it.slotNumber == updatedMed.slotNumber) {
-                updatedMed
-            } else {
-                it
-            }
-        }.toMutableList()
-        medicationList.value = newList
-        saveMedicationData()
+        viewModelScope.launch {
+            repository.updateMedication(updatedMed)
+        }
     }
 
     fun deleteMedication(medToDelete: Medication) {
-        val currentList = medicationList.value ?: return
-        val newList = currentList.filter {
-            it.slotNumber != medToDelete.slotNumber
-        }.toMutableList()
-        medicationList.value = newList
-        saveMedicationData()
+        viewModelScope.launch {
+            repository.deleteMedication(medToDelete)
+        }
     }
 
     fun processMedicationTaken(slotNumber: Int) {
-        val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-        val newStatusMap = dailyStatusMap.value ?: mutableMapOf()
-        newStatusMap[todayStr] = STATUS_ALL_TAKEN
-        dailyStatusMap.value = newStatusMap // This is fine as it's re-assigning a new map
-
-        val currentMeds = medicationList.value ?: return // Get current list or exit if null
-        val updatedList = currentMeds.map {
-            if (it.slotNumber == slotNumber && it.remainingPills > 0) {
-                it.copy(remainingPills = it.remainingPills - 1)
-            } else {
-                it
-            }
-        }.toMutableList()
-
-        medicationList.value = updatedList
-
-
-        saveMedicationData()
-        saveDailyStatusData()
-        updateComplianceRate(newStatusMap)
-    }
-
-    fun updateComplianceRate(status: Map<String, Int>) {
-        val totalDays = status.keys.size
-        if (totalDays == 0) {
-            complianceRate.value = 0f
-            return
-        }
-
-        val daysTaken = status.values.count { it == STATUS_ALL_TAKEN }
-        val rate = (daysTaken.toFloat() / totalDays.toFloat())
-        complianceRate.value = rate
-    }
-
-    // --- Data Persistence ---
-
-    private fun loadAllData() {
-        loadMedicationData()
-        loadNotesData()
-        loadDailyStatusData()
-    }
-
-    private fun saveMedicationData() {
-        sharedPreferences.edit {
-            putString(KEY_MEDICATION_DATA, gson.toJson(medicationList.value))
-        }
-    }
-
-    private fun loadMedicationData() {
-        sharedPreferences.getString(KEY_MEDICATION_DATA, null)?.let {
-            try {
-                val data: MutableList<Medication> = gson.fromJson(it, object : TypeToken<MutableList<Medication>>() {}.type) ?: mutableListOf()
-                medicationList.value = data
-            } catch (e: JsonSyntaxException) {
-                Log.e("MainViewModel", "Failed to parse medication data", e)
-            }
-        }
-    }
-
-    private fun loadNotesData() {
-        sharedPreferences.getString(KEY_NOTES_DATA, null)?.let {
-            try {
-                val data: MutableMap<String, String> = gson.fromJson(it, object : TypeToken<MutableMap<String, String>>() {}.type) ?: mutableMapOf()
-                notesMap.value = data
-            } catch (e: JsonSyntaxException) {
-                Log.e("MainViewModel", "Failed to parse notes data", e)
-            }
-        }
-    }
-
-    private fun saveDailyStatusData() {
-        sharedPreferences.edit {
-            putString(KEY_DAILY_STATUS, gson.toJson(dailyStatusMap.value))
-        }
-    }
-
-    private fun loadDailyStatusData() {
-        sharedPreferences.getString(KEY_DAILY_STATUS, null)?.let {
-            try {
-                val data: MutableMap<String, Int> = gson.fromJson(it, object : TypeToken<MutableMap<String, Int>>() {}.type) ?: mutableMapOf()
-                dailyStatusMap.value = data
-            } catch (e: JsonSyntaxException) {
-                Log.e("MainViewModel", "Failed to parse daily status data", e)
-            }
-        }
+        // This can still be called from UI if needed, delegating to repo
+        repository.processMedicationTaken(slotNumber)
     }
 
     enum class BleAction {
         REQUEST_ENV_DATA,
         REQUEST_HISTORIC_ENV_DATA
-    }
-
-    companion object {
-        const val PREFS_NAME = "MedicationReminderAppPrefs"
-        const val KEY_MEDICATION_DATA = "medication_data"
-        const val KEY_NOTES_DATA = "notes_data"
-        const val KEY_DAILY_STATUS = "daily_status"
-        const val STATUS_ALL_TAKEN = 2
     }
 }

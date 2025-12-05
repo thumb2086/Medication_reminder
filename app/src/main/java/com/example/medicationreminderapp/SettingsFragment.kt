@@ -6,25 +6,25 @@ import android.util.TypedValue
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.preference.ListPreference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
+import kotlinx.coroutines.launch
 
 class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedPreferenceChangeListener {
+
+    private val viewModel: MainViewModel by activityViewModels()
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.preferences, rootKey)
 
-        // Set initial summary for theme, language, and accent color preferences
-        findPreference<ListPreference>("theme")?.let {
-            it.summary = it.entry
-        }
-        findPreference<ListPreference>("language")?.let {
-            it.summary = it.entry
-        }
-        findPreference<ListPreference>("accent_color")?.let {
-            it.summary = it.entry
-        }
+        findPreference<ListPreference>("theme")?.let { it.summary = it.entry }
+        findPreference<ListPreference>("language")?.let { it.summary = it.entry }
+        findPreference<ListPreference>("character")?.let { it.summary = it.entry }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -32,6 +32,21 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         val typedValue = TypedValue()
         requireContext().theme.resolveAttribute(com.google.android.material.R.attr.colorSurface, typedValue, true)
         view.setBackgroundColor(typedValue.data)
+
+        // Observe the engineering mode status from the ViewModel
+        viewLifecycleOwner.lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.isEngineeringMode.collect { isEnabled ->
+                    findPreference<SwitchPreferenceCompat>("engineering_mode")?.let {
+                        // Stop listening to changes to prevent feedback loop
+                        preferenceScreen.sharedPreferences?.unregisterOnSharedPreferenceChangeListener(this@SettingsFragment)
+                        it.isChecked = isEnabled
+                        // Re-register listener
+                        preferenceScreen.sharedPreferences?.registerOnSharedPreferenceChangeListener(this@SettingsFragment)
+                    }
+                }
+            }
+        }
     }
 
     override fun onResume() {
@@ -67,23 +82,27 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                     (activity as? MainActivity)?.setLocale(languageValue)
                 }
             }
-            "accent_color" -> {
-                findPreference<ListPreference>(key)?.let { accentColorPreference ->
-                    accentColorPreference.summary = accentColorPreference.entry
+            "character" -> {
+                findPreference<ListPreference>(key)?.let { characterPreference ->
+                    characterPreference.summary = characterPreference.entry
                     activity?.recreate()
                 }
             }
             "engineering_mode" -> {
                 val isEnabled = sharedPreferences.getBoolean(key, false)
-                (activity as? MainActivity)?.bluetoothLeManager?.let { bleManager ->
+                val mainActivity = (activity as? MainActivity)
+
+                mainActivity?.bluetoothLeManager?.let { bleManager ->
                     if (bleManager.isConnected()) {
                         bleManager.setEngineeringMode(isEnabled)
-                        val status = if (isEnabled) "啟用" else "停用"
-                        Toast.makeText(requireContext(), "工程模式已$status", Toast.LENGTH_SHORT).show()
+                        // Toast message is now sent from BleManager for better feedback
                     } else {
                         Toast.makeText(requireContext(), "請先連接藥盒", Toast.LENGTH_SHORT).show()
-                        // Revert the switch state if not connected
+                        // Revert the switch state immediately if not connected
+                        // Unregister to prevent loop, change value, then re-register
+                        sharedPreferences.unregisterOnSharedPreferenceChangeListener(this)
                         findPreference<SwitchPreferenceCompat>(key)?.isChecked = !isEnabled
+                        sharedPreferences.registerOnSharedPreferenceChangeListener(this)
                     }
                 }
             }

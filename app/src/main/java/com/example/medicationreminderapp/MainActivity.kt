@@ -6,6 +6,7 @@ import android.app.AlertDialog
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.media.RingtoneManager
@@ -20,27 +21,38 @@ import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import androidx.core.os.LocaleListCompat
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.fragment.app.commit
-import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.preference.PreferenceManager
 import androidx.viewpager2.widget.ViewPager2
 import com.example.medicationreminderapp.adapter.ViewPagerAdapter
 import com.example.medicationreminderapp.databinding.ActivityMainBinding
 import com.google.android.material.tabs.TabLayoutMediator
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
 
     internal lateinit var binding: ActivityMainBinding
-    private lateinit var viewModel: MainViewModel
-    lateinit var bluetoothLeManager: BluetoothLeManager
+    private val viewModel: MainViewModel by viewModels()
+    @Inject lateinit var bluetoothLeManager: BluetoothLeManager
     private var alarmManager: AlarmManager? = null
+    private lateinit var prefs: SharedPreferences
 
     private val requestNotificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         if (!isGranted) { Toast.makeText(this, getString(R.string.notification_permission_denied), Toast.LENGTH_LONG).show() }
@@ -55,18 +67,23 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        prefs = PreferenceManager.getDefaultSharedPreferences(this)
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        applyAccentColorTheme()
+        applyCharacterTheme()
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
+        supportActionBar?.setDisplayShowTitleEnabled(false)
 
-        // ViewModel is shared between Activity and Fragments
-        viewModel = ViewModelProvider(this)[MainViewModel::class.java]
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            binding.appBarLayout.updatePadding(top = systemBars.top)
+            insets
+        }
 
         alarmManager = getSystemService(ALARM_SERVICE) as? AlarmManager
-        bluetoothLeManager = BluetoothLeManager(this, this)
+        bluetoothLeManager.listener = this
 
         createNotificationChannel()
         setupViewPagerAndTabs()
@@ -82,45 +99,47 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         }
         binding.viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
-                // Position 0 is ReminderSettingsFragment
-                updateUiForFragment(position == 0)
+                updateUiForFragment(false)
             }
         })
-        // Initial check
-        updateUiForFragment(binding.viewPager.currentItem == 0)
+        updateUiForFragment(false)
     }
 
-    fun updateUiForFragment(isReminderSettings: Boolean) {
-        val isFragmentOnBackStack = supportFragmentManager.backStackEntryCount > 0
-
+    fun updateUiForFragment(isFragmentOnBackStack: Boolean) {
         supportActionBar?.setDisplayHomeAsUpEnabled(isFragmentOnBackStack)
         binding.tabLayout.visibility = if (isFragmentOnBackStack) View.GONE else View.VISIBLE
         binding.viewPager.visibility = if (isFragmentOnBackStack) View.GONE else View.VISIBLE
     }
 
-    private fun applyAccentColorTheme() {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
-        val accentColor = prefs.getString("accent_color", "default")
-        val themeResId = when (accentColor) {
-            "pink" -> R.style.Theme_MedicationReminderApp_Pink
-            "blue" -> R.style.Theme_MedicationReminderApp_Blue
-            "green" -> R.style.Theme_MedicationReminderApp_Green
-            "purple" -> R.style.Theme_MedicationReminderApp_Purple
-            "orange" -> R.style.Theme_MedicationReminderApp_Orange
+    private fun applyCharacterTheme() {
+        val character = prefs.getString("character", "kuromi")
+        val themeResId = when (character) {
+            "kuromi" -> R.style.Theme_MedicationReminderApp_Kuromi
+            "maruko" -> R.style.Theme_MedicationReminderApp_MyMelody
             else -> R.style.Theme_MedicationReminderApp
         }
         setTheme(themeResId)
     }
 
     private fun observeViewModel() {
-        viewModel.requestBleAction.observe(this) { action ->
-            if (viewModel.isBleConnected.value != true) {
-                Toast.makeText(this, "Bluetooth not connected", Toast.LENGTH_SHORT).show()
-                return@observe
-            }
-            when (action) {
-                MainViewModel.BleAction.REQUEST_ENV_DATA -> bluetoothLeManager.requestEnvironmentData()
-                MainViewModel.BleAction.REQUEST_HISTORIC_ENV_DATA -> bluetoothLeManager.requestHistoricEnvironmentData()
+        lifecycleScope.launch {
+            repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.bleStatus.collect { status ->
+                        viewModel.setBleStatus(status)
+                    }
+                }
+
+                viewModel.requestBleAction.observe(this@MainActivity) { action ->
+                    if (viewModel.isBleConnected.value) {
+                        when (action) {
+                            MainViewModel.BleAction.REQUEST_ENV_DATA -> bluetoothLeManager.requestEnvironmentData()
+                            MainViewModel.BleAction.REQUEST_HISTORIC_ENV_DATA -> bluetoothLeManager.requestHistoricEnvironmentData()
+                        }
+                    } else {
+                        Toast.makeText(this@MainActivity, "Bluetooth not connected", Toast.LENGTH_SHORT).show()
+                    }
+                }
             }
         }
     }
@@ -173,14 +192,12 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
     }
 
     private fun requestAppPermissions() {
-        // Request Notification Permission (Android 13+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
 
-        // Request Exact Alarm Permission (Android 12+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (alarmManager?.canScheduleExactAlarms() == false) {
                 startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
@@ -216,24 +233,26 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
     // --- BluetoothLeManager.BleListener Callbacks ---
 
     override fun onStatusUpdate(message: String) {
-        runOnUiThread { viewModel.bleStatus.value = message }
+        viewModel.setBleStatus(message)
     }
 
     override fun onDeviceConnected() {
-        viewModel.isBleConnected.value = true
+        viewModel.setBleConnectionState(true)
         runOnUiThread {
             Handler(Looper.getMainLooper()).postDelayed({ bluetoothLeManager.requestStatus() }, 500)
             Handler(Looper.getMainLooper()).postDelayed({ bluetoothLeManager.syncTime() }, 1000)
-            Handler(Looper.getMainLooper()).postDelayed({ 
-                val prefs = PreferenceManager.getDefaultSharedPreferences(this)
-                val isEngineeringMode = prefs.getBoolean("engineering_mode", false)
-                bluetoothLeManager.setEngineeringMode(isEngineeringMode)
-            }, 1500)
+            Handler(Looper.getMainLooper()).postDelayed({ bluetoothLeManager.requestEngineeringModeStatus() }, 1500)
         }
     }
 
     override fun onDeviceDisconnected() {
-        viewModel.isBleConnected.value = false
+         viewModel.setBleConnectionState(false)
+    }
+    
+    override fun onProtocolVersionReported(version: Int) {
+        runOnUiThread {
+            Toast.makeText(this, "藥盒協定版本: $version", Toast.LENGTH_LONG).show()
+        }
     }
 
     override fun onMedicationTaken(slotNumber: Int) {
@@ -250,9 +269,18 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
             Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
         }
     }
+    
+    override fun onEngineeringModeUpdate(isEngineeringMode: Boolean) {
+        viewModel.setEngineeringMode(isEngineeringMode)
+        runOnUiThread {
+            prefs.edit { putBoolean("engineering_mode", isEngineeringMode) }
+            val status = if (isEngineeringMode) "啟用" else "關閉"
+            Toast.makeText(this, "藥盒回報：工程模式已 $status", Toast.LENGTH_LONG).show()
+        }
+    }
 
     override fun onSensorData(temperature: Float, humidity: Float) {
-        runOnUiThread { viewModel.onNewSensorData(temperature, humidity) }
+        viewModel.onNewSensorData(temperature, humidity)
     }
 
     override fun onHistoricSensorData(timestamp: Long, temperature: Float, humidity: Float) {

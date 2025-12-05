@@ -1,56 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Kuromi Theme Colors for Night Mode -->
-    <!-- primary, secondary, etc. will reference colors defined in the main values/colors.xml -->
-    <!-- We only override colors that need to be different in night mode, like the background -->
-
-    <!-- Accent Colors -->
-    <color name="accent_pink">#FFC0CB</color>
-    <color name="accent_blue">#ADD8E6</color>
-    <color name="accent_green">#90EE90</color>
-    <color name="accent_purple">#E6E6FA</color>
-    <color name="accent_orange">#FFA500</color>
-
-    <!-- Original colors to avoid breaking references -->
-    <color name="purple_200">#FFBB86FC</color>
-    <color name="purple_500">#FF6200EE</color>
-    <color name="purple_700">#FF3700B3</color>
-    <color name="teal_200">#FF03DAC5</color>
-    <color name="teal_700">#FF018786</color>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
-
-    <!-- Overriding theme colors for night mode -->
-    <color name="primary">@color/kuromi_pink</color>
-    <color name="onPrimary">@color/kuromi_text_on_pink</color>
-    <color name="primaryContainer">#4F378B</color>
-    <color name="onPrimaryContainer">#EADDFF</color>
-    <color name="secondary">@color/kuromi_purple</color>
-    <color name="onSecondary">@color/kuromi_text_on_purple</color>
-    <color name="secondaryContainer">#4A4458</color>
-    <color name="onSecondaryContainer">#E8DEF8</color>
-    <color name="tertiary">@color/kuromi_dark_grey</color>
-    <color name="onTertiary">@color/kuromi_text_on_dark</color>
-    <color name="tertiaryContainer">#633B48</color>
-    <color name="onTertiaryContainer">#FFD8E4</color>
-    <color name="error">#F2B8B5</color>
-    <color name="onError">#601410</color>
-    <color name="errorContainer">#8C1D18</color>
-    <color name="onErrorContainer">#F9DEDC</color>
-    <color name="background">#1C1B1F</color> <!-- Dark background for night mode -->
-    <color name="onBackground">#E6E1E5</color>
-    <color name="surface">#1C1B1F</color> <!-- Dark background for night mode -->
-    <color name="onSurface">#E6E1E5</color>
-    <color name="surfaceVariant">#49454F</color>
-    <color name="onSurfaceVariant">#CAC4D0</color>
-    <color name="outline">#938F99</color>
-    <color name="inverseOnSurface">#1C1B1F</color>
-    <color name="inverseSurface">#E6E1E5</color>
-    <color name="inversePrimary">#6750A4</color>
-    <color name="shadow">#000000</color>
-    <color name="surfaceTint">#D0BCFF</color>
-    <color name="outlineVariant">#49454F</color>
-    <color name="scrim">#000000</color>
-    <color name="temp_color">#FF0000</color>
-    <color name="humidity_color">#0000FF</color>
+    <!-- Chart Colors (Dark Mode) -->
+    <!-- Lighter Red for visibility on dark background -->
+    <color name="temp_color">#F2B8B5</color> 
+    <!-- Lighter Blue for visibility on dark background -->
+    <color name="humidity_color">#A0E6FF</color>
 </resources>

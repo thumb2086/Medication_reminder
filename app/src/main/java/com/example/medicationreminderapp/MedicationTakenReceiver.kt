@@ -1,21 +1,38 @@
 package com.example.medicationreminderapp
 
-import android.app.Application
 import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface MedicationTakenEntryPoint {
+    fun getAppRepository(): AppRepository // Access a singleton repository instead
+}
 
 class MedicationTakenReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val notificationId = intent.getIntExtra("notification_id", -1)
-        if (notificationId != -1) {
-            val viewModel = MainViewModel(context.applicationContext as Application)
-            viewModel.processMedicationTaken(notificationId)
+        if (notificationId == -1) return
 
-            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.cancel(notificationId)
-        }
+        // Use Hilt EntryPoint to access the correct singleton repository
+        val hiltEntryPoint = EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            MedicationTakenEntryPoint::class.java
+        )
+        val repository = hiltEntryPoint.getAppRepository()
+
+        // 1. Process local data update (for chart/log) via repository
+        repository.processMedicationTaken(notificationId)
+
+        // 2. Cancel notification (fixes the "not disappearing" issue)
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.cancel(notificationId)
     }
 }

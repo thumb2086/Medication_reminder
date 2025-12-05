@@ -11,11 +11,17 @@ class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val medicationName = intent.getStringExtra("medicationName") ?: "藥物"
         val dosage = intent.getStringExtra("dosage") ?: ""
+        val notificationId = intent.getIntExtra("notificationId", -1)
+        if (notificationId == -1) return
 
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        val takenIntent = Intent(context, MedicationTakenReceiver::class.java)
-        val takenPendingIntent = PendingIntent.getBroadcast(context, 0, takenIntent, PendingIntent.FLAG_IMMUTABLE)
+        val takenIntent = Intent(context, MedicationTakenReceiver::class.java).apply {
+            putExtra("notification_id", notificationId)
+        }
+
+        // Request code for PendingIntent should be unique. Using notificationId is a good practice.
+        val takenPendingIntent = PendingIntent.getBroadcast(context, notificationId, takenIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
         val notification = NotificationCompat.Builder(context, MainActivity.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
@@ -25,6 +31,6 @@ class AlarmReceiver : BroadcastReceiver() {
             .addAction(R.drawable.ic_launcher_foreground, "我已服用", takenPendingIntent)
             .build()
 
-        notificationManager.notify(1, notification)
+        notificationManager.notify(notificationId, notification)
     }
 }

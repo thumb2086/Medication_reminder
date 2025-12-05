@@ -12,7 +12,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/medication_history"
-        android:textColor="@android:color/black"
+        android:textColor="?android:attr/textColorPrimary"
         android:textAppearance="?attr/textAppearanceHeadline5" />
 
     <com.kizitonwose.calendar.view.CalendarView
@@ -27,7 +27,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:textColor="@android:color/black"
+        android:textColor="?android:attr/textColorPrimary"
         android:textAppearance="?attr/textAppearanceHeadline6"
         tools:text="Compliance Rate: 95%" />
 

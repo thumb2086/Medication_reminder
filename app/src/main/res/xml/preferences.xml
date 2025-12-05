@@ -20,14 +20,6 @@
             app:defaultValue="system" />
 
         <ListPreference
-            app:key="accent_color"
-            app:title="@string/accent_color"
-            app:summary="%s"
-            app:entries="@array/accent_color_entries"
-            app:entryValues="@array/accent_color_values"
-            app:defaultValue="default" />
-
-        <ListPreference
             app:key="character"
             app:title="@string/character"
             app:summary="%s"

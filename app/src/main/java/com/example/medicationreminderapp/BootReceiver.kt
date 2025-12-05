@@ -10,11 +10,11 @@ class BootReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
-            val sharedPreferences = context.getSharedPreferences(MainViewModel.PREFS_NAME, Context.MODE_PRIVATE)
+            val sharedPreferences = context.getSharedPreferences(AppRepository.PREFS_NAME, Context.MODE_PRIVATE)
             val gson = Gson()
             val alarmScheduler = AlarmScheduler(context)
 
-            sharedPreferences.getString(MainViewModel.KEY_MEDICATION_DATA, null)?.let {
+            sharedPreferences.getString(AppRepository.KEY_MEDICATION_DATA, null)?.let {
                 try {
                     val medications: List<Medication> = gson.fromJson(it, object : TypeToken<List<Medication>>() {}.type)
                     medications.forEach { medication ->
