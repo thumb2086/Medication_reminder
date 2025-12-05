@@ -1,5 +1,16 @@
 # 更新日誌
 
+## 配置優化
+*   **0103:** **實作版本與分支管理自動化。**
+    *   **分支結構調整:** 修改 `config.gradle.kts`，將分支結構從 `main/beta/alpha` 簡化為 `main` (正式版) 與 `dev` (開發版)。
+    *   **版本自動化:** 更新 `app/build.gradle.kts`，實作基於 Git 的動態版本管理。
+        *   **VersionCode:** 自動使用 Git 總提交次數 (`rev-list --count HEAD`)。
+        *   **VersionName:**
+            *   `main` 分支: `1.1.8.<commitCount>`
+            *   `dev` 分支: `1.1.8-dev.<commitCount>-<shortHash>`
+        *   **ArchivesBaseName:** 自動格式化為 `藥到叮嚀-v<VersionName>`。
+    *   **修復:** 解決了 `build.gradle.kts` 中執行 Git 指令時因 `TimeUnit` 引用錯誤導致的 Sync 失敗問題。
+
 ## UI/UX 調整
 *   **0101:** **修正圖表線條顏色與顯示樣式。**
     *   **樣式調整:** 根據使用者回饋，將環境監測圖表調整為「折線圖」樣式。當有多個數據點時，隱藏圓點，只顯示平滑的曲線；只有在單一數據點時，才顯示圓點以確保可見性。

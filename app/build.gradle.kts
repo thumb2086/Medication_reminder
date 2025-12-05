@@ -10,44 +10,79 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
+// Helper function to run a command and get its output
+fun getGitCommandOutput(vararg command: String): String {
+    return try {
+        val proc = ProcessBuilder(*command)
+            .redirectOutput(ProcessBuilder.Redirect.PIPE)
+            .redirectError(ProcessBuilder.Redirect.PIPE)
+            .start()
+        val output = proc.inputStream.bufferedReader().readText().trim()
+        proc.waitFor() // Wait for the process to complete
+        output
+    } catch (_: java.io.IOException) {
+        "git-error" // Return a default value on error
+    }
+}
+
 android {
     namespace = "com.example.medicationreminderapp"
     compileSdk = 36
 
-    // --- Core logic starts ---
-    // Determine the current branch from git, or default to "alpha"
-    val currentBranch = try {
-        val process = ProcessBuilder("git", "rev-parse", "--abbrev-ref", "HEAD").start()
-        process.inputStream.bufferedReader().readText().trim()
-    } catch (_: java.io.IOException) {
-        "alpha"
-    }.ifEmpty { "alpha" }
-    val branchConfigs: Map<String, Map<String, Any>> by extra
-    val config = branchConfigs[currentBranch] ?: branchConfigs["alpha"]!!
+    // --- Dynamic versioning and configuration logic starts ---
+    val appConfig: Map<String, Any> by extra
 
-    println("✅ Building for branch: '$currentBranch'")
-    // --- Core logic ends ---
+    // Get Git info
+    val commitCount = getGitCommandOutput("git", "rev-list", "--count", "HEAD").toIntOrNull() ?: 1
+    val branchName = getGitCommandOutput("git", "rev-parse", "--abbrev-ref", "HEAD").let {
+        if (it.isBlank() || it == "HEAD" || it == "git-error") "main" else it // Default to main if detached HEAD or error
+    }
+    val shortHash = getGitCommandOutput("git", "rev-parse", "--short", "HEAD")
+
+    // Get base config values
+    val baseApplicationId = appConfig["baseApplicationId"] as String
+    val baseVersionName = appConfig["baseVersionName"] as String
+    val appName = appConfig["appName"] as String
+    val prodApiUrl = appConfig["prodApiUrl"] as String
+    val devApiUrl = appConfig["devApiUrl"] as String
+
+    // Determine branch-specific configuration
+    val isMain = branchName == "main"
+    val sanitizedBranchName = branchName.replace("/", "-")
+
+    val finalVersionName = if (isMain) {
+        "$baseVersionName.$commitCount"
+    } else {
+        "$baseVersionName-$sanitizedBranchName.$commitCount-$shortHash"
+    }
+    val finalArchivesBaseName = "$appName-v$finalVersionName"
+    val finalApplicationId = if (isMain) baseApplicationId else "$baseApplicationId.$sanitizedBranchName"
+    val finalAppName = if (isMain) appName else "$appName ($sanitizedBranchName)"
+    val finalApiUrl = if (isMain) prodApiUrl else devApiUrl
+    val enableLogging = !isMain
+
+    println("✅ Building for branch: '$branchName'")
+    println("✅ Version Name: $finalVersionName")
+    println("✅ Version Code: $commitCount")
+    // --- Dynamic versioning and configuration logic ends ---
 
     defaultConfig {
-        applicationId = config["applicationId"] as String
+        applicationId = finalApplicationId
         minSdk = 29
         targetSdk = 36
+        versionCode = commitCount
+        versionName = finalVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // --- Simplified versioning logic ---
-        versionCode = config["versionCode"] as Int
-        versionName = config["versionName"] as String
+        setProperty("archivesBaseName", finalArchivesBaseName)
 
-        setProperty("archivesBaseName", config["archivesBaseName"] as String)
-        // --- Logic ends ---
-
-        // Dynamically set BuildConfig fields for access in Kotlin/Java code
-        buildConfigField("String", "API_URL", "\"${config["apiUrl"] as String}\"")
-        buildConfigField("boolean", "ENABLE_LOGGING", config["enableLogging"].toString())
+        // Dynamically set BuildConfig fields
+        buildConfigField("String", "API_URL", "\"$finalApiUrl\"")
+        buildConfigField("boolean", "ENABLE_LOGGING", enableLogging.toString())
 
         // Dynamically set Android resources (e.g., app_name)
-        resValue("string", "app_name", config["appName"] as String)
+        resValue("string", "app_name", finalAppName)
     }
 
     buildTypes {

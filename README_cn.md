@@ -125,6 +125,11 @@
     - **用途:** 取消訂閱即時環境數據推送。
     - **格式 (1 byte):** `[0]: 0x33`
 
+11. **設定鬧鐘 (Set Alarm):**
+    - **指令碼:** `0x41`
+    - **用途:** 將 App 的鬧鐘設定同步到藥盒 (Protocol v3)。
+    - **格式 (5 bytes):** `[0]: 0x41`, `[1]: 鬧鐘編號 (0-3)`, `[2]: 時`, `[3]: 分`, `[4]: 啟用 (0/1)`
+
 ### 藥盒 -> App (通知)
 
 所有通知均透過 **Notify Characteristic** 發送。App 在 `handleIncomingData(data: ByteArray)` 方法中解析這些數據。
@@ -177,7 +182,16 @@
 `POST_NOTIFICATIONS`, `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`, `ACCESS_FINE_LOCATION`, `SCHEDULE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED`, `VIBRATE`
 
 ## 最近更新
-
+*   **0103:** **實作自動化版本與分支管理。**
+    *   **重構:** 在 `config.gradle.kts` 中將分支結構簡化為 `main` 和 `dev`。
+    *   **自動化:** 更新 `app/build.gradle.kts`，根據 Git 提交次數自動生成 `versionCode`，並根據分支和 Hash 生成 `versionName` 與 `archivesBaseName`。
+*   **0102:** **支援 Protocol v3 與錯誤修復。**
+    *   **協定更新:** 實作 `設定鬧鐘 (0x41)` 指令，將鬧鐘同步至藥盒。
+    *   **Bug 修復:** 修正 ESP32 韌體中 `CMD_REPORT_ENG_MODE_STATUS` 的定義錯誤。
+    *   **錯誤處理:** 新增對藥盒 `異常回報 (0xEE)` 的處理。
+*   **0101:** **圖表視覺優化。**
+    *   **樣式:** 環境監測圖表改為折線圖，多點時隱藏圓點以顯示平滑曲線。
+    *   **顏色:** 優化圖表線條顏色，確保在亮色與深色模式下均清晰可見。
 *   **0100:** **修復即時溫濕度數據解析錯誤。**
     *   **問題:** 藍牙接收到的即時數據 (`0x90`) 仍使用舊版協定解析 (整數+小數)，導致數值顯示異常 (如 140.9%)。
     *   **修正:** 更新 `BluetoothLeManager` 中的解析邏輯，使其與歷史數據 (`0x91`) 一致，採用 Protocol V2 標準 (2-byte 帶號整數 / 100)。
