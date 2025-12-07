@@ -7,9 +7,10 @@
         *   **VersionCode:** 自動使用 Git 總提交次數 (`rev-list --count HEAD`)。
         *   **VersionName:**
             *   `main` 分支: `1.1.8.<commitCount>`
-            *   `dev` 分支: `1.1.8-dev.<commitCount>-<shortHash>`
+            *   其他分支: `1.1.8-<branch>.<commitCount>-<shortHash>`
         *   **ArchivesBaseName:** 自動格式化為 `藥到叮嚀-v<VersionName>`。
-    *   **修復:** 解決了 `build.gradle.kts` 中執行 Git 指令時因 `TimeUnit` 引用錯誤導致的 Sync 失敗問題。
+        *   **AppName:** 開發分支會自動加上 `(<branch>)` 後綴。
+    *   **修復:** 解決了 `build.gradle.kts` 中執行 Git 指令時因 `TimeUnit` 引用錯誤導致的 Sync 失敗問題，並修正了未使用的參數警告。
 
 ## UI/UX 調整
 *   **0101:** **修正圖表線條顏色與顯示樣式。**
