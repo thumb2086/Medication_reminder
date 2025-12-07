@@ -1,0 +1,87 @@
+name: Android CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - '**' # Trigger on all branches for nightly builds (except main, handled by conditional)
+
+jobs:
+  build:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required for git rev-list to work correctly in build.gradle.kts
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Grant Execute Permission for Gradlew
+        run: chmod +x gradlew
+
+      - name: Build with Gradle
+        run: ./gradlew assembleRelease
+
+      - name: Get Version Name
+        id: version
+        run: |
+          VERSION_NAME=$(./gradlew -q app:printVersionName)
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "Detected Version: $VERSION_NAME"
+
+      - name: Sign APK (Debug/Release)
+        # Note: In a real environment, you should sign your APK with a keystore.
+        # For this template, we are using the default debug keystore or unsigned release APK.
+        run: echo "Skipping signing for now. The output will be unsigned or debug signed depending on config."
+
+      - name: Rename APK
+        run: |
+          # Find the generated APK (name varies due to archivesBaseName) and rename it
+          # The filename is likely to be Medication_reminder-v<VersionName>.apk or similar
+          # We'll rename it to MedicationReminder-<VersionName>.apk for clarity in release
+          
+          # Handle spaces in VERSION_NAME by replacing them with dashes for the filename
+          SAFE_VERSION_NAME=$(echo "${{ steps.version.outputs.VERSION_NAME }}" | sed 's/ /-/g')
+          
+          find app/build/outputs/apk/release -name "*.apk" -print0 | xargs -0 -I {} mv {} app/build/outputs/apk/release/MedicationReminder-$SAFE_VERSION_NAME.apk
+          echo "APK_FILENAME=MedicationReminder-$SAFE_VERSION_NAME.apk" >> $GITHUB_ENV
+
+      - name: Create Release (Main - Stable)
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.VERSION_NAME }}
+          name: Release v${{ steps.version.outputs.VERSION_NAME }}
+          files: app/build/outputs/apk/release/${{ env.APK_FILENAME }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release (Nightly)
+        if: github.ref != 'refs/heads/main'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: nightly
+          name: Nightly Build (${{ steps.version.outputs.VERSION_NAME }})
+          files: app/build/outputs/apk/release/${{ env.APK_FILENAME }}
+          draft: false
+          prerelease: true
+          generate_release_notes: true
+          body: |
+            Nightly build for version **${{ steps.version.outputs.VERSION_NAME }}**
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
