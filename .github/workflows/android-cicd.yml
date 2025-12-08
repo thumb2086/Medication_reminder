@@ -29,6 +29,19 @@ jobs:
       - name: Grant Execute Permission for Gradlew
         run: chmod +x gradlew
 
+      # 新增：處理 google-services.json，避免建置失敗
+      - name: Decode Google Services JSON
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ ! -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "$GOOGLE_SERVICES_JSON" > app/google-services.json
+            echo "google-services.json created."
+          else
+            echo "Warning: GOOGLE_SERVICES_JSON secret not found. creating dummy file to prevent build error."
+            echo "{}" > app/google-services.json
+          fi
+
       - name: Build with Gradle
         run: ./gradlew assembleRelease
 
@@ -39,22 +52,39 @@ jobs:
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_OUTPUT
           echo "Detected Version: $VERSION_NAME"
 
-      - name: Sign APK (Debug/Release)
-        # Note: In a real environment, you should sign your APK with a keystore.
-        # For this template, we are using the default debug keystore or unsigned release APK.
-        run: echo "Skipping signing for now. The output will be unsigned or debug signed depending on config."
+      - name: Sign APK (Release)
+        id: sign_app
+        uses: r0adkll/sign-android-release@v1
+        with:
+          releaseDirectory: app/build/outputs/apk/release
+          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
+          alias: ${{ secrets.KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+        # 如果沒有設定 Secrets，此步驟可能會失敗或需要改為條件執行。
+        # 若僅做測試，可暫時保留原 echo 並註解掉上方 uses。
 
       - name: Rename APK
         run: |
-          # Find the generated APK (name varies due to archivesBaseName) and rename it
-          # The filename is likely to be Medication_reminder-v<VersionName>.apk or similar
-          # We'll rename it to MedicationReminder-<VersionName>.apk for clarity in release
-          
           # Handle spaces in VERSION_NAME by replacing them with dashes for the filename
           SAFE_VERSION_NAME=$(echo "${{ steps.version.outputs.VERSION_NAME }}" | sed 's/ /-/g')
           
-          find app/build/outputs/apk/release -name "*.apk" -print0 | xargs -0 -I {} mv {} app/build/outputs/apk/release/MedicationReminder-$SAFE_VERSION_NAME.apk
-          echo "APK_FILENAME=MedicationReminder-$SAFE_VERSION_NAME.apk" >> $GITHUB_ENV
+          # 注意：簽署後的 APK 通常會由 sign-android-release 輸出到 signedReleaseFile
+          # 如果使用了簽署步驟，應使用 ${{ steps.sign_app.outputs.signedReleaseFile }}
+          # 這裡為了相容性，我們先搜尋目錄下的 apk (優先找 signed)
+          
+          TARGET_APK=$(find app/build/outputs/apk/release -name "*-signed.apk" | head -n 1)
+          if [ -z "$TARGET_APK" ]; then
+             TARGET_APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          fi
+
+          if [ ! -z "$TARGET_APK" ]; then
+            mv "$TARGET_APK" app/build/outputs/apk/release/MedicationReminder-$SAFE_VERSION_NAME.apk
+            echo "APK_FILENAME=MedicationReminder-$SAFE_VERSION_NAME.apk" >> $GITHUB_ENV
+          else
+            echo "Error: APK file not found!"
+            exit 1
+          fi
 
       - name: Create Release (Main - Stable)
         if: github.ref == 'refs/heads/main'
