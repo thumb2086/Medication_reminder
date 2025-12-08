@@ -37,7 +37,8 @@ android {
     val branchName = getGitCommandOutput("git", "rev-parse", "--abbrev-ref", "HEAD").let {
         if (it.isBlank() || it == "HEAD" || it == "git-error") "main" else it // Default to main if detached HEAD or error
     }
-    val shortHash = getGitCommandOutput("git", "rev-parse", "--short", "HEAD")
+    // Remove shortHash as per request (only needed commit count for nightly)
+    // val shortHash = getGitCommandOutput("git", "rev-parse", "--short", "HEAD")
 
     // Get base config values
     val baseApplicationId = appConfig["baseApplicationId"] as String
@@ -47,23 +48,34 @@ android {
     val devApiUrl = appConfig["devApiUrl"] as String
 
     // Determine branch-specific configuration
-    val isMain = branchName == "main"
-    val sanitizedBranchName = branchName.replace("/", "-")
+    // 關鍵修改：將非法字元（如 -）替換為底線 (_)，並過濾掉其他非法字元
+    // Fix: Replace hyphens with underscores, and remove other invalid characters for Android Package Name
+    val safeBranchName = branchName.replace("-", "_").replace(Regex("[^a-zA-Z0-9_]"), "")
 
-    val finalVersionName = if (isMain) {
-        "$baseVersionName.$commitCount"
+    // Treat main, master, and unknown as production/default
+    val isProduction = safeBranchName == "main" || safeBranchName == "master" || safeBranchName == "unknown"
+    
+    val finalVersionName = if (isProduction) {
+        baseVersionName
     } else {
-        "$baseVersionName-$sanitizedBranchName.$commitCount-$shortHash"
+        // Requested format: "1.0.0 nightly 5"
+        "$baseVersionName nightly $commitCount"
     }
-    val finalArchivesBaseName = "$appName-v$finalVersionName"
-    val finalApplicationId = if (isMain) baseApplicationId else "$baseApplicationId.$sanitizedBranchName"
-    val finalAppName = if (isMain) appName else "$appName ($sanitizedBranchName)"
-    val finalApiUrl = if (isMain) prodApiUrl else devApiUrl
-    val enableLogging = !isMain
+    
+    // Ensure filename doesn't have spaces
+    val safeVersionName = finalVersionName.replace(" ", "-")
+    val finalArchivesBaseName = "$appName-v$safeVersionName"
+    
+    val finalApplicationId = if (isProduction) baseApplicationId else "$baseApplicationId.$safeBranchName"
+    val finalAppName = if (isProduction) appName else "$appName ($branchName)"
+    val finalApiUrl = if (isProduction) prodApiUrl else devApiUrl
+    val enableLogging = !isProduction
 
     println("✅ Building for branch: '$branchName'")
+    println("✅ Safe Branch Name: '$safeBranchName'")
     println("✅ Version Name: $finalVersionName")
     println("✅ Version Code: $commitCount")
+    println("✅ Application ID: $finalApplicationId")
     // --- Dynamic versioning and configuration logic ends ---
 
     defaultConfig {
@@ -142,4 +154,11 @@ kotlin {
 
 kapt {
     correctErrorTypes = true
+}
+
+// Task to print the version name for CI/CD
+tasks.register("printVersionName") {
+    doLast {
+        println(extensions.getByType<com.android.build.api.dsl.ApplicationExtension>().defaultConfig.versionName)
+    }
 }
