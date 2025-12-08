@@ -48,7 +48,6 @@ android {
     val devApiUrl = appConfig["devApiUrl"] as String
 
     // Determine branch-specific configuration
-    // 關鍵修改：將非法字元（如 -）替換為底線 (_)，並過濾掉其他非法字元
     // Fix: Replace hyphens with underscores, and remove other invalid characters for Android Package Name
     val safeBranchName = branchName.replace("-", "_").replace(Regex("[^a-zA-Z0-9_]"), "")
 
@@ -158,7 +157,9 @@ kapt {
 
 // Task to print the version name for CI/CD
 tasks.register("printVersionName") {
+    // Use legacy AppExtension to get the version name safely
     doLast {
-        println(extensions.getByType<com.android.build.api.dsl.ApplicationExtension>().defaultConfig.versionName)
+        val android = project.extensions.findByName("android") as? com.android.build.gradle.AppExtension
+        println(android?.defaultConfig?.versionName ?: "unknown")
     }
 }
