@@ -97,8 +97,20 @@ android {
         resValue("string", "app_name", finalAppName)
     }
 
+    signingConfigs {
+        create("release") {
+            // System.getenv 用於讀取 GitHub Actions 設定的環境變數
+            val keystorePath = System.getenv("KEYSTORE_PATH")
+            storeFile = if (keystorePath != null) file(keystorePath) else file("release.keystore")
+            storePassword = System.getenv("KEYSTORE_PASSWORD")
+            keyAlias = System.getenv("KEY_ALIAS")
+            keyPassword = System.getenv("KEY_PASSWORD")
+        }
+    }
+
     buildTypes {
-        release {
+        getByName("release") {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

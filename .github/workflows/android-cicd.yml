@@ -5,6 +5,9 @@ on:
     branches:
       - main
       - '**' # Trigger on all branches for nightly builds (except main, handled by conditional)
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build:
@@ -29,7 +32,6 @@ jobs:
       - name: Grant Execute Permission for Gradlew
         run: chmod +x gradlew
 
-      # 新增：處理 google-services.json，避免建置失敗
       - name: Decode Google Services JSON
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
@@ -42,8 +44,20 @@ jobs:
             echo "{}" > app/google-services.json
           fi
 
-      - name: Build with Gradle
-        run: ./gradlew assembleRelease
+      - name: Decode Keystore
+        id: write_file
+        uses: timheuer/base64-to-file@v1.2
+        with:
+          fileName: 'release.keystore'
+          encodedString: ${{ secrets.KEYSTORE_BASE64 }}
+
+      - name: Build with Gradle (Release)
+        env:
+          KEYSTORE_PATH: ${{ steps.write_file.outputs.filePath }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew assembleRelease --stacktrace
 
       - name: Get Version Name
         id: version
@@ -52,82 +66,33 @@ jobs:
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_OUTPUT
           echo "Detected Version: $VERSION_NAME"
 
-      - name: Sign APK (Release)
-        id: sign_app
-        run: |
-          echo "Decoding Keystore..."
-          echo "${{ secrets.SIGNING_KEY }}" | base64 --decode > app/release.keystore
-          
-          # Locate Android SDK Build Tools
-          if [ -z "$ANDROID_HOME" ]; then
-            ANDROID_HOME=$ANDROID_SDK_ROOT
-          fi
-          
-          if [ -z "$ANDROID_HOME" ]; then
-             echo "Error: ANDROID_HOME is not set."
-             exit 1
-          fi
-
-          BUILD_TOOLS_PATH="$ANDROID_HOME/build-tools"
-          # Get the latest version
-          LATEST_VERSION=$(ls $BUILD_TOOLS_PATH | sort -V | tail -n 1)
-          echo "Using Build Tools Version: $LATEST_VERSION"
-          
-          ZIPALIGN="$BUILD_TOOLS_PATH/$LATEST_VERSION/zipalign"
-          APKSIGNER="$BUILD_TOOLS_PATH/$LATEST_VERSION/apksigner"
-          
-          # Find the release APK
-          INPUT_APK=$(find app/build/outputs/apk/release -name "*.apk" -type f | head -n 1)
-          if [ -z "$INPUT_APK" ]; then
-            echo "Error: No APK found in app/build/outputs/apk/release"
-            exit 1
-          fi
-          echo "Found APK: $INPUT_APK"
-          
-          SIGNED_APK="${INPUT_APK%.*}-signed.apk"
-          
-          echo "Aligning APK..."
-          "$ZIPALIGN" -v -p 4 "$INPUT_APK" aligned.apk
-          
-          echo "Signing APK..."
-          "$APKSIGNER" sign --ks app/release.keystore \
-            --ks-key-alias "${{ secrets.KEY_ALIAS }}" \
-            --ks-pass "pass:${{ secrets.KEY_STORE_PASSWORD }}" \
-            --key-pass "pass:${{ secrets.KEY_PASSWORD }}" \
-            --out "$SIGNED_APK" \
-            aligned.apk
-            
-          echo "Verifying Signature..."
-          "$APKSIGNER" verify "$SIGNED_APK"
-          
-          # Cleanup
-          rm app/release.keystore aligned.apk
-          
-          # Output for next steps
-          echo "signedReleaseFile=$SIGNED_APK" >> $GITHUB_OUTPUT
-
       - name: Rename APK
         run: |
           # Handle spaces in VERSION_NAME by replacing them with dashes for the filename
           SAFE_VERSION_NAME=$(echo "${{ steps.version.outputs.VERSION_NAME }}" | sed 's/ /-/g')
           
-          # Look for the signed APK produced in the previous step
-          # If previous step failed or skipped, this might pick up the unsigned one if signed wasn't created, 
-          # but we check specifically for signed first.
+          # Gradle puts the signed APK in app/build/outputs/apk/release/
+          # The filename usually defaults to app-release.apk or defined in build.gradle
+          # Our build.gradle sets archivesBaseName, so it might be something like MedicationReminderApp-v1.1.8-nightly-5-release.apk
           
-          TARGET_APK=$(find app/build/outputs/apk/release -name "*-signed.apk" | head -n 1)
-          if [ -z "$TARGET_APK" ]; then
-             echo "Warning: Signed APK not found, looking for unsigned..."
-             TARGET_APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
-          fi
+          # Find any APK in the release folder
+          TARGET_APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
 
           if [ ! -z "$TARGET_APK" ]; then
             mv "$TARGET_APK" app/build/outputs/apk/release/MedicationReminder-$SAFE_VERSION_NAME.apk
             echo "APK_FILENAME=MedicationReminder-$SAFE_VERSION_NAME.apk" >> $GITHUB_ENV
+            echo "Renamed $TARGET_APK to MedicationReminder-$SAFE_VERSION_NAME.apk"
           else
             echo "Error: APK file not found!"
             exit 1
           fi
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: app/build/outputs/apk/release/${{ env.APK_FILENAME }}
+          retention-days: 7
 
       - name: Create Release (Main - Stable)
         if: github.ref == 'refs/heads/main'
@@ -143,7 +108,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create Release (Nightly)
-        if: github.ref != 'refs/heads/main'
+        if: github.ref != 'refs/heads/main' && github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: nightly
