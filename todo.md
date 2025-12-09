@@ -1,5 +1,23 @@
 # To-Do List
 
+- [ ] **Fix Warnings**:
+    - [ ] `UpdateManager.kt`: Fix `Unnecessary safe call on a non-null receiver` warning.
+
+- [x] **Fix Warnings**:
+    - [x] `provider_paths.xml`: Remove unused namespace declaration.
+    - [x] `libs.versions.toml`: Update dependencies (androidx.activity, swiperefreshlayout, okhttp).
+    - [x] `AndroidManifest.xml`: `REQUEST_INSTALL_PACKAGES` warning (acknowledged, necessary for feature).
+    - [x] `MainActivity.kt`: Remove unused variable `shouldCheck`.
+    - [x] `UpdateManager.kt`: Use `String.toUri()` extension function.
+
+- [x] **UI/UX Optimization**:
+    - [x] **Settings Icons**: Add icons to all preference entries in `preferences.xml` (Theme, Language, Character, Engineering Mode, etc.) to match the Wi-Fi settings style.
+- [x] **Feature: In-App Update from GitHub**:
+    - [x] **Dependencies**: Add `OkHttp` for API requests and downloading.
+    - [x] **Permissions**: Add `INTERNET` and `REQUEST_INSTALL_PACKAGES` to Manifest. Setup `FileProvider`.
+    - [x] **Settings**: Add "Update Channel" (Stable/Beta) option in `preferences.xml`.
+    - [x] **Update Logic**: Create `UpdateManager` to fetch releases from `CPXru/Medication_reminder`.
+    - [x] **UI**: Show update dialog in `MainActivity` on startup.
 - [x] **Fix CI/CD Release Titles**:
     - [x] **Modify `.github/workflows/android-cicd.yml`**:
         - [x] Remove Chinese text from release titles ("開發預覽版", "實驗分支").

@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.util.TypedValue
 import android.view.View
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.commit
@@ -15,6 +16,7 @@ import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
+import com.example.medicationreminderapp.util.UpdateManager
 import kotlinx.coroutines.launch
 
 class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedPreferenceChangeListener {
@@ -27,6 +29,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         findPreference<ListPreference>("theme")?.let { it.summary = it.entry }
         findPreference<ListPreference>("language")?.let { it.summary = it.entry }
         findPreference<ListPreference>("character")?.let { it.summary = it.entry }
+        findPreference<ListPreference>("update_channel")?.let { it.summary = it.entry }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -60,7 +63,34 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                 }
                 true
             }
+            "check_for_updates" -> {
+                checkForUpdates()
+                true
+            }
             else -> super.onPreferenceTreeClick(preference)
+        }
+    }
+
+    private fun checkForUpdates() {
+        val sharedPreferences = preferenceScreen.sharedPreferences ?: return
+        val channel = sharedPreferences.getString("update_channel", "official") ?: "official"
+        val updateManager = UpdateManager(requireContext())
+        
+        lifecycleScope.launch {
+            Toast.makeText(requireContext(), "正在檢查更新...", Toast.LENGTH_SHORT).show()
+            val updateInfo = updateManager.checkForUpdates(channel)
+            if (updateInfo != null) {
+                AlertDialog.Builder(requireContext())
+                    .setTitle(getString(R.string.update_available_title))
+                    .setMessage(getString(R.string.update_available_message, updateInfo.version, updateInfo.releaseNotes))
+                    .setPositiveButton(R.string.update_now) { _, _ ->
+                        updateManager.downloadAndInstall(updateInfo.downloadUrl, "MedicationReminderApp-${updateInfo.version}.apk")
+                    }
+                    .setNegativeButton(R.string.update_later, null)
+                    .show()
+            } else {
+                Toast.makeText(requireContext(), R.string.no_updates_available, Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -101,6 +131,11 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                 findPreference<ListPreference>(key)?.let { characterPreference ->
                     characterPreference.summary = characterPreference.entry
                     activity?.recreate()
+                }
+            }
+            "update_channel" -> {
+                 findPreference<ListPreference>(key)?.let { pref ->
+                    pref.summary = pref.entry
                 }
             }
             "engineering_mode" -> {
