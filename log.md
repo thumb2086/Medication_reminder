@@ -1,5 +1,14 @@
 # 更新日誌
 
+## DevOps
+*   **0119:** **實作三軌發布策略 (Official/Dev/Nightly)。**
+    *   **發布策略:**
+        *   **Official (v*):** 當 Tag 為 `v` 開頭時觸發，建立永久 Release，供一般使用者自動更新。
+        *   **Dev (dev branch):** 當推送到 `dev` 分支時觸發，更新 `latest-dev` 標籤，供 QA/測試人員使用。
+        *   **Nightly (others):** 當推送到其他分支 (如 `fix-xxx`) 時觸發，更新 `nightly` 標籤，供開發者實驗。
+    *   **CI/CD 更新:** 修改 `.github/workflows/android-cicd.yml`，實作上述三種觸發條件與發布邏輯。
+    *   **版本控制:** App 的 `versionCode` 與 `versionName` 已與 GitHub Actions 深度整合，自動對應 Build Number 與 Git 資訊。
+
 ## UI/UX 調整
 *   **0118:** **修復歷史記錄頁面月份標題顯示並完善英文翻譯。**
     *   **歷史記錄:**
