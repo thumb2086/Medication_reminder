@@ -1,5 +1,13 @@
 # To-Do List
 
+- [x] **Fix CI/CD Release Titles**:
+    - [x] **Modify `.github/workflows/android-cicd.yml`**:
+        - [x] Remove Chinese text from release titles ("開發預覽版", "實驗分支").
+        - [x] Ensure `main` branch pushes are handled correctly (or kept as build-only).
+- [x] **Optimize Workflow Triggers**:
+    - [x] **Modify `.github/workflows/android-cicd.yml`**:
+        - [x] Remove `pull_request` trigger.
+        - [x] Add explicit branch filters to `push` trigger to avoid duplicate runs on merge.
 - [x] **Implement Triple-Track Release Strategy**:
     - [x] **Modify `.github/workflows/android-cicd.yml`**:
         - [x] **Official Release**: Trigger on `v*` tags. Permanent release.

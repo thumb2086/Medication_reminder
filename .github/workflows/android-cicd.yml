@@ -3,13 +3,10 @@ name: Android CI/CD
 on:
   push:
     branches:
-      - main
-      - '**' # Trigger on all branches for nightly builds
+      - "fix-setlist" # Trigger Nightly
+      - "dev"         # Trigger Dev
     tags:
       - 'v*' # Trigger on tags starting with v (e.g. v1.0.0)
-  pull_request:
-    branches:
-      - main
 
 jobs:
   build:
@@ -105,8 +102,8 @@ jobs:
       # ------------------------------------------------------------------
 
       # ------------------------------------------------------------------
-      # 1. 正式版發布 (Stable)
-      # 觸發條件：只有當你打上 v 開頭的 Tag 時 (例如 v1.0.0)
+      # 1. Official Release (Stable)
+      # Trigger: Only on v* tags (e.g., v1.0.0)
       # ------------------------------------------------------------------
       - name: Create Official Release
         if: startsWith(github.ref, 'refs/tags/v')
@@ -119,9 +116,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ------------------------------------------------------------------
-      # 2. Dev 開發版 (Beta)
-      # 觸發條件：推送至 'dev' 分支時
-      # 用途：這是一個相對穩定的測試版，未來可讓內部測試人員更新
+      # 2. Dev Release (Beta)
+      # Trigger: Push to 'dev' branch
+      # Purpose: Relatively stable build for QA/Testers
       # ------------------------------------------------------------------
       - name: Update Dev Release
         if: github.ref == 'refs/heads/dev'
@@ -130,17 +127,16 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           automatic_release_tag: "latest-dev"
           prerelease: true
-          title: "Dev Build (開發預覽版)"
+          title: "Dev Build"
           files: |
             app/build/outputs/apk/release/*.apk
 
       # ------------------------------------------------------------------
-      # 3. Nightly 實驗版 (Nightly)
-      # 觸發條件：推送至其他分支 (如 fix-setlist, feature-login) 且不是 Tag
-      # 用途：給開發者自己驗證功能用，每次都會覆蓋
+      # 3. Nightly Release (Experimental)
+      # Trigger: Push to any branch except main, master, dev, and tags
+      # Purpose: Experimental builds for developers
       # ------------------------------------------------------------------
       - name: Update Nightly Release
-        # 邏輯：是 Push 事件 + 不是 Tag + 不是 dev 分支 + 不是 main/master 分支
         if: |
           github.event_name == 'push' && 
           !startsWith(github.ref, 'refs/tags/') && 
@@ -152,6 +148,6 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           automatic_release_tag: "nightly"
           prerelease: true
-          title: "Nightly Build (實驗分支)"
+          title: "Nightly Build"
           files: |
             app/build/outputs/apk/release/*.apk
