@@ -5,11 +5,11 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.net.Uri
 import android.os.Environment
 import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.core.net.toUri
 import com.example.medicationreminderapp.BuildConfig
 import com.example.medicationreminderapp.R
 import com.google.gson.Gson
@@ -57,7 +57,7 @@ class UpdateManager(private val context: Context) {
                     return@withContext null
                 }
 
-                val jsonStr = response.body?.string() ?: return@withContext null
+                val jsonStr = response.body.string()
                 val json = gson.fromJson(jsonStr, JsonObject::class.java)
 
                 val tagName = json.get("tag_name").asString
@@ -119,7 +119,7 @@ class UpdateManager(private val context: Context) {
     }
 
     fun downloadAndInstall(url: String, fileName: String) {
-        val request = DownloadManager.Request(Uri.parse(url))
+        val request = DownloadManager.Request(url.toUri())
             .setTitle(context.getString(R.string.downloading_update))
             .setDescription(fileName)
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)

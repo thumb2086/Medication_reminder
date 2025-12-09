@@ -1,7 +1,17 @@
 # To-Do List
 
-- [ ] **UI/UX Optimization**:
-    - [ ] **Settings Icons**: Add icons to all preference entries in `preferences.xml` (Theme, Language, Character, Engineering Mode, etc.) to match the Wi-Fi settings style.
+- [ ] **Fix Warnings**:
+    - [ ] `UpdateManager.kt`: Fix `Unnecessary safe call on a non-null receiver` warning.
+
+- [x] **Fix Warnings**:
+    - [x] `provider_paths.xml`: Remove unused namespace declaration.
+    - [x] `libs.versions.toml`: Update dependencies (androidx.activity, swiperefreshlayout, okhttp).
+    - [x] `AndroidManifest.xml`: `REQUEST_INSTALL_PACKAGES` warning (acknowledged, necessary for feature).
+    - [x] `MainActivity.kt`: Remove unused variable `shouldCheck`.
+    - [x] `UpdateManager.kt`: Use `String.toUri()` extension function.
+
+- [x] **UI/UX Optimization**:
+    - [x] **Settings Icons**: Add icons to all preference entries in `preferences.xml` (Theme, Language, Character, Engineering Mode, etc.) to match the Wi-Fi settings style.
 - [x] **Feature: In-App Update from GitHub**:
     - [x] **Dependencies**: Add `OkHttp` for API requests and downloading.
     - [x] **Permissions**: Add `INTERNET` and `REQUEST_INSTALL_PACKAGES` to Manifest. Setup `FileProvider`.

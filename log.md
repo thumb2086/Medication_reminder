@@ -14,6 +14,14 @@
         *   設定 `FileProvider` 以支援 APK 安裝意圖 (Intent)。
         *   新增 `OkHttp` 依賴用於網路請求。
 
+## UI/UX 調整
+*   **0120:** **優化設定頁面視覺與修正警告。**
+    *   **圖示新增:** 為設定頁面 (`preferences.xml`) 中的所有選項新增了對應的圖示 (`ic_palette`, `ic_language`, `ic_face`, `ic_update`, `ic_developer_mode`)，提升視覺一致性。
+    *   **警告修復:**
+        *   更新了 `libs.versions.toml` 中的 `androidx.activity`, `swiperefreshlayout` 與 `okhttp` 版本。
+        *   移除了 `MainActivity.kt` 中未使用的變數 `shouldCheck`。
+        *   在 `UpdateManager.kt` 中改用 KTX 擴充函式 `String.toUri()`。
+
 ## DevOps
 *   **0119:** **實作三軌發布策略 (Official/Dev/Nightly)。**
     *   **發布策略:**
