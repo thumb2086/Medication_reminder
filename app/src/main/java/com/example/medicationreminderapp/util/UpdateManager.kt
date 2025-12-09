@@ -37,14 +37,15 @@ class UpdateManager(private val context: Context) {
     suspend fun checkForUpdates(channel: String): UpdateInfo? {
         return withContext(Dispatchers.IO) {
             try {
-                // Official -> Fetch latest release (tags)
-                // Nightly -> Fetch latest release from "nightly" tag
-                
-                val url = if (channel == "official") {
-                    "https://api.github.com/repos/$repoOwner/$repoName/releases/latest"
-                } else {
-                     // For nightly, we target the 'nightly' tag specifically
-                    "https://api.github.com/repos/$repoOwner/$repoName/releases/tags/nightly"
+                // Official (Stable) -> Fetch latest release (tags starting with v)
+                // Dev -> Fetch release with tag 'latest-dev'
+                // Nightly -> Fetch release with tag 'nightly'
+
+                val url = when (channel) {
+                    "stable" -> "https://api.github.com/repos/$repoOwner/$repoName/releases/latest"
+                    "dev" -> "https://api.github.com/repos/$repoOwner/$repoName/releases/tags/latest-dev"
+                    "nightly" -> "https://api.github.com/repos/$repoOwner/$repoName/releases/tags/nightly"
+                    else -> "https://api.github.com/repos/$repoOwner/$repoName/releases/latest" // Default to stable
                 }
 
                 val request = Request.Builder()
@@ -57,38 +58,43 @@ class UpdateManager(private val context: Context) {
                     return@withContext null
                 }
 
+                // Fixed warning: Unnecessary safe call on a non-null receiver
                 val jsonStr = response.body.string()
                 val json = gson.fromJson(jsonStr, JsonObject::class.java)
 
                 val tagName = json.get("tag_name").asString
                 val releaseNotes = json.get("body").asString
                 
-                // Parse version from tagName (e.g., v1.1.8 -> 1.1.8, nightly -> check body or just assume newer?)
-                // Simple logic: If current version name is different, propose update.
-                // Better logic: Semantic versioning comparison.
-                
-                // For this implementation, we will compare raw strings for official, 
-                // and for nightly we might rely on the fact that the user is on the 'nightly' channel.
-                // However, without a clean way to compare "nightly 5" vs "nightly 6", we might just prompt if it looks different?
-                // Or simply returning the info and letting UI decide.
-                
                 val currentVersion = BuildConfig.VERSION_NAME
-                
-                // Very basic check: if tag name contains current version, probably no update.
-                // For nightly: tag is always "nightly", so we need another way?
-                // Actually, github release object has "published_at". 
-                // But simplified: 
-                // Official: tag 'v1.1.8' != '1.1.8' (needs stripping 'v')
-                // Nightly: tag is 'nightly'. We can parse body for "Version: x.x.x nightly N"
-                
-                val isUpdateAvailable = if (channel == "official") {
-                     val cleanTag = tagName.removePrefix("v")
-                     cleanTag != currentVersion.split(" ").first() // simple check
-                } else {
-                    // For nightly, it's hard to know if it's newer without checking commit hash or build number
-                    // We can check if the body contains the current version string.
-                    // If the body says "1.1.8 nightly 10" and we are "1.1.8 nightly 9", update.
-                    !releaseNotes.contains(currentVersion) 
+
+                // Logic for determining if an update is available:
+                val isUpdateAvailable = when (channel) {
+                    "stable" -> {
+                        // For stable, tag usually starts with 'v' (e.g., v1.1.8)
+                        // Simple check: if cleaned tag != current version (assumed stable build has simple X.Y.Z)
+                        val cleanTag = tagName.removePrefix("v")
+                        // Split current version to handle potential extra info if running a non-stable build
+                        // But if user is on stable channel, they should be compared against the stable tag.
+                        // Ideally we use SemVer, but for now simple string inequality is used as a trigger.
+                        // Also, we should probably only update if tag is *different* from current.
+                        // If current is "1.1.8" and tag is "v1.1.8", cleanTag is "1.1.8", so equal -> no update.
+                        
+                        // However, if user is on "1.1.8 nightly 5" and switches to stable "1.1.8", 
+                        // they might want to "downgrade" or switch. 
+                        // This simple logic just checks if the version string matches.
+                        cleanTag != currentVersion
+                    }
+                    "dev", "nightly" -> {
+                         // For dev/nightly, the tag is static ("latest-dev" or "nightly").
+                         // We rely on the release body or name to contain the version info.
+                         // But commonly, users on dev/nightly just want the *absolute latest*.
+                         // Since we can't easily parse "nightly 5" vs "nightly 6" without standardizing the body,
+                         // we will check if the release notes contain the exact current version string.
+                         // If the body DOES NOT contain the current version string, we assume it's a new build.
+                         // (This relies on the CI putting the version name in the release body)
+                         !releaseNotes.contains(currentVersion)
+                    }
+                    else -> false
                 }
                 
                 if (!isUpdateAvailable) return@withContext null
@@ -109,7 +115,7 @@ class UpdateManager(private val context: Context) {
                 
                 if (apkUrl.isEmpty()) return@withContext null
 
-                UpdateInfo(tagName, apkUrl, releaseNotes, channel == "nightly")
+                UpdateInfo(tagName, apkUrl, releaseNotes, channel != "stable")
 
             } catch (e: Exception) {
                 Log.e("UpdateManager", "Error checking for updates", e)
@@ -136,7 +142,11 @@ class UpdateManager(private val context: Context) {
                 val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
                 if (id == downloadId) {
                     installApk(fileName)
-                    context.unregisterReceiver(this)
+                    try {
+                        context.unregisterReceiver(this)
+                    } catch (_: IllegalArgumentException) {
+                        // Ignore if already unregistered
+                    }
                 }
             }
         }

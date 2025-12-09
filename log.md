@@ -1,6 +1,15 @@
 # 更新日誌
 
 ## DevOps
+*   **0121:** **優化更新頻道與策略。**
+    *   **更新頻道:** 新增 `Stable`, `Dev`, `Nightly` 三個頻道。
+    *   **更新邏輯:**
+        *   `Stable`: 檢查 `latest` release，比對 `v` tag。
+        *   `Dev`: 檢查 `latest-dev` tag release。
+        *   **Nightly:** 檢查 `nightly` tag release。
+    *   **UI 更新:** `preferences.xml` 與 `strings.xml` 配合更新頻道選項。
+
+## DevOps
 *   **0120:** **實作 App 內自動更新功能。**
     *   **更新機制:**
         *   新增 `UpdateManager` (位於 `util/` package)，負責檢查 GitHub Releases 的最新版本。
