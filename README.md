@@ -32,12 +32,13 @@ To ensure compatibility between the App and the ESP32 firmware as features evolv
 2.  **Open in Android Studio:** Import the project into Android Studio (Ladybug | 2024.2.1 or later recommended).
 3.  **Build and Run:** Connect an Android device (Android 10+) or use an emulator to run the application.
 
-## CI/CD
+## CI/CD & Versioning
 
-This project uses GitHub Actions for continuous integration and deployment.
+This project uses GitHub Actions for continuous integration and automated version management.
 
-*   **Stable Releases:** Pushes to the `main` branch trigger a release build, creating a tagged release (e.g., `v1.1.8.x`).
-*   **Nightly Builds:** Pushes to the `dev` branch trigger a pre-release build, updating the `nightly` tag with the latest changes.
+*   **Tag Releases:** Pushing a tag (e.g., `1.1.9`) triggers a stable release build. The APK version will match the tag name.
+*   **Nightly Builds:** Pushes to any branch trigger a nightly build. The version name will be formatted as `branch-nightly` (e.g., `dev-nightly`).
+*   **Build Number:** The `versionCode` is automatically incremented based on the GitHub Actions run number.
 
 ## License
 

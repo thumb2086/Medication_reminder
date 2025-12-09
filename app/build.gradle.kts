@@ -37,8 +37,6 @@ android {
     val branchName = getGitCommandOutput("git", "rev-parse", "--abbrev-ref", "HEAD").let {
         if (it.isBlank() || it == "HEAD" || it == "git-error") "main" else it // Default to main if detached HEAD or error
     }
-    // Remove shortHash as per request (only needed commit count for nightly)
-    // val shortHash = getGitCommandOutput("git", "rev-parse", "--short", "HEAD")
 
     // Get base config values
     val baseApplicationId = appConfig["baseApplicationId"] as String
@@ -48,18 +46,25 @@ android {
     val devApiUrl = appConfig["devApiUrl"] as String
 
     // Determine branch-specific configuration
-    // Fix: Replace hyphens with underscores, and remove other invalid characters for Android Package Name
     val safeBranchName = branchName.replace("-", "_").replace(Regex("[^a-zA-Z0-9_]"), "")
 
     // Treat main, master, and unknown as production/default
     val isProduction = safeBranchName == "main" || safeBranchName == "master" || safeBranchName == "unknown"
     
-    val finalVersionName = if (isProduction) {
+    // Logic: Use environment variables from CI/CD if available, otherwise fallback to local logic
+    val envBuildNumber = System.getenv("BUILD_NUMBER")?.toIntOrNull()
+    val envVersionName = System.getenv("VERSION_NAME")
+
+    val finalVersionCode = envBuildNumber ?: commitCount
+
+    val localVersionName = if (isProduction) {
         baseVersionName
     } else {
         // Requested format: "1.0.0 nightly 5"
         "$baseVersionName nightly $commitCount"
     }
+    
+    val finalVersionName = envVersionName ?: localVersionName
     
     // Ensure filename doesn't have spaces
     val safeVersionName = finalVersionName.replace(" ", "-")
@@ -70,19 +75,13 @@ android {
     val finalApiUrl = if (isProduction) prodApiUrl else devApiUrl
     val enableLogging = !isProduction
 
-    // Debug output suppressed to avoid polluting stdout for scripts
-    // println("✅ Building for branch: '$branchName'")
-    // println("✅ Safe Branch Name: '$safeBranchName'")
-    // println("✅ Version Name: $finalVersionName")
-    // println("✅ Version Code: $commitCount")
-    // println("✅ Application ID: $finalApplicationId")
     // --- Dynamic versioning and configuration logic ends ---
 
     defaultConfig {
         applicationId = finalApplicationId
         minSdk = 29
         targetSdk = 36
-        versionCode = commitCount
+        versionCode = finalVersionCode
         versionName = finalVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
