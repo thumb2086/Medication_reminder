@@ -61,8 +61,7 @@ jobs:
           alias: ${{ secrets.KEY_ALIAS }}
           keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
-        # 如果沒有設定 Secrets，此步驟可能會失敗或需要改為條件執行。
-        # 若僅做測試，可暫時保留原 echo 並註解掉上方 uses。
+          buildTools: 34.0.0
 
       - name: Rename APK
         run: |
