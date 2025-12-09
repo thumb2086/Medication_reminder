@@ -146,6 +146,7 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.calendar.view)
     implementation(libs.mpandroidchart)
+    implementation(libs.okhttp)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

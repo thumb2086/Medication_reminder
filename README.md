@@ -15,6 +15,7 @@ A smart medication reminder application integrated with an ESP32-based smart pil
 *   **Wi-Fi Configuration:** Configure the ESP32's Wi-Fi credentials directly from the app via BLE, now conveniently located within the App Settings.
 *   **Alarm System:** Set up to 4 alarms on the ESP32 pillbox for standalone reminders.
 *   **Interactive Charts:** View temperature and humidity trends with interactive line charts, supporting pan, zoom, and data point inspection.
+*   **In-App Updates:** Automatically checks for updates from GitHub Releases. Users can choose between "Official" (Stable) and "Nightly" (Dev) update channels.
 
 ## Bluetooth Protocol Versioning
 
@@ -36,9 +37,10 @@ To ensure compatibility between the App and the ESP32 firmware as features evolv
 
 This project uses GitHub Actions for continuous integration and automated version management.
 
-*   **Tag Releases:** Pushing a tag (e.g., `1.1.9`) triggers a stable release build. The APK version will match the tag name.
-*   **Nightly Builds:** Pushes to any branch trigger a nightly build. The version name will be formatted as `branch-nightly` (e.g., `dev-nightly`).
-*   **Build Number:** The `versionCode` is automatically incremented based on the GitHub Actions run number.
+*   **Official Releases:** Triggered by pushing a tag starting with `v` (e.g., `v1.1.8`). Creates a permanent release.
+*   **Dev Releases:** Triggered by pushing to the `dev` branch. Updates the `latest-dev` rolling release.
+*   **Nightly Builds:** Triggered by pushing to any other branch. Updates the `nightly` rolling release.
+*   **Versioning:** The `versionCode` corresponds to the build number, and `versionName` is dynamically generated based on the branch and commit count.
 
 ## License
 

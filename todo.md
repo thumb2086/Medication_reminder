@@ -1,5 +1,11 @@
 # To-Do List
 
+- [x] **Feature: In-App Update from GitHub**:
+    - [x] **Dependencies**: Add `OkHttp` for API requests and downloading.
+    - [x] **Permissions**: Add `INTERNET` and `REQUEST_INSTALL_PACKAGES` to Manifest. Setup `FileProvider`.
+    - [x] **Settings**: Add "Update Channel" (Stable/Beta) option in `preferences.xml`.
+    - [x] **Update Logic**: Create `UpdateManager` to fetch releases from `CPXru/Medication_reminder`.
+    - [x] **UI**: Show update dialog in `MainActivity` on startup.
 - [x] **Fix CI/CD Release Titles**:
     - [x] **Modify `.github/workflows/android-cicd.yml`**:
         - [x] Remove Chinese text from release titles ("開發預覽版", "實驗分支").

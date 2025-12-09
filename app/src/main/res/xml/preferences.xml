@@ -37,6 +37,20 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory app:title="@string/update_settings">
+        <ListPreference
+            app:key="update_channel"
+            app:title="@string/update_channel"
+            app:summary="%s"
+            app:entries="@array/update_channel_entries"
+            app:entryValues="@array/update_channel_values"
+            app:defaultValue="official" />
+
+        <Preference
+            app:key="check_for_updates"
+            app:title="@string/check_for_updates" />
+    </PreferenceCategory>
+
     <PreferenceCategory app:title="@string/developer_settings">
 
         <SwitchPreferenceCompat

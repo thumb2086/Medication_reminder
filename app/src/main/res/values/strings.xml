@@ -226,6 +226,29 @@
     <string name="wifi_password">Wi-Fi 密碼</string>
     <string name="send_wifi_credentials">傳送 Wi-Fi 憑證</string>
 
+    <!-- Update -->
+    <string name="update_settings">更新設定</string>
+    <string name="update_channel">更新頻道</string>
+    <string-array name="update_channel_entries">
+        <item>正式版 (Official)</item>
+        <item>開發版 (Nightly)</item>
+    </string-array>
+    <string-array name="update_channel_values">
+        <item>official</item>
+        <item>nightly</item>
+    </string-array>
+    <string name="update_channel_summary">選擇您想要接收更新的版本頻道</string>
+    <string name="check_for_updates">檢查更新</string>
+    <string name="update_available_title">發現新版本</string>
+    <string name="update_available_message">發現新版本 %s。您想要現在更新嗎？\n\n更新內容：\n%s</string>
+    <string name="update_now">立即更新</string>
+    <string name="update_later">稍後</string>
+    <string name="downloading_update">正在下載更新…</string>
+    <string name="update_downloaded">更新下載完成</string>
+    <string name="install_now">立即安裝</string>
+    <string name="no_updates_available">目前已是最新版本</string>
+    <string name="update_check_failed">檢查更新失敗</string>
+
     <!-- Engineering Mode -->
     <string name="developer_settings">開發者設定</string>
     <string name="engineering_mode">工程模式</string>

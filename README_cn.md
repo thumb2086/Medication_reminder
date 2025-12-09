@@ -15,6 +15,7 @@
 *   **Wi-Fi 設定:** 透過 BLE 直接設定 ESP32 的 Wi-Fi 連線資訊 (SSID 與密碼)，現已整合至設定頁面中。
 *   **鬧鐘系統:** 支援設定最多 4 組硬體鬧鐘，讓藥盒能獨立運作提醒。
 *   **互動圖表:** 透過互動式折線圖檢視溫濕度趨勢，支援縮放、拖移與數據點查看。
+*   **App 內更新:** 自動檢查 GitHub Releases 上的新版本。使用者可選擇「正式版 (Official)」或「開發版 (Nightly)」更新頻道。
 
 ## 藍牙協定版本控制
 
@@ -54,9 +55,10 @@
 
 本專案使用 GitHub Actions 進行持續整合與版本自動管理。
 
-*   **正式發布 (Tag):** 推送標籤 (例如 `1.1.9`) 會觸發正式版建置，APK 版本將與標籤名稱一致。
-*   **Nightly 建置:** 推送至任何分支皆會觸發 Nightly Build，版本號格式為 `分支名-nightly`。
-*   **版本號碼 (VersionCode):** 自動使用 GitHub Actions 的執行次數 (`run_number`) 作為唯一遞增的版本代碼。
+*   **正式發布 (Official Releases):** 推送以 `v` 開頭的標籤 (例如 `v1.1.8`) 會觸發，建立永久 Release。
+*   **開發版發布 (Dev Releases):** 推送至 `dev` 分支時觸發，更新 `latest-dev` 滾動發布版本。
+*   **Nightly 建置:** 推送至其他分支時觸發，更新 `nightly` 滾動發布版本。
+*   **版本號碼:** `versionCode` 對應 Build Number，`versionName` 則根據分支與提交次數動態產生。
 
 ## 授權
 
