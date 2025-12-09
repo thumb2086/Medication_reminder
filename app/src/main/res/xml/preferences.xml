@@ -47,7 +47,7 @@
             app:summary="%s"
             app:entries="@array/update_channel_entries"
             app:entryValues="@array/update_channel_values"
-            app:defaultValue="official"
+            app:defaultValue="stable"
             app:icon="@drawable/ic_update" />
 
         <Preference
