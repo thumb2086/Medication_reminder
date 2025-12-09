@@ -1,5 +1,108 @@
 # 更新日誌
 
+## UI/UX 調整
+*   **0118:** **修復歷史記錄頁面月份標題顯示並完善英文翻譯。**
+    *   **歷史記錄:**
+        *   在 `fragment_history.xml` 中新增了 `monthTitle` TextView，用於顯示當前日曆月份。
+        *   在 `HistoryFragment.kt` 中實作了 `monthScrollListener`，當使用者滑動日曆時，月份標題會自動更新。
+    *   **英文翻譯:**
+        *   完善了 `values-en/strings.xml`，補充了缺失的翻譯（如 `connection_settings`），解決了英文模式下出現中文的問題。
+        *   修正了部分英文用詞，使其更自然。
+
+## Bug Fixes
+*   **0117:** **修復 Android Application ID 非法字元問題。**
+    *   **問題:** `app/build.gradle.kts` 中直接使用 Git 分支名稱作為 Application ID 後綴，當分支名稱包含連字號 `-` 時 (例如 `fix-setlist`)，會導致無效的 Package Name 錯誤。
+    *   **修正:** 加入了正規表達式過濾邏輯，將連字號替換為底線 `_`，並移除其他非法字元，確保 Application ID 始終符合 Android 規範。
+
+## UI/UX 調整
+*   **0116:** **整合 Wi-Fi 設定至設定頁面。**
+    *   **選單簡化:** 移除了 Toolbar 下拉選單中獨立的「Wi-Fi 設定」選項，將其整合進「設定」頁面中，簡化了導覽層級。
+    *   **設定頁面:** 在 `preferences.xml` 中新增了「連線設定」分類，並加入「Wi-Fi 設定」選項 (`Preference`)，設定了對應的圖示與說明。
+    *   **導覽邏輯:** 修改 `SettingsFragment.kt`，實作了 `onPreferenceTreeClick`，當使用者點擊「Wi-Fi 設定」時，導航至 `WiFiConfigFragment`。
+    *   **資源新增:** 新增了 `ic_wifi.xml` 圖示與相關字串資源 (`connection_settings`, `wifi_settings_summary`)。
+
+## UI/UX 調整
+*   **0113:** **全面修正 Toolbar 下拉選單與標題位置。**
+    *   **策略:** 為了徹底解決下拉選單位置異常（覆蓋 Toolbar 或下方留白過大）以及標題垂直置中問題，進行了系統性的樣式重構。
+    *   **Toolbar 標題:** 在 `activity_main.xml` 中，將 `MaterialToolbar` 內 `TextView` 的 `translationY` 增加至 `10dp`，確保標題在視覺上精確置中，抵消系統狀態列或佈局邊距的影響。
+    *   **下拉選單 (Popup Menu):**
+        *   **主題覆蓋:** 建立了專用的 `ThemeOverlay.App.PopupMenu` 和 `ThemeOverlay.App.Toolbar`，並在 `themes.xml` (Day/Night) 中定義。
+        *   **屬性強制:** 在 `ThemeOverlay.App.Toolbar` 中強制指定 `actionOverflowMenuStyle` 和 `popupMenuStyle`。
+        *   **XML 引用:** 在 `activity_main.xml` 的 `MaterialToolbar` 中明確加入 `app:popupTheme="@style/ThemeOverlay.App.PopupMenu"`，確保樣式被正確套用。
+        *   **位置微調:** 將 `dropDownVerticalOffset` 設定為 `4dp` 並保持 `overlapAnchor=false`，這讓選單能穩定地顯示在 Toolbar 下方，且保留適當的間距，消除了不自然的空白。
+
+## UI/UX 調整
+*   **0114:** **修正 Toolbar 標題與下拉選單的根本佈局問題，並優化 Wi-Fi 設定頁面。**
+    *   **Toolbar 標題:** 移除了 `activity_main.xml` 中 `TextView` 的 `translationY` Hack，改用標準的 `layout_gravity="center"` 來實現垂直置中，確保 Toolbar 的高度計算正確。
+    *   **下拉選單 (Popup Menu):** 移除了 `themes.xml` (Day/Night) 中所有硬編碼的 `dropDownVerticalOffset` (設為 0dp)，並將 `overlapAnchor` 設為 `false`，讓系統根據標準 Material Design 規範自動計算位置，解決了選單下方出現大片空白或位置異常的問題。
+    *   **Wi-Fi 設定頁面:** 將 `fragment_wifi_config.xml` 的根佈局改為 `ScrollView`，確保在小螢幕或鍵盤彈出時內容可滾動，且按鈕下方不會出現非預期的空白區域。
+    *   **修復:** 修正了因 Data Binding ID 衝突而導致的建置失敗。移除了 `themes.xml` 中可能干擾 Popup Menu 高度計算的 `android:popupBackground` 和 `android:colorBackground` 屬性。
+
+## UI/UX 調整
+*   **0115:** **再次修正 Toolbar 下拉選單位置及主題切換時分頁顯示問題。**
+    *   **Toolbar 下拉選單 (Popup Menu):** 移除了 `themes.xml` (Day/Night) 中 `Widget.App.PopupMenu` 和 `Widget.App.PopupMenu.Overflow` 樣式裡的 `android:dropDownVerticalOffset` 屬性，讓系統回歸 Material Design 預設的垂直偏移邏輯，避免手動調整造成的衝突和不一致。
+    *   **主題切換分頁顯示:** 在 `MainActivity.kt` 的 `setupFragmentNavigation()` 方法中，將初始化 `updateUiForFragment(supportFragmentManager.backStackEntryCount > 0)` 的呼叫延遲到 `Handler(Looper.getMainLooper()).post {}` 區塊中執行。這確保了在 Activity 因主題變更而重建時，FragmentManger 狀態已完全恢復，能正確判斷是否有 Fragment 在 back stack 上，從而正確隱藏或顯示底部分頁。
+
+## UI/UX 調整
+*   **0112:** **再次修正 Toolbar 下拉選單位置。**
+    *   **選單位置:** 將 `themes.xml` (Day/Night) 中的 `dropDownVerticalOffset` 重設為 `0dp`。
+    *   **原因:** 先前設定為 `48dp` 是為了解決下方空白過大的問題，但反而導致選單在某些裝置上位置異常。
+    *   **策略:** 先回歸預設值，若仍有問題再嘗試使用 `overlapAnchor=true` 配合微調。
+
+## UI/UX 調整
+*   **0111:** **修復 Toolbar 標題位置與下拉選單樣式。**
+    *   **標題位置:** 在 `activity_main.xml` 中，將標題 `TextView` 加上 `android:translationY="6dp"`，使其在視覺上更向下微調。
+    *   **選單留白:** 修正了 Toolbar 下拉選單 (Popup Menu) 下方出現大片空白的問題。
+        *   修改 `themes.xml` (Day/Night)，將 `Widget.App.PopupMenu` 與 `Overflow` 的 `android:overlapAnchor` 改為 `false`。
+        *   將 `android:dropDownVerticalOffset` 設定為 `4dp`，讓選單自然顯示在按鈕下方，不再需要負值偏移。
+
+## 文檔更新
+*   **0110:** **修復 README 警告。**
+    *   **License:** 新增 `LICENSE` 檔案 (MIT License)，解決了 `README.md` 與 `README_cn.md` 中無法解析 `LICENSE` 檔案的警告。
+
+## UI/UX 調整
+*   **0110:** **最終修正 Toolbar 下拉選單位置。**
+    *   **策略調整:** 發現僅使用 `overlapAnchor=true` 和小幅度的 `0dp` 偏移量仍無法完全消除下方留白。
+    *   **樣式修改:** 在 `themes.xml` (Day/Night) 中，將 `android:dropDownVerticalOffset` 的值大幅調整為 `-50dp`。
+    *   **預期效果:** 強制將下拉選單向上移動，使其頂部與 Toolbar 的按鈕重疊或緊貼，從而徹底消除下方的不自然留白。
+
+## UI/UX 調整
+*   **0109:** **修復 Toolbar 下拉選單高度與位置異常。**
+    *   **屬性啟用:** 在 `themes.xml` (Day/Night) 中為 `Widget.App.PopupMenu` 和 `Widget.App.PopupMenu.Overflow` 啟用了 `android:overlapAnchor` (`true`)。
+    *   **位置重置:** 將 `android:dropDownVerticalOffset` 重設為 `0dp`。
+    *   **原理:** `overlapAnchor=true` 會讓 Popup Menu 的錨點與 Toolbar 按鈕重疊，從而更自然地向下展開，解決了選單懸浮過高或下方留白過多的問題。
+
+## UI/UX 調整
+*   **0108:** **再次調整 Toolbar 下拉選單位置。**
+    *   **調整:** 將 `Widget.App.PopupMenu` 與 `Widget.App.PopupMenu.Overflow` 的 `android:dropDownVerticalOffset` 從 `4dp` 修改為 `-4dp`。
+    *   **目的:** 將選單向上移動，更緊密地覆蓋或接近 Toolbar，減少視覺斷層。
+
+## UI/UX 調整
+*   **0107:** **優化 Toolbar 下拉選單 (Popup Menu) 的視覺間距。**
+    *   **樣式調整:** 修改 `themes.xml` 和 `values-night/themes.xml`，自定義了 `Widget.App.PopupMenu` 和 `Widget.App.PopupMenu.Overflow` 樣式。
+    *   **間距修正:** 設定 `android:dropDownVerticalOffset` 為 `4dp`，縮減了選單與 Toolbar 之間的垂直間距，使其更貼近標題列，解決了選單距離過遠導致視覺不緊湊的問題。
+    *   **一致性:** 確保所有角色主題 (Kuromi, MyMelody, Cinnamoroll) 與深/淺色模式皆套用此 Popup Menu 樣式。
+
+## DevOps
+*   **0106:** **優化版本號格式與 Nightly 發布策略。**
+    *   **版本號格式調整:** 
+        *   正式版 (`main`): 使用 `config.gradle.kts` 定義的基礎版本號 (例如 `1.1.8`)。
+        *   Nightly 版 (其他分支): 格式改為 `<BaseVersion> nightly <CommitCount>` (例如 `1.1.8 nightly 5`)，符合 Spotube 模式。
+    *   **CI/CD 策略更新:** 更新 `.github/workflows/android-cicd.yml`，現在所有非 `main` 分支的推送都會觸發 Nightly Build，並發布到 `nightly` tag。
+    *   **Build Fix:** 修正了 `app/build.gradle.kts` 中分支名稱包含連字號 `-` 或其他特殊字元導致的 `Android resource linking failed` 錯誤。現在會自動將分支名稱中的非英數字元替換為底線 `_` 以符合 Android Package Name 規範。
+*   **0105:** **實作 CI/CD 自動化流程。**
+    *   **GitHub Actions:** 新增 `.github/workflows/android-cicd.yml`，設定自動化建置與發布流程。
+    *   **分支策略:**
+        *   `main` 分支: 自動發布正式版 Release (Tag: `v<VersionName>`)。
+        *   `dev` 分支: 自動發布 Nightly Build (Tag: `nightly`)。
+    *   **自動化:** 流程包含 JDK 17 環境設定、Gradle 建置、版本號擷取、APK 更名與 GitHub Release 發布。
+    *   **文檔更新:** 更新 `README.md` 與 `README_cn.md`，加入 CI/CD 狀態徽章 (Badge) 與相關說明。
+
+## UI/UX 調整
+*   **0104:** **修復標題垂直置中問題。**
+    *   **問題:** `activity_main.xml` 中標題 `TextView` 的 `paddingTop="15dp"` 導致標題向下偏移，未正確垂直置中。
+    *   **修正:** 移除了 `paddingTop` 屬性，並依賴 `layout_gravity="center"` 確保標題在 Toolbar 中正確置中。
+
 ## 配置優化
 *   **0103:** **實作版本與分支管理自動化。**
     *   **分支結構調整:** 修改 `config.gradle.kts`，將分支結構從 `main/beta/alpha` 簡化為 `main` (正式版) 與 `dev` (開發版)。

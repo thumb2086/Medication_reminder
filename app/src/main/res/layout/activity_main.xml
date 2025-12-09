@@ -15,17 +15,20 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
+            app:contentInsetStart="0dp"
             app:menu="@menu/main_menu"
+            app:popupTheme="@style/ThemeOverlay.App.PopupMenu"
             android:theme="@style/Widget.App.Toolbar">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
-                android:paddingTop="15dp"
+                android:gravity="center"
                 android:text="@string/app_name"
                 android:textAppearance="@style/TextAppearance.AppCompat.Widget.ActionBar.Title"
-                android:textColor="?attr/colorOnPrimary" />
+                android:textColor="?attr/colorOnPrimary"
+                android:includeFontPadding="false" />
         </com.google.android.material.appbar.MaterialToolbar>
 
         <com.google.android.material.tabs.TabLayout

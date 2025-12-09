@@ -6,8 +6,4 @@
         android:icon="@drawable/ic_settings"
         android:title="@string/settings"
         app:showAsAction="ifRoom" />
-    <item
-        android:id="@+id/action_wifi_settings"
-        android:title="@string/wifi_settings"
-        app:showAsAction="never" />
 </menu>
