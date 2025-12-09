@@ -3,8 +3,9 @@ name: Android CI/CD
 on:
   push:
     branches:
-      - "fix-setlist" # Trigger Nightly
-      - "dev"         # Trigger Dev
+      - "dev"           # 觸發 Dev Release
+      - "fix-*"         # 觸發 Nightly (所有 fix- 開頭的分支)
+      - "feat-*"        # 觸發 Nightly (所有 feat- 開頭的分支)
     tags:
       - 'v*' # Trigger on tags starting with v (e.g. v1.0.0)
 

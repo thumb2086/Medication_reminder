@@ -226,6 +226,29 @@
     <string name="wifi_password">Wi-Fi Password</string>
     <string name="send_wifi_credentials">Send Wi-Fi Credentials</string>
 
+    <!-- Update -->
+    <string name="update_settings">Update Settings</string>
+    <string name="update_channel">Update Channel</string>
+    <string-array name="update_channel_entries">
+        <item>Official</item>
+        <item>Nightly (Dev)</item>
+    </string-array>
+    <string-array name="update_channel_values">
+        <item>official</item>
+        <item>nightly</item>
+    </string-array>
+    <string name="update_channel_summary">Choose the release channel you want to receive updates from</string>
+    <string name="check_for_updates">Check for Updates</string>
+    <string name="update_available_title">Update Available</string>
+    <string name="update_available_message">New version %s is available. Do you want to update now?\n\nRelease Notes:\n%s</string>
+    <string name="update_now">Update Now</string>
+    <string name="update_later">Later</string>
+    <string name="downloading_update">Downloading Update…</string>
+    <string name="update_downloaded">Update Downloaded</string>
+    <string name="install_now">Install Now</string>
+    <string name="no_updates_available">No updates available</string>
+    <string name="update_check_failed">Failed to check for updates</string>
+
     <!-- Engineering Mode -->
     <string name="developer_settings">Developer Settings</string>
     <string name="engineering_mode">Engineering Mode</string>

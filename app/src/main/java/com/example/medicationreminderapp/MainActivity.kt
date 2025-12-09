@@ -38,6 +38,7 @@ import androidx.preference.PreferenceManager
 import androidx.viewpager2.widget.ViewPager2
 import com.example.medicationreminderapp.adapter.ViewPagerAdapter
 import com.example.medicationreminderapp.databinding.ActivityMainBinding
+import com.example.medicationreminderapp.util.UpdateManager
 import com.google.android.material.tabs.TabLayoutMediator
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -53,6 +54,7 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
     @Inject lateinit var bluetoothLeManager: BluetoothLeManager
     private var alarmManager: AlarmManager? = null
     private lateinit var prefs: SharedPreferences
+    private lateinit var updateManager: UpdateManager
 
     private val requestNotificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         if (!isGranted) { Toast.makeText(this, getString(R.string.notification_permission_denied), Toast.LENGTH_LONG).show() }
@@ -84,12 +86,40 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
 
         alarmManager = getSystemService(ALARM_SERVICE) as? AlarmManager
         bluetoothLeManager.listener = this
+        updateManager = UpdateManager(this)
 
         createNotificationChannel()
         setupViewPagerAndTabs()
         requestAppPermissions()
         observeViewModel()
         setupFragmentNavigation()
+        checkForUpdates()
+    }
+
+    private fun checkForUpdates() {
+        val channel = prefs.getString("update_channel", "official") ?: "official"
+        // val shouldCheck = prefs.getBoolean("check_for_updates_on_startup", true)
+        
+        // Always check on startup if enabled, or triggered manually from settings (not implemented yet for manual only)
+        // For now we check on every startup. Ideally we should respect a preference.
+        
+        lifecycleScope.launch {
+            val updateInfo = updateManager.checkForUpdates(channel)
+            if (updateInfo != null) {
+                showUpdateDialog(updateInfo)
+            }
+        }
+    }
+
+    private fun showUpdateDialog(updateInfo: UpdateManager.UpdateInfo) {
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.update_available_title))
+            .setMessage(getString(R.string.update_available_message, updateInfo.version, updateInfo.releaseNotes))
+            .setPositiveButton(R.string.update_now) { _, _ ->
+                updateManager.downloadAndInstall(updateInfo.downloadUrl, "MedicationReminderApp-${updateInfo.version}.apk")
+            }
+            .setNegativeButton(R.string.update_later, null)
+            .show()
     }
 
     private fun setupFragmentNavigation() {
