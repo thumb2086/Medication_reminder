@@ -70,11 +70,12 @@ android {
     val finalApiUrl = if (isProduction) prodApiUrl else devApiUrl
     val enableLogging = !isProduction
 
-    println("✅ Building for branch: '$branchName'")
-    println("✅ Safe Branch Name: '$safeBranchName'")
-    println("✅ Version Name: $finalVersionName")
-    println("✅ Version Code: $commitCount")
-    println("✅ Application ID: $finalApplicationId")
+    // Debug output suppressed to avoid polluting stdout for scripts
+    // println("✅ Building for branch: '$branchName'")
+    // println("✅ Safe Branch Name: '$safeBranchName'")
+    // println("✅ Version Name: $finalVersionName")
+    // println("✅ Version Code: $commitCount")
+    // println("✅ Application ID: $finalApplicationId")
     // --- Dynamic versioning and configuration logic ends ---
 
     defaultConfig {
