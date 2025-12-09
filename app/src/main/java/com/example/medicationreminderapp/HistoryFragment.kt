@@ -19,6 +19,7 @@ import com.kizitonwose.calendar.view.ViewContainer
 import kotlinx.coroutines.launch
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 class HistoryFragment : Fragment() {
 
@@ -27,6 +28,7 @@ class HistoryFragment : Fragment() {
 
     private val viewModel: MainViewModel by activityViewModels()
     private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    private val monthTitleFormatter = DateTimeFormatter.ofPattern("yyyy MMMM", Locale.getDefault())
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -48,6 +50,13 @@ class HistoryFragment : Fragment() {
         val endMonth = currentMonth.plusMonths(10)
         binding.calendarView.setup(startMonth, endMonth, java.time.DayOfWeek.SUNDAY)
         binding.calendarView.scrollToMonth(currentMonth)
+        
+        // Initial month title
+        binding.monthTitle.text = monthTitleFormatter.format(currentMonth)
+
+        binding.calendarView.monthScrollListener = { month ->
+             binding.monthTitle.text = monthTitleFormatter.format(month.yearMonth)
+        }
     }
 
     private fun setupObservers() {

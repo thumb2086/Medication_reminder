@@ -219,7 +219,9 @@
     <string name="kuromi_image_description">Kuromi image</string>
 
     <!-- Wi-Fi Settings -->
+    <string name="connection_settings">Connection Settings</string>
     <string name="wifi_settings">Wi-Fi Settings</string>
+    <string name="wifi_settings_summary">Configure Wi-Fi connection for the pillbox</string>
     <string name="wifi_ssid">Wi-Fi Name (SSID)</string>
     <string name="wifi_password">Wi-Fi Password</string>
     <string name="send_wifi_credentials">Send Wi-Fi Credentials</string>

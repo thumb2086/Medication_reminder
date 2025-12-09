@@ -7,10 +7,12 @@ import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.fragment.app.activityViewModels
+import androidx.fragment.app.commit
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.preference.ListPreference
+import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
 import kotlinx.coroutines.launch
@@ -46,6 +48,19 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                     }
                 }
             }
+        }
+    }
+
+    override fun onPreferenceTreeClick(preference: Preference): Boolean {
+        return when (preference.key) {
+            "wifi_settings" -> {
+                parentFragmentManager.commit {
+                    replace(R.id.fragment_container, WiFiConfigFragment())
+                    addToBackStack(null)
+                }
+                true
+            }
+            else -> super.onPreferenceTreeClick(preference)
         }
     }
 

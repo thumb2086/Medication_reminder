@@ -77,6 +77,14 @@ class ReminderSettingsFragment : Fragment() {
             "chibi_maruko_chan" -> R.drawable.chibi_maruko_chan
             else -> R.drawable.kuromi
         }
+        
+        // Hide image if medication cards are being displayed (i.e., user is adding/editing)
+        // Check if medication cards are visible/present
+        if (medicationCards.isNotEmpty()) {
+             binding.kuromiImage.visibility = View.GONE
+        } else {
+             binding.kuromiImage.visibility = View.VISIBLE
+        }
         binding.kuromiImage.setImageResource(imageRes)
     }
 
@@ -132,6 +140,8 @@ class ReminderSettingsFragment : Fragment() {
             updateMedicationCards(selectedCount)
             editingMedication = null
             binding.addReminderButton.text = getString(R.string.add_medication_reminder)
+            // Hide image when form is active
+            binding.kuromiImage.visibility = View.GONE
         }
     }
 
@@ -161,6 +171,9 @@ class ReminderSettingsFragment : Fragment() {
     private fun populateFormForEdit(med: Medication) {
         editingMedication = med
         updateMedicationCards(1)
+        
+        // Hide image when editing
+        binding.kuromiImage.visibility = View.GONE
 
         val (cardBinding, cardState) = medicationCards.first()
 
@@ -414,8 +427,9 @@ class ReminderSettingsFragment : Fragment() {
 
     private fun syncAlarmToEsp32(slot: Int, hour: Int, minute: Int, enable: Boolean) {
         val activity = activity as? MainActivity
+        // Safe call fix: check connectivity before safe call
         if (activity?.bluetoothLeManager?.isConnected() == true) {
-            activity.bluetoothLeManager?.setAlarm(slot, hour, minute, enable)
+            activity.bluetoothLeManager.setAlarm(slot, hour, minute, enable)
         }
     }
 
@@ -470,6 +484,9 @@ class ReminderSettingsFragment : Fragment() {
         updateMedicationCards(0)
         binding.addReminderButton.text = getString(R.string.add_medication_reminder)
         setupMedicationCountSpinner()
+        
+        // Show image again after form reset
+        binding.kuromiImage.visibility = View.VISIBLE
     }
 
     override fun onDestroyView() {

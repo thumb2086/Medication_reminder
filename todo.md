@@ -1,3 +1,24 @@
 # To-Do List
 
-
+- [x] **CI/CD Fixes**:
+    - [x] 修復 GitHub Actions 中 `r0adkll/sign-android-release` 發生錯誤的問題 (`buildTools` 參數無效及找不到 build tools)。改用手動 `apksigner` 指令簽署。
+    - [x] **優化簽名流程**:
+        - [x] 修改 `app/build.gradle.kts`，使其能從環境變數讀取簽名設定。
+        - [x] 更新 `.github/workflows/android-cicd.yml`，使用 Gradle 自動簽署取代手動 `apksigner` 步驟。
+        - [x] 設定 `KEYSTORE_BASE64` 等 Secrets (提示使用者)。
+- [x] **Bug Fixes**:
+    - [x] 修復 Gradle Task `printVersionName` 執行失敗的問題 (類型轉換錯誤)。
+    - [x] 修正 `app/build.gradle.kts` 中導致 Application ID 包含非法字元 (連字號) 的問題。
+    - [x] 修復英文模式下設定頁面出現中文的問題 (補全 `values-en/strings.xml`)。
+- [x] **Code Cleanup & Warnings**:
+    - [x] 修正 `fragment_wifi_config.xml` 中不必要的 `ScrollView` (NestedScrollView inside ScrollView?) 或父層警告。
+    - [x] 移除 `HistoryFragment.kt` 中未使用的 import (`com.kizitonwose.calendar.view.MonthHeaderFooterBinder`)。
+    - [x] 移除 `ReminderSettingsFragment.kt` 中不必要的 safe call (`?.`)。
+- [x] **UI/UX 調整**:
+    - [x] `ReminderSettingsFragment`: 在編輯或新增藥物表單顯示時，隱藏底部的角色圖片。
+    - [x] `ReminderSettingsFragment`: 確保角色圖片在所有情境下保持一致。
+    - [x] 將 Wi-Fi 設定選項移至設定頁面內。
+    - [x] 移除 Toolbar 下拉選單中的 Wi-Fi 設定選項。
+    - [x] 歷史紀錄頁面 (HistoryFragment) 新增月份標題顯示。
+- [x] **驗證與清理**:
+    - [x] 更新 `README` 文件。

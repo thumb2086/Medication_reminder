@@ -38,12 +38,45 @@
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+        
+        <!-- Customize Popup Menu -->
+        <item name="actionOverflowMenuStyle">@style/Widget.App.PopupMenu.Overflow</item>
+        <item name="popupMenuStyle">@style/Widget.App.PopupMenu</item>
+        <item name="android:popupMenuStyle">@style/Widget.App.PopupMenu</item>
+        <!-- Create a specific theme overlay for toolbar popups -->
+        <item name="actionBarTheme">@style/ThemeOverlay.App.Toolbar</item> 
     </style>
 
     <style name="Widget.App.Toolbar" parent="Widget.Material3.Toolbar">
         <item name="titleTextColor">?attr/colorOnPrimary</item>
         <item name="actionMenuTextColor">?attr/colorOnPrimary</item>
         <item name="colorControlNormal">?attr/colorOnPrimary</item>
+        <!-- Explicitly apply popup theme to toolbar overflow menu -->
+        <item name="actionOverflowMenuStyle">@style/Widget.App.PopupMenu.Overflow</item>
+        <item name="popupTheme">@style/ThemeOverlay.App.PopupMenu</item>
+    </style>
+    
+    <!-- Theme Overlay for Toolbar Popup -->
+    <style name="ThemeOverlay.App.Toolbar" parent="ThemeOverlay.Material3.ActionBar">
+         <item name="actionOverflowMenuStyle">@style/Widget.App.PopupMenu.Overflow</item>
+         <item name="popupMenuStyle">@style/Widget.App.PopupMenu</item>
+         <item name="android:popupMenuStyle">@style/Widget.App.PopupMenu</item>
+    </style>
+
+    <style name="ThemeOverlay.App.PopupMenu" parent="ThemeOverlay.Material3.Light">
+        <!-- This forces the popup theme correctly -->
+        <item name="android:textColor">?attr/colorOnSurface</item>
+    </style>
+
+    <!-- Custom Popup Menu Style -->
+    <style name="Widget.App.PopupMenu" parent="Widget.Material3.PopupMenu">
+        <item name="android:overlapAnchor">false</item>
+        <!-- Removed android:dropDownVerticalOffset -->
+    </style>
+
+    <style name="Widget.App.PopupMenu.Overflow" parent="Widget.Material3.PopupMenu.Overflow">
+        <item name="android:overlapAnchor">false</item>
+        <!-- Removed android:dropDownVerticalOffset -->
     </style>
 
     <!-- Character Themes -->
@@ -52,6 +85,11 @@
         <item name="colorOnPrimary">#000000</item>
         <item name="colorPrimaryContainer">@color/primaryContainer_kuromi</item>
         <item name="colorOnPrimaryContainer">@color/onPrimaryContainer_kuromi</item>
+        
+        <item name="actionOverflowMenuStyle">@style/Widget.App.PopupMenu.Overflow</item>
+        <item name="popupMenuStyle">@style/Widget.App.PopupMenu</item>
+        <item name="android:popupMenuStyle">@style/Widget.App.PopupMenu</item>
+        <item name="actionBarTheme">@style/ThemeOverlay.App.Toolbar</item>
     </style>
 
     <style name="Theme.MedicationReminderApp.MyMelody" parent="Theme.Material3.Light.NoActionBar">
@@ -59,6 +97,11 @@
         <item name="colorOnPrimary">#000000</item>
         <item name="colorPrimaryContainer">@color/primaryContainer_mymelody</item>
         <item name="colorOnPrimaryContainer">@color/onPrimaryContainer_mymelody</item>
+
+        <item name="actionOverflowMenuStyle">@style/Widget.App.PopupMenu.Overflow</item>
+        <item name="popupMenuStyle">@style/Widget.App.PopupMenu</item>
+        <item name="android:popupMenuStyle">@style/Widget.App.PopupMenu</item>
+        <item name="actionBarTheme">@style/ThemeOverlay.App.Toolbar</item>
     </style>
 
     <style name="Theme.MedicationReminderApp.Cinnamoroll" parent="Theme.Material3.Light.NoActionBar">
@@ -66,5 +109,10 @@
         <item name="colorOnPrimary">#000000</item>
         <item name="colorPrimaryContainer">@color/primaryContainer_cinnamoroll</item>
         <item name="colorOnPrimaryContainer">@color/onPrimaryContainer_cinnamoroll</item>
+
+        <item name="actionOverflowMenuStyle">@style/Widget.App.PopupMenu.Overflow</item>
+        <item name="popupMenuStyle">@style/Widget.App.PopupMenu</item>
+        <item name="android:popupMenuStyle">@style/Widget.App.PopupMenu</item>
+        <item name="actionBarTheme">@style/ThemeOverlay.App.Toolbar</item>
     </style>
 </resources>
