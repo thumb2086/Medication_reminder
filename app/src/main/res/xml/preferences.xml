@@ -17,7 +17,8 @@
             app:summary="%s"
             app:entries="@array/theme_entries"
             app:entryValues="@array/theme_values"
-            app:defaultValue="system" />
+            app:defaultValue="system"
+            app:icon="@drawable/ic_palette" />
 
         <ListPreference
             app:key="language"
@@ -25,7 +26,8 @@
             app:summary="%s"
             app:entries="@array/language_entries"
             app:entryValues="@array/language_values"
-            app:defaultValue="system" />
+            app:defaultValue="system"
+            app:icon="@drawable/ic_language" />
 
         <ListPreference
             app:key="character"
@@ -33,7 +35,8 @@
             app:summary="%s"
             app:entries="@array/character_entries"
             app:entryValues="@array/character_values"
-            app:defaultValue="kuromi" />
+            app:defaultValue="kuromi"
+            app:icon="@drawable/ic_face" />
 
     </PreferenceCategory>
 
@@ -44,11 +47,13 @@
             app:summary="%s"
             app:entries="@array/update_channel_entries"
             app:entryValues="@array/update_channel_values"
-            app:defaultValue="official" />
+            app:defaultValue="official"
+            app:icon="@drawable/ic_update" />
 
         <Preference
             app:key="check_for_updates"
-            app:title="@string/check_for_updates" />
+            app:title="@string/check_for_updates"
+            app:icon="@drawable/ic_update"/>
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/developer_settings">
@@ -57,7 +62,8 @@
             app:key="engineering_mode"
             app:title="@string/engineering_mode"
             app:summary="@string/engineering_mode_summary"
-            app:defaultValue="false" />
+            app:defaultValue="false"
+            app:icon="@drawable/ic_developer_mode" />
 
     </PreferenceCategory>
 

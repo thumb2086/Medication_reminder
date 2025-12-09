@@ -1,5 +1,7 @@
 # To-Do List
 
+- [ ] **UI/UX Optimization**:
+    - [ ] **Settings Icons**: Add icons to all preference entries in `preferences.xml` (Theme, Language, Character, Engineering Mode, etc.) to match the Wi-Fi settings style.
 - [x] **Feature: In-App Update from GitHub**:
     - [x] **Dependencies**: Add `OkHttp` for API requests and downloading.
     - [x] **Permissions**: Add `INTERNET` and `REQUEST_INSTALL_PACKAGES` to Manifest. Setup `FileProvider`.
