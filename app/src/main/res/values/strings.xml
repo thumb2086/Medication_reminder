@@ -219,7 +219,9 @@
     <string name="kuromi_image_description">酷洛米圖片</string>
 
     <!-- Wi-Fi Settings -->
+    <string name="connection_settings">連線設定</string>
     <string name="wifi_settings">Wi-Fi 設定</string>
+    <string name="wifi_settings_summary">設定藥盒的 Wi-Fi 連線</string>
     <string name="wifi_ssid">Wi-Fi 名稱 (SSID)</string>
     <string name="wifi_password">Wi-Fi 密碼</string>
     <string name="send_wifi_credentials">傳送 Wi-Fi 憑證</string>

@@ -1,0 +1,125 @@
+name: Android CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - '**' # Trigger on all branches for nightly builds (except main, handled by conditional)
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required for git rev-list to work correctly in build.gradle.kts
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Grant Execute Permission for Gradlew
+        run: chmod +x gradlew
+
+      - name: Decode Google Services JSON
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ ! -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "$GOOGLE_SERVICES_JSON" > app/google-services.json
+            echo "google-services.json created."
+          else
+            echo "Warning: GOOGLE_SERVICES_JSON secret not found. creating dummy file to prevent build error."
+            echo "{}" > app/google-services.json
+          fi
+
+      - name: Decode Keystore
+        id: write_file
+        uses: timheuer/base64-to-file@v1.2
+        with:
+          fileName: 'release.keystore'
+          encodedString: ${{ secrets.KEYSTORE_BASE64 }}
+
+      - name: Build with Gradle (Release)
+        env:
+          KEYSTORE_PATH: ${{ steps.write_file.outputs.filePath }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Get Version Name
+        id: version
+        run: |
+          VERSION_NAME=$(./gradlew -q app:printVersionName)
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "Detected Version: $VERSION_NAME"
+
+      - name: Rename APK
+        run: |
+          # Handle spaces in VERSION_NAME by replacing them with dashes for the filename
+          SAFE_VERSION_NAME=$(echo "${{ steps.version.outputs.VERSION_NAME }}" | sed 's/ /-/g')
+          
+          # Gradle puts the signed APK in app/build/outputs/apk/release/
+          # The filename usually defaults to app-release.apk or defined in build.gradle
+          # Our build.gradle sets archivesBaseName, so it might be something like MedicationReminderApp-v1.1.8-nightly-5-release.apk
+          
+          # Find any APK in the release folder
+          TARGET_APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+
+          if [ ! -z "$TARGET_APK" ]; then
+            mv "$TARGET_APK" app/build/outputs/apk/release/MedicationReminder-$SAFE_VERSION_NAME.apk
+            echo "APK_FILENAME=MedicationReminder-$SAFE_VERSION_NAME.apk" >> $GITHUB_ENV
+            echo "Renamed $TARGET_APK to MedicationReminder-$SAFE_VERSION_NAME.apk"
+          else
+            echo "Error: APK file not found!"
+            exit 1
+          fi
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: app/build/outputs/apk/release/${{ env.APK_FILENAME }}
+          retention-days: 7
+
+      - name: Create Release (Main - Stable)
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.VERSION_NAME }}
+          name: Release v${{ steps.version.outputs.VERSION_NAME }}
+          files: app/build/outputs/apk/release/${{ env.APK_FILENAME }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release (Nightly)
+        if: github.ref != 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: nightly
+          name: Nightly Build (${{ steps.version.outputs.VERSION_NAME }})
+          files: app/build/outputs/apk/release/${{ env.APK_FILENAME }}
+          draft: false
+          prerelease: true
+          generate_release_notes: true
+          body: |
+            Nightly build for version **${{ steps.version.outputs.VERSION_NAME }}**
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

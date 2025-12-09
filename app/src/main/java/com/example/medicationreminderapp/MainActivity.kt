@@ -102,7 +102,10 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
                 updateUiForFragment(false)
             }
         })
-        updateUiForFragment(false)
+        // Postpone UI update to ensure fragment manager has restored its state
+        Handler(Looper.getMainLooper()).post {
+            updateUiForFragment(supportFragmentManager.backStackEntryCount > 0)
+        }
     }
 
     fun updateUiForFragment(isFragmentOnBackStack: Boolean) {
@@ -171,13 +174,6 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
             R.id.action_settings -> {
                 supportFragmentManager.commit {
                     replace(R.id.fragment_container, SettingsFragment())
-                    addToBackStack(null)
-                }
-                true
-            }
-            R.id.action_wifi_settings -> {
-                supportFragmentManager.commit {
-                    replace(R.id.fragment_container, WiFiConfigFragment())
                     addToBackStack(null)
                 }
                 true
