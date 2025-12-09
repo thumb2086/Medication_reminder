@@ -1,5 +1,24 @@
 # To-Do List
 
+- [x] **Implement Triple-Track Release Strategy**:
+    - [x] **Modify `.github/workflows/android-cicd.yml`**:
+        - [x] **Official Release**: Trigger on `v*` tags. Permanent release.
+        - [x] **Dev Release**: Trigger on `dev` branch push. Rolling tag `latest-dev`.
+        - [x] **Nightly Release**: Trigger on other branches push. Rolling tag `nightly`.
+- [x] **Implement Dual-Track Release Strategy**:
+    - [x] **Modify `.github/workflows/android-cicd.yml`**:
+        - [x] Update `VERSION_NAME` env injection to support nightly suffix logic.
+        - [x] Replace Release steps with "Official Release" (Tags) and "Nightly Release" (Push) dual tracks.
+        - [x] Use `marvinpinto/action-automatic-releases@latest` for Nightly builds (rolling tag).
+        - [x] Use `softprops/action-gh-release@v1` for Official releases (permanent tags).
+- [x] **CI/CD Versioning Automation**:
+    - [x] **Modify `app/build.gradle.kts`**:
+        - [x] Update `versionCode` to use `BUILD_NUMBER` env var (fallback to git commit count).
+        - [x] Update `versionName` to use `VERSION_NAME` env var (fallback to git/config based name).
+    - [x] **Modify `.github/workflows/android-cicd.yml`**:
+        - [x] Add `tags` trigger to `on: push`.
+        - [x] Inject `BUILD_NUMBER` (run_number) and `VERSION_NAME` (ref_name logic) into `Build with Gradle` step.
+        - [x] Ensure APK renaming logic handles the new version name correctly.
 - [x] **CI/CD Fixes**:
     - [x] 修復 GitHub Actions 中 `r0adkll/sign-android-release` 發生錯誤的問題 (`buildTools` 參數無效及找不到 build tools)。改用手動 `apksigner` 指令簽署。
     - [x] **優化簽名流程**:

@@ -4,7 +4,9 @@ on:
   push:
     branches:
       - main
-      - '**' # Trigger on all branches for nightly builds (except main, handled by conditional)
+      - '**' # Trigger on all branches for nightly builds
+    tags:
+      - 'v*' # Trigger on tags starting with v (e.g. v1.0.0)
   pull_request:
     branches:
       - main
@@ -57,6 +59,11 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          
+          # Inject Versioning Info
+          BUILD_NUMBER: ${{ github.run_number }}
+          # Logic: If it's a tag, use the tag name. Otherwise, use branch-nightly.
+          VERSION_NAME: ${{ github.ref_type == 'tag' && github.ref_name || format('{0}-nightly', github.ref_name) }}
         run: ./gradlew assembleRelease --stacktrace
 
       - name: Get Version Name
@@ -70,10 +77,6 @@ jobs:
         run: |
           # Handle spaces in VERSION_NAME by replacing them with dashes for the filename
           SAFE_VERSION_NAME=$(echo "${{ steps.version.outputs.VERSION_NAME }}" | sed 's/ /-/g')
-          
-          # Gradle puts the signed APK in app/build/outputs/apk/release/
-          # The filename usually defaults to app-release.apk or defined in build.gradle
-          # Our build.gradle sets archivesBaseName, so it might be something like MedicationReminderApp-v1.1.8-nightly-5-release.apk
           
           # Find any APK in the release folder
           TARGET_APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
@@ -94,32 +97,61 @@ jobs:
           path: app/build/outputs/apk/release/${{ env.APK_FILENAME }}
           retention-days: 7
 
-      - name: Create Release (Main - Stable)
-        if: github.ref == 'refs/heads/main'
+      # ------------------------------------------------------------------
+      # Release Strategy: Triple Track
+      # 1. Official Release (Tags starting with v) -> Permanent Release
+      # 2. Dev Release (Push to dev branch) -> Rolling "latest-dev" Release
+      # 3. Nightly Release (Push to other branches) -> Rolling "nightly" Release
+      # ------------------------------------------------------------------
+
+      # ------------------------------------------------------------------
+      # 1. 正式版發布 (Stable)
+      # 觸發條件：只有當你打上 v 開頭的 Tag 時 (例如 v1.0.0)
+      # ------------------------------------------------------------------
+      - name: Create Official Release
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ steps.version.outputs.VERSION_NAME }}
-          name: Release v${{ steps.version.outputs.VERSION_NAME }}
-          files: app/build/outputs/apk/release/${{ env.APK_FILENAME }}
-          draft: false
+          files: app/build/outputs/apk/release/*.apk
           prerelease: false
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create Release (Nightly)
-        if: github.ref != 'refs/heads/main' && github.event_name != 'pull_request'
-        uses: softprops/action-gh-release@v1
+      # ------------------------------------------------------------------
+      # 2. Dev 開發版 (Beta)
+      # 觸發條件：推送至 'dev' 分支時
+      # 用途：這是一個相對穩定的測試版，未來可讓內部測試人員更新
+      # ------------------------------------------------------------------
+      - name: Update Dev Release
+        if: github.ref == 'refs/heads/dev'
+        uses: marvinpinto/action-automatic-releases@latest
         with:
-          tag_name: nightly
-          name: Nightly Build (${{ steps.version.outputs.VERSION_NAME }})
-          files: app/build/outputs/apk/release/${{ env.APK_FILENAME }}
-          draft: false
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          automatic_release_tag: "latest-dev"
           prerelease: true
-          generate_release_notes: true
-          body: |
-            Nightly build for version **${{ steps.version.outputs.VERSION_NAME }}**
-            Branch: ${{ github.ref_name }}
-            Commit: ${{ github.sha }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          title: "Dev Build (開發預覽版)"
+          files: |
+            app/build/outputs/apk/release/*.apk
+
+      # ------------------------------------------------------------------
+      # 3. Nightly 實驗版 (Nightly)
+      # 觸發條件：推送至其他分支 (如 fix-setlist, feature-login) 且不是 Tag
+      # 用途：給開發者自己驗證功能用，每次都會覆蓋
+      # ------------------------------------------------------------------
+      - name: Update Nightly Release
+        # 邏輯：是 Push 事件 + 不是 Tag + 不是 dev 分支 + 不是 main/master 分支
+        if: |
+          github.event_name == 'push' && 
+          !startsWith(github.ref, 'refs/tags/') && 
+          github.ref != 'refs/heads/dev' && 
+          github.ref != 'refs/heads/main' && 
+          github.ref != 'refs/heads/master'
+        uses: marvinpinto/action-automatic-releases@latest
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          automatic_release_tag: "nightly"
+          prerelease: true
+          title: "Nightly Build (實驗分支)"
+          files: |
+            app/build/outputs/apk/release/*.apk

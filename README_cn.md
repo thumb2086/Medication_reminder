@@ -50,12 +50,13 @@
 2.  **開啟專案:** 使用 Android Studio (建議 Ladybug | 2024.2.1 或更新版本) 開啟。
 3.  **編譯執行:** 連接 Android 手機 (Android 10+) 或使用模擬器執行。
 
-## CI/CD
+## CI/CD 與版本自動化
 
-本專案使用 GitHub Actions 進行持續整合與部署。
+本專案使用 GitHub Actions 進行持續整合與版本自動管理。
 
-*   **正式發布:** 推送至 `main` 分支會觸發正式版建置，並產生帶有版本號 (如 `v1.1.8.x`) 的 Release。
-*   **Nightly 建置:** 推送至 `dev` 分支會觸發預覽版建置，並更新 `nightly` tag。
+*   **正式發布 (Tag):** 推送標籤 (例如 `1.1.9`) 會觸發正式版建置，APK 版本將與標籤名稱一致。
+*   **Nightly 建置:** 推送至任何分支皆會觸發 Nightly Build，版本號格式為 `分支名-nightly`。
+*   **版本號碼 (VersionCode):** 自動使用 GitHub Actions 的執行次數 (`run_number`) 作為唯一遞增的版本代碼。
 
 ## 授權
 
