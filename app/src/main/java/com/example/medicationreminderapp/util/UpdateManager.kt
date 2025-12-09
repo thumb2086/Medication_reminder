@@ -19,12 +19,14 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
+import kotlin.math.max
 
 class UpdateManager(private val context: Context) {
 
     private val client = OkHttpClient()
     private val gson = Gson()
-    private val repoOwner = "CPXru"
+    // Updated repo owner to match the active fork
+    private val repoOwner = "thumb2086"
     private val repoName = "Medication_reminder"
 
     data class UpdateInfo(
@@ -58,70 +60,134 @@ class UpdateManager(private val context: Context) {
                     return@withContext null
                 }
 
-                // Fixed warning: Unnecessary safe call on a non-null receiver
                 val jsonStr = response.body.string()
                 val json = gson.fromJson(jsonStr, JsonObject::class.java)
 
                 val tagName = json.get("tag_name").asString
                 val releaseNotes = json.get("body").asString
                 
-                val currentVersion = BuildConfig.VERSION_NAME
-
-                // Logic for determining if an update is available:
-                val isUpdateAvailable = when (channel) {
-                    "stable" -> {
-                        // For stable, tag usually starts with 'v' (e.g., v1.1.8)
-                        // Simple check: if cleaned tag != current version (assumed stable build has simple X.Y.Z)
-                        val cleanTag = tagName.removePrefix("v")
-                        // Split current version to handle potential extra info if running a non-stable build
-                        // But if user is on stable channel, they should be compared against the stable tag.
-                        // Ideally we use SemVer, but for now simple string inequality is used as a trigger.
-                        // Also, we should probably only update if tag is *different* from current.
-                        // If current is "1.1.8" and tag is "v1.1.8", cleanTag is "1.1.8", so equal -> no update.
-                        
-                        // However, if user is on "1.1.8 nightly 5" and switches to stable "1.1.8", 
-                        // they might want to "downgrade" or switch. 
-                        // This simple logic just checks if the version string matches.
-                        cleanTag != currentVersion
-                    }
-                    "dev", "nightly" -> {
-                         // For dev/nightly, the tag is static ("latest-dev" or "nightly").
-                         // We rely on the release body or name to contain the version info.
-                         // But commonly, users on dev/nightly just want the *absolute latest*.
-                         // Since we can't easily parse "nightly 5" vs "nightly 6" without standardizing the body,
-                         // we will check if the release notes contain the exact current version string.
-                         // If the body DOES NOT contain the current version string, we assume it's a new build.
-                         // (This relies on the CI putting the version name in the release body)
-                         !releaseNotes.contains(currentVersion)
-                    }
-                    else -> false
-                }
-                
-                if (!isUpdateAvailable) return@withContext null
-
                 val assets = json.getAsJsonArray("assets")
                 if (assets.size() == 0) return@withContext null
                 
-                // Find .apk asset
+                // Find .apk asset and extract version from filename
                 var apkUrl = ""
+                var remoteFilename = ""
+                
                 for (asset in assets) {
                     val assetObj = asset.asJsonObject
                     val name = assetObj.get("name").asString
                     if (name.endsWith(".apk")) {
                         apkUrl = assetObj.get("browser_download_url").asString
+                        remoteFilename = name
                         break
                     }
                 }
                 
                 if (apkUrl.isEmpty()) return@withContext null
 
-                UpdateInfo(tagName, apkUrl, releaseNotes, channel != "stable")
+                // Determine Remote Version
+                val remoteVersion = if (channel == "stable") {
+                    // For Stable, rely on the Tag Name as the source of truth
+                    // This handles cases where the attached artifact might have an old filename
+                    // but the release itself is tagged as new (e.g. v1.2.0).
+                    tagName.removePrefix("v")
+                } else {
+                    // For Dev/Nightly, the tag is static (latest-dev / nightly),
+                    // so we MUST extract the version from the filename.
+                    val prefix = "MedicationReminder-"
+                    val suffix = ".apk"
+                    if (remoteFilename.startsWith(prefix) && remoteFilename.endsWith(suffix)) {
+                        // Extract version from filename (e.g. "1.2.0-nightly-161")
+                        remoteFilename.removePrefix(prefix).removeSuffix(suffix)
+                    } else {
+                        // Fallback to tag name (likely "nightly" or "latest-dev")
+                        // This will likely fail the version comparison, which is safer than a false positive.
+                        tagName.removePrefix("v")
+                    }
+                }
+
+                val currentVersion = BuildConfig.VERSION_NAME
+                val currentVersionNormalized = currentVersion.replace(" ", "-")
+
+                Log.d("UpdateManager", "Channel: $channel, Remote: $remoteVersion, Local: $currentVersionNormalized")
+
+                // Check for update using semantic versioning logic
+                val isUpdateAvailable = isNewerVersion(currentVersionNormalized, remoteVersion)
+
+                if (!isUpdateAvailable) {
+                    return@withContext null
+                }
+
+                UpdateInfo(remoteVersion, apkUrl, releaseNotes, channel != "stable")
 
             } catch (e: Exception) {
                 Log.e("UpdateManager", "Error checking for updates", e)
                 null
             }
         }
+    }
+    
+    /**
+     * Compares two version strings to determine if the remote version is newer.
+     * Handles standard SemVer (1.2.0) and nightly builds (1.2.0-nightly-161).
+     * Returns true if remote is newer than local.
+     */
+    private fun isNewerVersion(local: String, remote: String): Boolean {
+        // If exact match, obviously not newer
+        if (local == remote) return false
+
+        // 1. Try to compare base versions (X.Y.Z)
+        // Extract "1.2.0" from "1.2.0-nightly-161" or "1.2.0"
+        val localBase = local.substringBefore("-")
+        val remoteBase = remote.substringBefore("-")
+        
+        if (localBase != remoteBase) {
+            val localParts = localBase.split(".").map { it.toIntOrNull() ?: 0 }
+            val remoteParts = remoteBase.split(".").map { it.toIntOrNull() ?: 0 }
+            val length = max(localParts.size, remoteParts.size)
+
+            for (i in 0 until length) {
+                val l = localParts.getOrElse(i) { 0 }
+                val r = remoteParts.getOrElse(i) { 0 }
+                if (r > l) return true
+                if (r < l) return false
+            }
+            // Base versions are numerically equal (e.g. 1.2 vs 1.2.0), treat as equal for now
+        }
+        
+        // 2. If base versions are equal, check for build metadata (commit counts)
+        // Scenario: Local 1.2.0-nightly-160 vs Remote 1.2.0-nightly-161
+        val localCount = getCommitCount(local)
+        val remoteCount = getCommitCount(remote)
+        
+        if (localCount != null && remoteCount != null) {
+            return remoteCount > localCount
+        }
+        
+        // Scenario: Local 1.2.0 (Stable) vs Remote 1.2.0-nightly-161
+        // Stable (no suffix) is usually considered finalized compared to nightly (with suffix).
+        // Return false to avoid downgrading to a nightly of the same base version.
+        if (localCount == null && remoteCount != null) {
+            return false
+        }
+        
+        // Scenario: Local 1.2.0-nightly-161 vs Remote 1.2.0 (Stable)
+        // Remote is Stable (no suffix). Local is Nightly.
+        // If base versions match, Stable is preferred.
+        if (localCount != null) {
+            // Here remoteCount implies null because of previous checks
+            return true
+        }
+        
+        // Fallback
+        return false
+    }
+
+    private fun getCommitCount(version: String): Int? {
+        // Expected format: ...-nightly-<digits> or ...-<digits>
+        // We try to find the last numeric component
+        val parts = version.split("-")
+        return parts.lastOrNull()?.toIntOrNull()
     }
 
     fun downloadAndInstall(url: String, fileName: String) {

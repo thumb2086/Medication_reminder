@@ -1,6 +1,22 @@
 # 更新日誌
 
 ## DevOps
+*   **0123:** **優化更新檢查邏輯與 CI/CD 配置。**
+    *   **UpdateManager 改進:**
+        *   實作了 `isNewerVersion` 函式，支援 Semantic Versioning (SemVer) 比較，解決了僅依賴字串比對導致的誤判問題。
+        *   新增了對 Nightly 版本 (如 `1.2.0-nightly-161`) 的解析邏輯，優先比對 Commit Count 以確認是否有更新。
+        *   修正了從 GitHub Assets 檔名 (`MedicationReminder-<Version>.apk`) 提取版本號的邏輯，現在能正確處理包含連字號的版本字串。
+    *   **Config Update:** 將 `config.gradle.kts` 中的 `baseVersionName` 更新為 `1.2.0`。
+    *   **CI/CD:** 確認 `.github/workflows/android-cicd.yml` 中 APK 命名邏輯與 `UpdateManager` 的解析邏輯一致 (空白替換為連字號)。
+
+## Bug Fixes
+*   **0122:** **修復 UpdateManager 警告與字串資源不一致。**
+    *   **警告修復:**
+        *   移除 `UpdateManager.kt` 中不必要的安全呼叫 `response.body?.string()` (改為 `response.body.string()`)，因為在 `isSuccessful` 檢查後 `body` 不為空。
+        *   將 `catch` 區塊中未使用的參數 `e` 改為 `_` (download receiver) 或正確記錄日誌 (checkForUpdates)。
+    *   **資源修復:** 修正了 `values-en/strings.xml` 中 `update_channel_entries` 與 `update_channel_values` 數量與預設 `values/strings.xml` 不一致的問題 (從 2 個選項補齊為 3 個：Stable, Dev, Nightly)。
+
+## DevOps
 *   **0121:** **優化更新頻道與策略。**
     *   **更新頻道:** 新增 `Stable`, `Dev`, `Nightly` 三個頻道。
     *   **更新邏輯:**
@@ -158,7 +174,7 @@
 ## UI/UX 調整
 *   **0101:** **修正圖表線條顏色與顯示樣式。**
     *   **樣式調整:** 根據使用者回饋，將環境監測圖表調整為「折線圖」樣式。當有多個數據點時，隱藏圓點，只顯示平滑的曲線；只有在單一數據點時，才顯示圓點以確保可見性。
-    *   **顏色優化:** 更新了 `colors.xml` 和 `values-night/colors.xml`，為圖表的溫度與濕度線條設定了在亮色與暗色模式下都具備良好對比度的顏色，解決了深色模式下線條不可見的問題。
+    *   **顏色優化:** 更新了 `colors.xml`和 `values-night/colors.xml`，為圖表的溫度與濕度線條設定了在亮色與暗色模式下都具備良好對比度的顏色，解決了深色模式下線條不可見的問題。
 
 ## Bug Fixes
 *   **0102:** **修復 App 與 ESP32 之間的協定不一致並新增鬧鐘支援。**
