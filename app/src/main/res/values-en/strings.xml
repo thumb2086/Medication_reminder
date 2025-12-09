@@ -230,11 +230,13 @@
     <string name="update_settings">Update Settings</string>
     <string name="update_channel">Update Channel</string>
     <string-array name="update_channel_entries">
-        <item>Official</item>
-        <item>Nightly (Dev)</item>
+        <item>Stable (Official)</item>
+        <item>Dev (Beta)</item>
+        <item>Nightly (Experimental)</item>
     </string-array>
     <string-array name="update_channel_values">
-        <item>official</item>
+        <item>stable</item>
+        <item>dev</item>
         <item>nightly</item>
     </string-array>
     <string name="update_channel_summary">Choose the release channel you want to receive updates from</string>
