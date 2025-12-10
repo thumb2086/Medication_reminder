@@ -1,5 +1,10 @@
 # 更新日誌
 
+## Bug Fixes
+*   **0124:** **修復 CI/CD 版本號解析錯誤。**
+    *   **問題:** 在 `app/build.gradle.kts` 中使用 `println` 輸出 Keystore 狀態訊息，導致 CI/CD 流程中的 `VERSION_NAME` 變數抓取到額外的日誌資訊 (`Release keystore not found...`)，造成 APK 檔名格式錯誤與建置失敗。
+    *   **修正:** 將 `println` 改為 `logger.warn`。在 Gradle 的 `-q` (安靜模式) 下，`logger.warn` 訊息會被自動隱藏，確保 `printVersionName` task 只輸出純淨的版本號字串。
+
 ## Configuration
 *   **0124:** **修復 CI/CD 與本地簽章不相容問題。**
     *   **雙模組簽章 (Hybrid Signing):** 更新 `app/build.gradle.kts`，採用「優先讀取環境變數 (Cloud)，失敗則回退至 local.properties (Local)」的策略。這解決了 GitHub Actions 無法讀取 `local.properties` 導致建置失敗的問題，同時保留了本地開發的便利性。

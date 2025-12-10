@@ -149,7 +149,8 @@ android {
             if (releaseConfig.storePassword != null && releaseConfig.storeFile?.exists() == true) {
                 signingConfig = releaseConfig
             } else {
-                println("Release keystore not found or configuration incomplete. Falling back to debug signing.")
+                // Use logger.info or logger.warn instead of println to avoid polluting stdout which is captured by CI/CD scripts
+                logger.warn("Release keystore not found or configuration incomplete. Falling back to debug signing.")
                 signingConfig = signingConfigs.getByName("debug")
             }
             
