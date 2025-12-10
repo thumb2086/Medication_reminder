@@ -1,5 +1,10 @@
 # 更新日誌
 
+## Configuration
+*   **0124:** **修復 CI/CD 與本地簽章不相容問題。**
+    *   **雙模組簽章 (Hybrid Signing):** 更新 `app/build.gradle.kts`，採用「優先讀取環境變數 (Cloud)，失敗則回退至 local.properties (Local)」的策略。這解決了 GitHub Actions 無法讀取 `local.properties` 導致建置失敗的問題，同時保留了本地開發的便利性。
+    *   **CI/CD 配置:** 更新 `.github/workflows/android-cicd.yml`，將 GitHub Secrets 對應到新的環境變數 (`RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`, `RELEASE_KEYSTORE_PATH`)，與 Gradle 設定保持一致。
+
 ## Bug Fixes
 *   **0124:** **優化更新安裝流程與權限檢查 (Part 3)。**
     *   **權限檢查:** 在 `UpdateManager.downloadAndInstall` 中加入了對 `canRequestPackageInstalls()` 的檢查。

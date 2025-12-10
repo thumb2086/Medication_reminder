@@ -104,33 +104,38 @@ android {
 
     signingConfigs {
         create("release") {
-            // 1. Try reading from environment variables (CI/CD priority)
-            val envStorePass = System.getenv("KEYSTORE_PASSWORD")
-            val envKeyAlias = System.getenv("KEY_ALIAS")
-            val envKeyPass = System.getenv("KEY_PASSWORD")
-            val envKeystorePath = System.getenv("KEYSTORE_PATH")
-
-            // 2. Try reading from local keystore.properties (Local dev fallback)
+            // 1. 嘗試載入 local.properties (為了本機開發)
+            val keystorePropertiesFile = rootProject.file("local.properties")
             val keystoreProperties = Properties()
-            val keystorePropertiesFile = rootProject.file("keystore.properties")
             if (keystorePropertiesFile.exists()) {
                 keystoreProperties.load(FileInputStream(keystorePropertiesFile))
             }
 
-            // 3. Determine final values: Env vars > Local properties (using dot notation for properties)
-            // Use property[...] notation to match user request and common practice for properties
-            storePassword = envStorePass ?: keystoreProperties["store.password"] as String?
-            keyAlias = envKeyAlias ?: keystoreProperties["key.alias"] as String?
-            keyPassword = envKeyPass ?: keystoreProperties["key.password"] as String?
+            // 2. 設定邏輯：優先讀取系統環境變數 (Cloud)，讀不到則讀取 local.properties (Local)
+            storePassword = System.getenv("RELEASE_STORE_PASSWORD") 
+                            ?: keystoreProperties["store.password"] as String?
             
-            // 4. Determine Keystore file path
-            val localStoreFileName = keystoreProperties["store.file"] as String?
-            storeFile = if (!envKeystorePath.isNullOrEmpty()) {
-                file(envKeystorePath)
-            } else if (!localStoreFileName.isNullOrEmpty()) {
-                file(localStoreFileName)
+            keyAlias = System.getenv("RELEASE_KEY_ALIAS") 
+                       ?: keystoreProperties["key.alias"] as String?
+            
+            keyPassword = System.getenv("RELEASE_KEY_PASSWORD") 
+                          ?: keystoreProperties["key.password"] as String?
+
+            // 3. 處理 Keystore 檔案路徑
+            // 在 GitHub Actions 中，通常會把 Base64 解碼後的檔案路徑設為環境變數
+            val cloudKeystorePath = System.getenv("RELEASE_KEYSTORE_PATH")
+            val localKeystorePath = keystoreProperties["store.file"] as String?
+
+            if (!cloudKeystorePath.isNullOrEmpty()) {
+                storeFile = file(cloudKeystorePath)
+            } else if (!localKeystorePath.isNullOrEmpty()) {
+                storeFile = file(localKeystorePath)
             } else {
-                file("release.keystore") // Default fallback
+                // 如果兩邊都找不到，預設找 release.keystore，避免報錯但可能無法簽名
+                val defaultFile = file("release.keystore")
+                if (defaultFile.exists()) {
+                     storeFile = defaultFile
+                }
             }
         }
     }
