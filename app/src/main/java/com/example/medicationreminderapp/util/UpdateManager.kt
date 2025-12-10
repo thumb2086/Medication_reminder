@@ -1,11 +1,13 @@
 package com.example.medicationreminderapp.util
 
+import android.app.AlertDialog
 import android.app.DownloadManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Environment
+import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import androidx.core.content.ContextCompat
@@ -165,6 +167,26 @@ class UpdateManager(private val context: Context) {
     }
 
     fun downloadAndInstall(url: String, fileName: String) {
+        // Warning if updating from Debug build (signature mismatch risk)
+        if (BuildConfig.DEBUG) {
+            Toast.makeText(context, "警告: 正在使用除錯版本，更新可能會因簽名不符而失敗。", Toast.LENGTH_LONG).show()
+        }
+
+        // Check for INSTALL_PACKAGES permission (Android 8+)
+        if (!context.packageManager.canRequestPackageInstalls()) {
+             AlertDialog.Builder(context)
+                .setTitle("需要安裝權限")
+                .setMessage("為了自動安裝更新，請允許應用程式安裝未知來源的應用程式。")
+                .setPositiveButton("前往設定") { _, _ ->
+                    val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
+                    intent.data = "package:${context.packageName}".toUri()
+                    context.startActivity(intent)
+                }
+                .setNegativeButton("取消", null)
+                .show()
+            return
+        }
+
         // Delete any existing file with the same name to avoid DownloadManager renaming it
         val existingFile = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName)
         if (existingFile.exists()) {

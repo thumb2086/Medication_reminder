@@ -1,5 +1,12 @@
 # 更新日誌
 
+## Bug Fixes
+*   **0124:** **優化更新安裝流程與權限檢查 (Part 3)。**
+    *   **權限檢查:** 在 `UpdateManager.downloadAndInstall` 中加入了對 `canRequestPackageInstalls()` 的檢查。
+        *   若未授權「安裝未知應用程式」，現在會彈出 `AlertDialog` 引導使用者前往設定頁面開啟權限，避免安裝意圖被系統靜默攔截或失敗。
+    *   **簽名不符警告:** 加入了 `BuildConfig.DEBUG` 檢查。
+        *   若偵測到當前為 Debug 版本 (例如從 Android Studio 直接執行)，會彈出 Toast 警告使用者，說明更新可能會因簽名不符 (Debug vs Release) 而失敗，提示其先卸載測試版。
+
 ## Configuration
 *   **0124:** **修復手動更新時套件無效問題 (Application ID Mismatch)。**
     *   **Application ID:** 修改 `app/build.gradle.kts`，移除了基於分支名稱動態添加後綴 (如 `.dev`, `.fix_xxx`) 的邏輯。
@@ -168,7 +175,7 @@
 
 ## UI/UX 調整
 *   **0107:** **優化 Toolbar 下拉選單 (Popup Menu) 的視覺間距。**
-    *   **樣式調整:** 修改 `themes.xml`和 `values-night/themes.xml`，自定義了 `Widget.App.PopupMenu` 和 `Widget.App.PopupMenu.Overflow` 樣式。
+    *   **樣式調整:** 修改 `themes.xml` 和 `values-night/themes.xml`，自定義了 `Widget.App.PopupMenu` 和 `Widget.App.PopupMenu.Overflow` 樣式。
     *   **間距修正:** 設定 `android:dropDownVerticalOffset` 為 `4dp`，縮減了選單與 Toolbar 之間的垂直間距，使其更貼近標題列，解決了選單距離過遠導致視覺不緊湊的問題。
     *   **一致性:** 確保所有角色主題 (Kuromi, MyMelody, Cinnamoroll) 與深/淺色模式皆套用此 Popup Menu 樣式。
 
