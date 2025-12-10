@@ -1,4 +1,6 @@
 // app/build.gradle.kts
+import java.io.FileInputStream
+import java.util.Properties
 
 // Apply the external configuration file
 apply(from = "../config.gradle.kts")
@@ -84,7 +86,8 @@ android {
         applicationId = finalApplicationId
         minSdk = 29
         targetSdk = 36
-        versionCode = finalVersionCode
+        // Ensure versionCode is at least 1
+        versionCode = if (finalVersionCode > 0) finalVersionCode else 1
         versionName = finalVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -101,18 +104,50 @@ android {
 
     signingConfigs {
         create("release") {
-            // System.getenv 用於讀取 GitHub Actions 設定的環境變數
-            val keystorePath = System.getenv("KEYSTORE_PATH")
-            storeFile = if (keystorePath != null) file(keystorePath) else file("release.keystore")
-            storePassword = System.getenv("KEYSTORE_PASSWORD")
-            keyAlias = System.getenv("KEY_ALIAS")
-            keyPassword = System.getenv("KEY_PASSWORD")
+            // 1. Try reading from environment variables (CI/CD priority)
+            val envStorePass = System.getenv("KEYSTORE_PASSWORD")
+            val envKeyAlias = System.getenv("KEY_ALIAS")
+            val envKeyPass = System.getenv("KEY_PASSWORD")
+            val envKeystorePath = System.getenv("KEYSTORE_PATH")
+
+            // 2. Try reading from local keystore.properties (Local dev fallback)
+            val keystoreProperties = Properties()
+            val keystorePropertiesFile = rootProject.file("keystore.properties")
+            if (keystorePropertiesFile.exists()) {
+                keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+            }
+
+            // 3. Determine final values: Env vars > Local properties (using dot notation for properties)
+            // Use property[...] notation to match user request and common practice for properties
+            storePassword = envStorePass ?: keystoreProperties["store.password"] as String?
+            keyAlias = envKeyAlias ?: keystoreProperties["key.alias"] as String?
+            keyPassword = envKeyPass ?: keystoreProperties["key.password"] as String?
+            
+            // 4. Determine Keystore file path
+            val localStoreFileName = keystoreProperties["store.file"] as String?
+            storeFile = if (!envKeystorePath.isNullOrEmpty()) {
+                file(envKeystorePath)
+            } else if (!localStoreFileName.isNullOrEmpty()) {
+                file(localStoreFileName)
+            } else {
+                file("release.keystore") // Default fallback
+            }
         }
     }
 
     buildTypes {
         getByName("release") {
-            signingConfig = signingConfigs.getByName("release")
+            // Safety check: Only apply signing config if password exists AND file exists
+            // to avoid gradle sync/build failures if keystore is missing locally.
+            // If missing, fallback to debug signing to ensure build succeeds locally.
+            val releaseConfig = signingConfigs.getByName("release")
+            if (releaseConfig.storePassword != null && releaseConfig.storeFile?.exists() == true) {
+                signingConfig = releaseConfig
+            } else {
+                println("Release keystore not found or configuration incomplete. Falling back to debug signing.")
+                signingConfig = signingConfigs.getByName("debug")
+            }
+            
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
