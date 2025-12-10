@@ -70,7 +70,10 @@ android {
     val safeVersionName = finalVersionName.replace(" ", "-")
     val finalArchivesBaseName = "$appName-v$safeVersionName"
     
-    val finalApplicationId = if (isProduction) baseApplicationId else "$baseApplicationId.$safeBranchName"
+    // REMOVED: Dynamic Application ID suffixing. 
+    // Consistent ID ensures updates work across branches (assuming signatures match).
+    val finalApplicationId = baseApplicationId 
+    
     val finalAppName = if (isProduction) appName else "$appName ($branchName)"
     val finalApiUrl = if (isProduction) prodApiUrl else devApiUrl
     val enableLogging = !isProduction

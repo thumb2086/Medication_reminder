@@ -1,5 +1,10 @@
 # 更新日誌
 
+## Configuration
+*   **0124:** **修復手動更新時套件無效問題 (Application ID Mismatch)。**
+    *   **Application ID:** 修改 `app/build.gradle.kts`，移除了基於分支名稱動態添加後綴 (如 `.dev`, `.fix_xxx`) 的邏輯。
+    *   **原因:** 該邏輯導致不同分支建置出的 App 被系統視為不同應用程式，無法互相更新。現在所有分支建置的 App 擁有統一的 Application ID，確保使用者能從本地測試版更新至 GitHub CI/CD 的 Release/Nightly 版本 (需注意簽章一致性)。
+
 ## Bug Fixes
 *   **0124:** **修復 UpdateManager 警告。**
     *   **代碼清理:**
@@ -163,7 +168,7 @@
 
 ## UI/UX 調整
 *   **0107:** **優化 Toolbar 下拉選單 (Popup Menu) 的視覺間距。**
-    *   **樣式調整:** 修改 `themes.xml` 和 `values-night/themes.xml`，自定義了 `Widget.App.PopupMenu` 和 `Widget.App.PopupMenu.Overflow` 樣式。
+    *   **樣式調整:** 修改 `themes.xml`和 `values-night/themes.xml`，自定義了 `Widget.App.PopupMenu` 和 `Widget.App.PopupMenu.Overflow` 樣式。
     *   **間距修正:** 設定 `android:dropDownVerticalOffset` 為 `4dp`，縮減了選單與 Toolbar 之間的垂直間距，使其更貼近標題列，解決了選單距離過遠導致視覺不緊湊的問題。
     *   **一致性:** 確保所有角色主題 (Kuromi, MyMelody, Cinnamoroll) 與深/淺色模式皆套用此 Popup Menu 樣式。
 
