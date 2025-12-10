@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Environment
 import android.util.Log
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
@@ -191,10 +192,16 @@ class UpdateManager(private val context: Context) {
     }
 
     fun downloadAndInstall(url: String, fileName: String) {
+        // Delete any existing file with the same name to avoid DownloadManager renaming it (e.g. file-1.apk)
+        val existingFile = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName)
+        if (existingFile.exists()) {
+            existingFile.delete()
+        }
+
         val request = DownloadManager.Request(url.toUri())
             .setTitle(context.getString(R.string.downloading_update))
             .setDescription(fileName)
-            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
+            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
             .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, fileName)
             .setAllowedOverMetered(true)
             .setAllowedOverRoaming(true)
@@ -202,12 +209,29 @@ class UpdateManager(private val context: Context) {
         val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val downloadId = downloadManager.enqueue(request)
 
+        Toast.makeText(context, R.string.downloading_update, Toast.LENGTH_SHORT).show()
+
         // Register receiver for download complete
         val onComplete = object : BroadcastReceiver() {
             override fun onReceive(ctxt: Context, intent: Intent) {
                 val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
                 if (id == downloadId) {
-                    installApk(fileName)
+                    val query = DownloadManager.Query().setFilterById(downloadId)
+                    val cursor = downloadManager.query(query)
+                    if (cursor.moveToFirst()) {
+                        val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
+                        if (statusIndex != -1) {
+                            val status = cursor.getInt(statusIndex)
+                            if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                                installApk(fileName)
+                            } else {
+                                Log.e("UpdateManager", "Download failed with status: $status")
+                                Toast.makeText(context, "更新下載失敗", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                    cursor.close()
+
                     try {
                         context.unregisterReceiver(this)
                     } catch (_: IllegalArgumentException) {
@@ -221,23 +245,29 @@ class UpdateManager(private val context: Context) {
     }
 
     private fun installApk(fileName: String) {
-        val file = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName)
-        if (!file.exists()) {
-            Log.e("UpdateManager", "APK file not found")
-            return
-        }
+        try {
+            val file = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName)
+            if (!file.exists()) {
+                Log.e("UpdateManager", "APK file not found at ${file.absolutePath}")
+                Toast.makeText(context, "安裝檔案未找到", Toast.LENGTH_SHORT).show()
+                return
+            }
 
-        val uri = FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.provider",
-            file
-        )
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.provider",
+                file
+            )
 
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, "application/vnd.android.package-archive")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            Log.e("UpdateManager", "Failed to install APK", e)
+            Toast.makeText(context, "安裝失敗: ${e.message}", Toast.LENGTH_SHORT).show()
         }
-        context.startActivity(intent)
     }
 }

@@ -1,5 +1,18 @@
 # 更新日誌
 
+## Bug Fixes
+*   **0124:** **修復 XML 命名空間警告。**
+    *   **Provider Paths:** 移除了 `res/xml/provider_paths.xml` 中未使用的 `xmlns:android` 命名空間宣告，解決了 lint 警告 `Namespace declaration is never used`。
+
+## Bug Fixes
+*   **0124:** **修復 App 內更新點擊後無反應與安裝失敗問題。**
+    *   **流程優化:**
+        *   `UpdateManager` 現在會在下載前主動刪除舊的 APK 檔案，防止 `DownloadManager` 自動重新命名 (如 `App-1.apk`) 導致安裝路徑錯誤。
+        *   新增下載開始與失敗的 Toast 提示，提供更明確的用戶反饋。
+        *   強化廣播接收器 (`BroadcastReceiver`) 邏輯，增加對 `DownloadManager` 狀態的查詢，確保僅在下載成功 (`STATUS_SUCCESSFUL`) 時觸發安裝。
+        *   為 `installApk` 中的 `startActivity` 增加 `try-catch` 保護，防止潛在崩潰。
+    *   **配置修正:** 更新 `res/xml/provider_paths.xml`，補上 `<external-files-path>` 設定，確保 `FileProvider` 正確授權安裝程式讀取 APK 檔案。
+
 ## DevOps
 *   **0123:** **優化更新檢查邏輯與 CI/CD 配置。**
     *   **UpdateManager 改進:**
