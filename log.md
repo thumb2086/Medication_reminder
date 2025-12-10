@@ -1,6 +1,21 @@
 # 更新日誌
 
 ## Bug Fixes
+*   **0124:** **修復 UpdateManager 警告。**
+    *   **代碼清理:**
+        *   移除了 `UpdateManager.kt` 中未使用的 `android.os.Build` 引用。
+        *   將 `Uri.parse(uriString)` 替換為 KTX 擴充函式 `uriString.toUri()`，保持代碼風格一致。
+
+## Bug Fixes
+*   **0124:** **修復 App 內更新點擊後無反應與安裝失敗問題 (Part 2)。**
+    *   **安裝失敗 (套件無效):**
+        *   在 `DownloadManager.Request` 中明確設定 `MIME Type` 為 `application/vnd.android.package-archive`，確保下載後的檔案被正確識別為 APK。
+        *   優化 `installApk` 邏輯，增加檔案大小檢查 (< 1KB 視為無效)，避免嘗試安裝損毀的檔案或錯誤頁面。
+    *   **無法自動開始安裝:**
+        *   修改 `downloadAndInstall` 中的 `onReceive` 邏輯，改為從 `DownloadManager` 的查詢結果 (`COLUMN_LOCAL_URI`) 獲取下載檔案的真實路徑，而非依賴硬編碼的假設路徑，解決了因路徑不一致導致找不到檔案的問題。
+        *   加入了詳細的 Log 輸出，方便追蹤檔案路徑與安裝意圖的建立過程。
+
+## Bug Fixes
 *   **0124:** **修復 XML 命名空間警告。**
     *   **Provider Paths:** 移除了 `res/xml/provider_paths.xml` 中未使用的 `xmlns:android` 命名空間宣告，解決了 lint 警告 `Namespace declaration is never used`。
 
