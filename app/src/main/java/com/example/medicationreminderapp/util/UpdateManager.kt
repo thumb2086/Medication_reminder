@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.ApplicationInfo
 import android.os.Environment
 import android.provider.Settings
 import android.util.Log
@@ -168,7 +169,8 @@ class UpdateManager(private val context: Context) {
 
     fun downloadAndInstall(url: String, fileName: String) {
         // Warning if updating from Debug build (signature mismatch risk)
-        if (BuildConfig.DEBUG) {
+        val isDebuggable = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (isDebuggable) {
             Toast.makeText(context, "警告: 正在使用除錯版本，更新可能會因簽名不符而失敗。", Toast.LENGTH_LONG).show()
         }
 
@@ -221,23 +223,36 @@ class UpdateManager(private val context: Context) {
                         if (statusIndex != -1) {
                             val status = cursor.getInt(statusIndex)
                             if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                                // Retrieve the actual file location from DownloadManager
+                                var downloadedFile: File? = null
+
+                                // Strategy 1: Attempt to get file from DownloadManager URI
                                 if (uriIndex != -1) {
                                     val uriString = cursor.getString(uriIndex)
-                                    val fileUri = uriString.toUri()
-                                    // Normally fileUri is file:///...
-                                    val path = fileUri.path
-                                    if (path != null) {
-                                        val downloadedFile = File(path)
-                                        installApk(downloadedFile)
-                                    } else {
-                                        // Fallback to manual path if URI path is null (unlikely for file://)
-                                        installApk(File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName))
+                                    if (uriString != null) {
+                                        val fileUri = uriString.toUri()
+                                        if (fileUri.scheme == "file") {
+                                            val path = fileUri.path
+                                            if (path != null) {
+                                                downloadedFile = File(path)
+                                            }
+                                        }
                                     }
-                                } else {
-                                     // Fallback
-                                     installApk(File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName))
                                 }
+
+                                // Strategy 2: Fallback to expected location if Strategy 1 failed
+                                if (downloadedFile == null || !downloadedFile.exists()) {
+                                    Log.w("UpdateManager", "Could not resolve file via URI. Falling back to hardcoded path.")
+                                    downloadedFile = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName)
+                                }
+
+                                if (downloadedFile.exists()) {
+                                    Log.d("UpdateManager", "Install target found: ${downloadedFile.absolutePath}")
+                                    installApk(downloadedFile)
+                                } else {
+                                    Log.e("UpdateManager", "APK file not found after download success reported.")
+                                    Toast.makeText(context, "更新檔案未找到", Toast.LENGTH_SHORT).show()
+                                }
+
                             } else {
                                 Log.e("UpdateManager", "Download failed with status: $status")
                                 Toast.makeText(context, "更新下載失敗", Toast.LENGTH_SHORT).show()
@@ -254,8 +269,15 @@ class UpdateManager(private val context: Context) {
                 }
             }
         }
-        ContextCompat.registerReceiver(context, onComplete, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
-            ContextCompat.RECEIVER_NOT_EXPORTED)
+        
+        // Correctly register receiver for system broadcast on Android 13+ (API 33)
+        // DownloadManager sends a system broadcast, so we MUST use RECEIVER_EXPORTED.
+        ContextCompat.registerReceiver(
+            context,
+            onComplete,
+            IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
+            ContextCompat.RECEIVER_EXPORTED
+        )
     }
 
     private fun installApk(file: File) {

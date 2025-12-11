@@ -16,6 +16,7 @@ A smart medication reminder application integrated with an ESP32-based smart pil
 *   **Alarm System:** Set up to 4 alarms on the ESP32 pillbox for standalone reminders.
 *   **Interactive Charts:** View temperature and humidity trends with interactive line charts, supporting pan, zoom, and data point inspection.
 *   **In-App Updates:** Automatically checks for updates from GitHub Releases. Users can choose between "Stable" (Official), "Dev" (Beta), and "Nightly" (Experimental) update channels.
+*   **Robust Update Installation:** Smart handling of APK downloads with automatic fallback mechanisms to ensure successful installation on various Android versions (including Android 13+).
 
 ## Bluetooth Protocol Versioning
 
