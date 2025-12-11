@@ -67,4 +67,20 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory app:title="關於">
+        <Preference
+            app:key="app_author"
+            app:title="作者"
+            app:summary="Thumb2086"
+            app:selectable="false"
+            app:icon="@drawable/ic_face" />
+
+        <Preference
+            app:key="app_version"
+            app:title="版本"
+            app:summary="1.0.0"
+            app:selectable="false"
+            app:icon="@drawable/ic_update" />
+    </PreferenceCategory>
+
 </PreferenceScreen>

@@ -51,6 +51,16 @@ jobs:
           fileName: 'release.keystore'
           encodedString: ${{ secrets.KEYSTORE_BASE64 }}
 
+      - name: Generate Version Code
+        id: version_code
+        run: |
+          # Generate a timestamp-based version code (e.g., 2025012710)
+          # Format: yyyyMMddHH (10 digits).
+          # Safe until year 2147 (Max Integer is 2,147,483,647).
+          TIMESTAMP=$(date +'%Y%m%d%H')
+          echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
+          echo "Generated Version Code: $TIMESTAMP"
+
       - name: Build with Gradle (Release)
         env:
           # Map Secrets to Env Vars used in app/build.gradle.kts
@@ -61,6 +71,9 @@ jobs:
           
           # Inject Versioning Info
           BUILD_NUMBER: ${{ github.run_number }}
+          # Override versionCode with timestamp to ensure strictly increasing versions for Nightly builds across branches
+          VERSION_CODE_OVERRIDE: ${{ env.TIMESTAMP }}
+          
           # We do NOT inject VERSION_NAME here. We let app/build.gradle.kts calculate it based on Git tags/commits.
           # This ensures version names like "1.2.0 nightly 161" are generated correctly.
         run: ./gradlew assembleRelease --stacktrace
