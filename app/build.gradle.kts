@@ -55,20 +55,15 @@ android {
     
     // Logic: Use environment variables from CI/CD if available, otherwise fallback to local logic
     val envBuildNumber = System.getenv("BUILD_NUMBER")?.toIntOrNull()
-    // Allow overriding versionCode directly (e.g. from timestamp) to prevent regression on branch switch
-    val envVersionCodeOverride = System.getenv("VERSION_CODE_OVERRIDE")?.toIntOrNull()
     val envVersionName = System.getenv("VERSION_NAME")
 
-    // Priority: Override (Timestamp) > BuildNumber (CI run) > CommitCount (Local)
-    val finalVersionCode = envVersionCodeOverride ?: envBuildNumber ?: commitCount
+    val finalVersionCode = envBuildNumber ?: commitCount
 
     val localVersionName = if (isProduction) {
         baseVersionName
     } else {
-        // Requested format: "1.0.0 nightly <Code>"
-        // Use finalVersionCode (timestamp in CI, commit count locally) for the suffix
-        // This ensures the App's UpdateManager sees a higher number for new CI builds compared to local builds or old branches.
-        "$baseVersionName nightly $finalVersionCode"
+        // Requested format: "1.0.0 nightly 5"
+        "$baseVersionName nightly $commitCount"
     }
     
     val finalVersionName = envVersionName ?: localVersionName

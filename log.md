@@ -1,12 +1,5 @@
 # 更新日誌
 
-## DevOps
-*   **0127:** **修復 Nightly 版本倒退與無法更新問題。**
-    *   **CI/CD 更新:** 修改 `.github/workflows/android-cicd.yml`，在建置流程中引入了 `TIMESTAMP` (格式: `yyyyMMddHH`)。
-        *   現在 Gradle 建置時會接收環境變數 `VERSION_CODE_OVERRIDE`，將版本號 (VersionCode) 設定為當前時間戳。
-    *   **Gradle 配置:** 修改 `app/build.gradle.kts`，新增讀取 `VERSION_CODE_OVERRIDE` 環境變數的邏輯。
-        *   這確保了無論在哪個分支進行建置，只要是較晚建置的版本，其 VersionCode 一定大於舊版本，解決了因切換分支導致 Commit Count 變少而無法更新的問題。
-
 ## Bug Fixes & Code Refinement
 *   **0121:** **修復藥物表單狀態問題並改善程式碼品質。**
     *   **修復:** 在 `ReminderSettingsFragment.kt` 中，修改了 `updateMedicationCards()` 函式，使其在使用者增加或減少藥物數量時，能夠保留已填寫的表單內容，而不是重設所有欄位。
