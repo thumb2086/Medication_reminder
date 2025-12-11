@@ -54,10 +54,10 @@ jobs:
       - name: Generate Version Code
         id: version_code
         run: |
-          # Generate a timestamp-based version code (e.g., 2025012710)
-          # Format: yyyyMMddHH (10 digits).
-          # Safe until year 2147 (Max Integer is 2,147,483,647).
-          TIMESTAMP=$(date +'%Y%m%d%H')
+          # Generate a timestamp-based version code (e.g., 25012710)
+          # Format: yyMMddHH (8 digits).
+          # This fits comfortably within the 32-bit Integer limit (2,147,483,647).
+          TIMESTAMP=$(date +'%y%m%d%H')
           echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
           echo "Generated Version Code: $TIMESTAMP"
 

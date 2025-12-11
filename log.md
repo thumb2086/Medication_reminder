@@ -1,6 +1,11 @@
 # 更新日誌
 
 ## DevOps
+*   **0127:** **修復 Nightly 版本號溢出 (Integer Overflow) 問題。**
+    *   **CI/CD:** 將 `.github/workflows/android-cicd.yml` 中的時間戳格式從 `yyyyMMddHH` (10位數, 可能溢出 32-bit Integer) 修改為 `yyMMddHH` (8位數, 如 `25012710`)。
+    *   此修改確保了生成的 Version Code (約 25,000,000) 遠小於 Integer 上限 (2,147,483,647)，同時保持了版本號的單調遞增特性。
+
+## DevOps
 *   **0127:** **修復 Nightly 版本倒退與無法更新問題。**
     *   **CI/CD 更新:** 修改 `.github/workflows/android-cicd.yml`，在建置流程中引入了 `TIMESTAMP` (格式: `yyyyMMddHH`)。
         *   現在 Gradle 建置時會接收環境變數 `VERSION_CODE_OVERRIDE`，將版本號 (VersionCode) 設定為當前時間戳。
