@@ -41,7 +41,7 @@ This project uses GitHub Actions for continuous integration and automated versio
 *   **Stable Releases:** Triggered by pushing a tag starting with `v` (e.g., `v1.1.8`). Creates a permanent release on the `stable` channel.
 *   **Dev Releases:** Triggered by pushing to the `dev` branch. Updates the `latest-dev` rolling release on the `dev` channel.
 *   **Nightly Builds:** Triggered by pushing to any other branch. Updates the `nightly` rolling release on the `nightly` channel.
-*   **Versioning:** The `versionCode` corresponds to the build number, and `versionName` is dynamically generated based on the branch and commit count.
+*   **Versioning:** The `versionCode` is generated based on the build timestamp (`yyMMddHH`) to ensure strictly increasing versions across branches, preventing downgrade issues. The `versionName` includes branch and commit information.
 
 ## License
 
