@@ -1,5 +1,10 @@
 # 更新日誌
 
+## Bug Fixes & Code Refinement
+*   **0121:** **修復藥物表單狀態問題並改善程式碼品質。**
+    *   **修復:** 在 `ReminderSettingsFragment.kt` 中，修改了 `updateMedicationCards()` 函式，使其在使用者增加或減少藥物數量時，能夠保留已填寫的表單內容，而不是重設所有欄位。
+    *   **程式碼修正:** 在 `UpdateManager.kt` 中，修正了 `response.body` 可能為空值時的處理邏輯，避免了不必要的安全呼叫 (`?.`)，提升了程式碼的穩健性。
+
 ## DevOps
 *   **0120:** **實作 App 內自動更新功能。**
     *   **更新機制:**

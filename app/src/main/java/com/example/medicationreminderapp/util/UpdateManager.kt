@@ -57,37 +57,24 @@ class UpdateManager(private val context: Context) {
                     return@withContext null
                 }
 
-                val jsonStr = response.body.string()
+                // response.body is nullable, so we use safe call or check
+                val responseBody = response.body
+                if (responseBody == null) {
+                    Log.e("UpdateManager", "Response body is null")
+                    return@withContext null
+                }
+                val jsonStr = responseBody.string()
                 val json = gson.fromJson(jsonStr, JsonObject::class.java)
 
                 val tagName = json.get("tag_name").asString
                 val releaseNotes = json.get("body").asString
                 
-                // Parse version from tagName (e.g., v1.1.8 -> 1.1.8, nightly -> check body or just assume newer?)
-                // Simple logic: If current version name is different, propose update.
-                // Better logic: Semantic versioning comparison.
-                
-                // For this implementation, we will compare raw strings for official, 
-                // and for nightly we might rely on the fact that the user is on the 'nightly' channel.
-                // However, without a clean way to compare "nightly 5" vs "nightly 6", we might just prompt if it looks different?
-                // Or simply returning the info and letting UI decide.
-                
                 val currentVersion = BuildConfig.VERSION_NAME
-                
-                // Very basic check: if tag name contains current version, probably no update.
-                // For nightly: tag is always "nightly", so we need another way?
-                // Actually, github release object has "published_at". 
-                // But simplified: 
-                // Official: tag 'v1.1.8' != '1.1.8' (needs stripping 'v')
-                // Nightly: tag is 'nightly'. We can parse body for "Version: x.x.x nightly N"
                 
                 val isUpdateAvailable = if (channel == "official") {
                      val cleanTag = tagName.removePrefix("v")
-                     cleanTag != currentVersion.split(" ").first() // simple check
+                     cleanTag != currentVersion.split(" ").first() 
                 } else {
-                    // For nightly, it's hard to know if it's newer without checking commit hash or build number
-                    // We can check if the body contains the current version string.
-                    // If the body says "1.1.8 nightly 10" and we are "1.1.8 nightly 9", update.
                     !releaseNotes.contains(currentVersion) 
                 }
                 
