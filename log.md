@@ -1,6 +1,13 @@
 # 更新日誌
 
 ## Bug Fixes
+*   **0126:** **修復 App 內更新下載後無法自動安裝問題 (Part 3)。**
+    *   **路徑解析修復:** 
+        *   重構了 `UpdateManager` 中的 `onReceive` 邏輯。現在會優先嘗試從 `DownloadManager` 的 `COLUMN_LOCAL_URI` 獲取檔案路徑。
+        *   新增了**回退機制 (Fallback)**：若 URI 解析失敗或為空，會自動回退至預期的下載目錄 (`Download/`) 尋找同名檔案，解決了因 `DownloadManager` 路徑返回不穩定導致的安裝失敗。
+        *   **日誌增強:** 加入了更詳細的 Log 輸出 (`Install target found`, `Could not resolve file via URI`)，方便排查路徑問題。
+
+## Bug Fixes
 *   **0126:** **修復 UpdateManager Lint 警告 (Part 2)。**
     *   **Runtime Check:** 將 `BuildConfig.DEBUG` 替換為 `ApplicationInfo.FLAG_DEBUGGABLE` 運行時檢查。
     *   **Lint Warning:** 移除了不再需要的 `@Suppress("ConstantConditionIf")`，徹底解決了「條件恆為假」與「多餘抑制」的警告，同時確保在 Debug 版本中仍能正確彈出簽名不符的提示。
