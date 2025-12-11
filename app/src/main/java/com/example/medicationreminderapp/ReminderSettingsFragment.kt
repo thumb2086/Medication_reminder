@@ -170,8 +170,6 @@ class ReminderSettingsFragment : Fragment() {
 
     private fun populateFormForEdit(med: Medication) {
         editingMedication = med
-        // Ensure clean state for edit
-        updateMedicationCards(0) 
         updateMedicationCards(1)
         
         // Hide image when editing
@@ -243,29 +241,17 @@ class ReminderSettingsFragment : Fragment() {
     }
 
     private fun updateMedicationCards(count: Int) {
-        val currentCount = medicationCards.size
+        binding.medicationCardsContainer.removeAllViews()
+        medicationCards.clear()
 
-        if (count > currentCount) {
-            // Add new cards
-            repeat(count - currentCount) {
-                val cardBinding = MedicationInputItemBinding.inflate(layoutInflater, binding.medicationCardsContainer, false)
-                val cardState = MedicationCardState()
-                medicationCards.add(Pair(cardBinding, cardState))
-                binding.medicationCardsContainer.addView(cardBinding.root)
+        repeat(count) {
+            val cardBinding = MedicationInputItemBinding.inflate(layoutInflater, binding.medicationCardsContainer, false)
+            val cardState = MedicationCardState()
+            medicationCards.add(Pair(cardBinding, cardState))
+            binding.medicationCardsContainer.addView(cardBinding.root)
 
-                setupCard(cardBinding, cardState)
-            }
-        } else if (count < currentCount) {
-            // Remove excess cards from the end
-            val diff = currentCount - count
-            repeat(diff) {
-                val lastIndex = medicationCards.lastIndex
-                val (cardBinding, _) = medicationCards[lastIndex]
-                binding.medicationCardsContainer.removeView(cardBinding.root)
-                medicationCards.removeAt(lastIndex)
-            }
+            setupCard(cardBinding, cardState)
         }
-        
         updateAllSlotSpinners()
     }
 

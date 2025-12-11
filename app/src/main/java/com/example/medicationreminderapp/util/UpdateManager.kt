@@ -64,29 +64,12 @@ class UpdateManager(private val context: Context) {
                     return@withContext null
                 }
 
-                // response.body is nullable, so we use safe call or check
-                val responseBody = response.body
-                if (responseBody == null) {
-                    Log.e("UpdateManager", "Response body is null")
-                    return@withContext null
-                }
-                val jsonStr = responseBody.string()
+                val jsonStr = response.body.string()
                 val json = gson.fromJson(jsonStr, JsonObject::class.java)
 
                 val tagName = json.get("tag_name").asString
                 val releaseNotes = json.get("body").asString
                 
-                val currentVersion = BuildConfig.VERSION_NAME
-                
-                val isUpdateAvailable = if (channel == "official") {
-                     val cleanTag = tagName.removePrefix("v")
-                     cleanTag != currentVersion.split(" ").first() 
-                } else {
-                    !releaseNotes.contains(currentVersion) 
-                }
-                
-                if (!isUpdateAvailable) return@withContext null
-
                 val assets = json.getAsJsonArray("assets")
                 if (assets.size() == 0) return@withContext null
                 
