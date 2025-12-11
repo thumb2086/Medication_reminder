@@ -30,6 +30,9 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         findPreference<ListPreference>("language")?.let { it.summary = it.entry }
         findPreference<ListPreference>("character")?.let { it.summary = it.entry }
         findPreference<ListPreference>("update_channel")?.let { it.summary = it.entry }
+
+        // Dynamically set version info
+        findPreference<Preference>("app_version")?.summary = BuildConfig.VERSION_NAME
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -103,8 +106,15 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
     override fun onPause() {
         super.onPause()
         preferenceScreen.sharedPreferences?.unregisterOnSharedPreferenceChangeListener(this)
-        activity?.title = getString(R.string.app_name)
-        (activity as? MainActivity)?.updateUiForFragment(false)
+        // Fixed: Do NOT reset UI visibility here. 
+        // Resetting it in onPause() causes the main tabs to reappear when the app goes to background 
+        // (e.g., when switching apps), which is incorrect behavior while still on the Settings screen.
+        // The visibility is correctly managed by the FragmentManager listener in MainActivity.
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+         activity?.title = getString(R.string.app_name)
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences, key: String?) {
