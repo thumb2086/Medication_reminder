@@ -168,6 +168,7 @@ class UpdateManager(private val context: Context) {
 
     fun downloadAndInstall(url: String, fileName: String) {
         // Warning if updating from Debug build (signature mismatch risk)
+        @Suppress("ConstantConditionIf")
         if (BuildConfig.DEBUG) {
             Toast.makeText(context, "警告: 正在使用除錯版本，更新可能會因簽名不符而失敗。", Toast.LENGTH_LONG).show()
         }
@@ -254,8 +255,15 @@ class UpdateManager(private val context: Context) {
                 }
             }
         }
-        ContextCompat.registerReceiver(context, onComplete, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
-            ContextCompat.RECEIVER_NOT_EXPORTED)
+        
+        // Correctly register receiver for system broadcast on Android 13+ (API 33)
+        // DownloadManager sends a system broadcast, so we MUST use RECEIVER_EXPORTED.
+        ContextCompat.registerReceiver(
+            context,
+            onComplete,
+            IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
+            ContextCompat.RECEIVER_EXPORTED
+        )
     }
 
     private fun installApk(file: File) {
