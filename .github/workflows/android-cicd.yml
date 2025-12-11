@@ -53,15 +53,16 @@ jobs:
 
       - name: Build with Gradle (Release)
         env:
-          KEYSTORE_PATH: ${{ steps.write_file.outputs.filePath }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          # Map Secrets to Env Vars used in app/build.gradle.kts
+          RELEASE_KEYSTORE_PATH: ${{ steps.write_file.outputs.filePath }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           
           # Inject Versioning Info
           BUILD_NUMBER: ${{ github.run_number }}
-          # Logic: If it's a tag, use the tag name. Otherwise, use branch-nightly.
-          VERSION_NAME: ${{ github.ref_type == 'tag' && github.ref_name || format('{0}-nightly', github.ref_name) }}
+          # We do NOT inject VERSION_NAME here. We let app/build.gradle.kts calculate it based on Git tags/commits.
+          # This ensures version names like "1.2.0 nightly 161" are generated correctly.
         run: ./gradlew assembleRelease --stacktrace
 
       - name: Get Version Name

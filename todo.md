@@ -1,3 +1,4 @@
 # To-Do List
 
-- [ ] (No pending tasks)
+- [ ] **Cleanup**:
+    - [ ] Remove completed tasks from `todo.md`.

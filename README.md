@@ -15,7 +15,8 @@ A smart medication reminder application integrated with an ESP32-based smart pil
 *   **Wi-Fi Configuration:** Configure the ESP32's Wi-Fi credentials directly from the app via BLE, now conveniently located within the App Settings.
 *   **Alarm System:** Set up to 4 alarms on the ESP32 pillbox for standalone reminders.
 *   **Interactive Charts:** View temperature and humidity trends with interactive line charts, supporting pan, zoom, and data point inspection.
-*   **In-App Updates:** Automatically checks for updates from GitHub Releases. Users can choose between "Official" (Stable) and "Nightly" (Dev) update channels.
+*   **In-App Updates:** Automatically checks for updates from GitHub Releases. Users can choose between "Stable" (Official), "Dev" (Beta), and "Nightly" (Experimental) update channels.
+*   **Robust Update Installation:** Smart handling of APK downloads with automatic fallback mechanisms to ensure successful installation on various Android versions (including Android 13+).
 
 ## Bluetooth Protocol Versioning
 
@@ -37,9 +38,9 @@ To ensure compatibility between the App and the ESP32 firmware as features evolv
 
 This project uses GitHub Actions for continuous integration and automated version management.
 
-*   **Official Releases:** Triggered by pushing a tag starting with `v` (e.g., `v1.1.8`). Creates a permanent release.
-*   **Dev Releases:** Triggered by pushing to the `dev` branch. Updates the `latest-dev` rolling release.
-*   **Nightly Builds:** Triggered by pushing to any other branch. Updates the `nightly` rolling release.
+*   **Stable Releases:** Triggered by pushing a tag starting with `v` (e.g., `v1.1.8`). Creates a permanent release on the `stable` channel.
+*   **Dev Releases:** Triggered by pushing to the `dev` branch. Updates the `latest-dev` rolling release on the `dev` channel.
+*   **Nightly Builds:** Triggered by pushing to any other branch. Updates the `nightly` rolling release on the `nightly` channel.
 *   **Versioning:** The `versionCode` corresponds to the build number, and `versionName` is dynamically generated based on the branch and commit count.
 
 ## License
