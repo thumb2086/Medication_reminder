@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.ApplicationInfo
 import android.os.Environment
 import android.provider.Settings
 import android.util.Log
@@ -168,8 +169,8 @@ class UpdateManager(private val context: Context) {
 
     fun downloadAndInstall(url: String, fileName: String) {
         // Warning if updating from Debug build (signature mismatch risk)
-        @Suppress("ConstantConditionIf")
-        if (BuildConfig.DEBUG) {
+        val isDebuggable = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (isDebuggable) {
             Toast.makeText(context, "警告: 正在使用除錯版本，更新可能會因簽名不符而失敗。", Toast.LENGTH_LONG).show()
         }
 

@@ -1,6 +1,11 @@
 # 更新日誌
 
 ## Bug Fixes
+*   **0126:** **修復 UpdateManager Lint 警告 (Part 2)。**
+    *   **Runtime Check:** 將 `BuildConfig.DEBUG` 替換為 `ApplicationInfo.FLAG_DEBUGGABLE` 運行時檢查。
+    *   **Lint Warning:** 移除了不再需要的 `@Suppress("ConstantConditionIf")`，徹底解決了「條件恆為假」與「多餘抑制」的警告，同時確保在 Debug 版本中仍能正確彈出簽名不符的提示。
+
+## Bug Fixes
 *   **0125:** **修復 UpdateManager Lint 錯誤與警告。**
     *   **Lint Error:** 修復 `UnspecifiedRegisterReceiverFlag` 錯誤。將手動的 `if (Build.VERSION.SDK_INT >= TIRAMISU)` 判斷替換為 `ContextCompat.registerReceiver(..., ContextCompat.RECEIVER_EXPORTED)`，這既符合安全規範，也簡化了代碼。
     *   **Lint Warning:** 
