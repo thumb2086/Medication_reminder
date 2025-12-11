@@ -1,5 +1,10 @@
 # 更新日誌
 
+## Bug Fixes
+*   **0127:** **修復設定頁面「關於」區塊無英文翻譯問題。**
+    *   **國際化 (i18n):** 將 `preferences.xml` 中硬編碼的中文標題 ("關於", "作者", "版本") 提取至 `strings.xml` 資源檔 (`about_category`, `about_author`, `about_version`)。
+    *   **翻譯:** 在 `values-en/strings.xml` 中新增了對應的英文翻譯，確保在英文語系下能正確顯示 "About", "Author", "Version"。
+
 ## DevOps
 *   **0127:** **修復 Nightly 版本號溢出 (Integer Overflow) 問題。**
     *   **CI/CD:** 將 `.github/workflows/android-cicd.yml` 中的時間戳格式從 `yyyyMMddHH` (10位數, 可能溢出 32-bit Integer) 修改為 `yyMMddHH` (8位數, 如 `25012710`)。
@@ -11,6 +16,17 @@
         *   現在 Gradle 建置時會接收環境變數 `VERSION_CODE_OVERRIDE`，將版本號 (VersionCode) 設定為當前時間戳。
     *   **Gradle 配置:** 修改 `app/build.gradle.kts`，新增讀取 `VERSION_CODE_OVERRIDE` 環境變數的邏輯。
         *   這確保了無論在哪個分支進行建置，只要是較晚建置的版本，其 VersionCode 一定大於舊版本，解決了因切換分支導致 Commit Count 變少而無法更新的問題。
+
+## Bug Fixes
+*   **0127:** **修復 UpdateManager 重複宣告與無效條件警告。**
+    *   **重複宣告:** 移除了 `UpdateManager.kt` 中意外導致的重複變數宣告 (`currentVersion`, `isUpdateAvailable`)。
+    *   **無效條件:** 移除了 `if (responseBody == null)` 的判斷，因為 `response.body` 在 `OkHttp` 的 `response.isSuccessful` 為 true 時理論上不為空，且編譯器提示該條件恆為 false (可能因 Kotlin 的 Null Safety 推斷)，確保代碼簡潔。
+
+## Bug Fixes
+*   **0127:** **修復設定頁面 UI 與新增版本資訊。**
+    *   **UI 遮擋:** 在 `SettingsFragment` 中加入了 `OnApplyWindowInsetsListener`，動態為列表底部增加 Padding，防止內容被系統手勢導航條遮擋。
+    *   **UI 異常:** 修復了從設定頁面切換 App 再返回時，底部主分頁按鈕錯誤顯示的問題 (移除了 `onPause` 中的重置邏輯)。
+    *   **版本資訊:** 在設定頁面底部新增了「關於」區塊，顯示作者與當前 App 版本號。
 
 ## Bug Fixes
 *   **0126:** **修復 App 內更新下載後無法自動安裝問題 (Part 3)。**

@@ -256,4 +256,9 @@
     <string name="engineering_mode">Engineering Mode</string>
     <string name="engineering_mode_summary">Enables additional debugging features</string>
 
+    <!-- About -->
+    <string name="about_category">About</string>
+    <string name="about_author">Author</string>
+    <string name="about_version">Version</string>
+
 </resources>
