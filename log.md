@@ -6,6 +6,14 @@
     *   **翻譯:** 在 `values-en/strings.xml` 中新增了對應的英文翻譯，確保在英文語系下能正確顯示 "About", "Author", "Version"。
 
 ## DevOps
+*   **0127:** **實作多頻道 (Multi-Channel) CI/CD 架構。**
+    *   **動態頻道:** 支援基於 Git 分支名稱的動態更新頻道 (例如 `dev`, `feat-new-ui`, `fix-login-bug`)。每個分支現在都擁有獨立的 `update_<branch>.json` 更新設定檔與 Nightly Release。
+    *   **Gradle 配置:** 更新 `app/build.gradle.kts`，自動將 Git 分支名稱轉換為安全的 `UPDATE_CHANNEL` 並注入 `BuildConfig`。
+    *   **GitHub Actions:** 更新 `.github/workflows/android-cicd.yml`，針對 `push` 事件自動生成對應頻道的 JSON 設定檔，並利用 `gh-pages` 部署，同時保留其他頻道的設定檔 (`keep_files: true`)。
+    *   **App 邏輯:** 重構 `UpdateManager.kt` 與 `SettingsFragment.kt`，現在 App 會自動根據建置時的分支 (`BuildConfig.UPDATE_CHANNEL`) 檢查對應的更新來源，無需使用者手動切換頻道。
+    *   **UI 調整:** 設定頁面中的「更新頻道」選項改為唯讀顯示，直接告知使用者當前所在的頻道。
+
+## DevOps
 *   **0127:** **修復 Nightly 版本號溢出 (Integer Overflow) 問題。**
     *   **CI/CD:** 將 `.github/workflows/android-cicd.yml` 中的時間戳格式從 `yyyyMMddHH` (10位數, 可能溢出 32-bit Integer) 修改為 `yyMMddHH` (8位數, 如 `25012710`)。
     *   此修改確保了生成的 Version Code (約 25,000,000) 遠小於 Integer 上限 (2,147,483,647)，同時保持了版本號的單調遞增特性。

@@ -230,16 +230,12 @@
     <string name="update_settings">更新設定</string>
     <string name="update_channel">更新頻道</string>
     <string-array name="update_channel_entries">
-        <item>正式版 (Stable)</item>
-        <item>開發版 (Dev)</item>
-        <item>夜間版 (Nightly)</item>
+        <item>自動 (Auto)</item>
     </string-array>
     <string-array name="update_channel_values">
-        <item>stable</item>
-        <item>dev</item>
-        <item>nightly</item>
+        <item>auto</item>
     </string-array>
-    <string name="update_channel_summary">選擇您想要接收更新的版本頻道</string>
+    <string name="update_channel_summary">目前所在頻道: %s</string>
     <string name="check_for_updates">檢查更新</string>
     <string name="update_available_title">發現新版本</string>
     <string name="update_available_message">發現新版本 %s。您想要現在更新嗎？\n\n更新內容：\n%s</string>

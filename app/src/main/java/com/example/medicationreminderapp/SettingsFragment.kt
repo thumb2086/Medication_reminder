@@ -32,7 +32,13 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         findPreference<ListPreference>("theme")?.let { it.summary = it.entry }
         findPreference<ListPreference>("language")?.let { it.summary = it.entry }
         findPreference<ListPreference>("character")?.let { it.summary = it.entry }
-        findPreference<ListPreference>("update_channel")?.let { it.summary = it.entry }
+        
+        // Dynamically set update channel info
+        findPreference<Preference>("update_channel")?.let {
+             // BuildConfig is in the same package, so no import is needed.
+             // If IDE shows error here but build succeeds, it is an IDE cache issue.
+             it.summary = getString(R.string.update_channel_summary, BuildConfig.UPDATE_CHANNEL)
+        }
 
         // Dynamically set version info
         findPreference<Preference>("app_version")?.summary = BuildConfig.VERSION_NAME
@@ -85,13 +91,12 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
     }
 
     private fun checkForUpdates() {
-        val sharedPreferences = preferenceScreen.sharedPreferences ?: return
-        val channel = sharedPreferences.getString("update_channel", "official") ?: "official"
+        // Automatically checks based on the channel defined in BuildConfig
         val updateManager = UpdateManager(requireContext())
         
         lifecycleScope.launch {
             Toast.makeText(requireContext(), "正在檢查更新...", Toast.LENGTH_SHORT).show()
-            val updateInfo = updateManager.checkForUpdates(channel)
+            val updateInfo = updateManager.checkForUpdates()
             if (updateInfo != null) {
                 AlertDialog.Builder(requireContext())
                     .setTitle(getString(R.string.update_available_title))
@@ -116,10 +121,6 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
     override fun onPause() {
         super.onPause()
         preferenceScreen.sharedPreferences?.unregisterOnSharedPreferenceChangeListener(this)
-        // Fixed: Do NOT reset UI visibility here. 
-        // Resetting it in onPause() causes the main tabs to reappear when the app goes to background 
-        // (e.g., when switching apps), which is incorrect behavior while still on the Settings screen.
-        // The visibility is correctly managed by the FragmentManager listener in MainActivity.
     }
 
     override fun onDestroyView() {
@@ -151,11 +152,6 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                 findPreference<ListPreference>(key)?.let { characterPreference ->
                     characterPreference.summary = characterPreference.entry
                     activity?.recreate()
-                }
-            }
-            "update_channel" -> {
-                 findPreference<ListPreference>(key)?.let { pref ->
-                    pref.summary = pref.entry
                 }
             }
             "engineering_mode" -> {

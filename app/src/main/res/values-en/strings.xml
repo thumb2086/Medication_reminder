@@ -230,16 +230,12 @@
     <string name="update_settings">Update Settings</string>
     <string name="update_channel">Update Channel</string>
     <string-array name="update_channel_entries">
-        <item>Stable (Official)</item>
-        <item>Dev (Beta)</item>
-        <item>Nightly (Experimental)</item>
+        <item>Auto</item>
     </string-array>
     <string-array name="update_channel_values">
-        <item>stable</item>
-        <item>dev</item>
-        <item>nightly</item>
+        <item>auto</item>
     </string-array>
-    <string name="update_channel_summary">Choose the release channel you want to receive updates from</string>
+    <string name="update_channel_summary">Current Channel: %s</string>
     <string name="check_for_updates">Check for Updates</string>
     <string name="update_available_title">Update Available</string>
     <string name="update_available_message">New version %s is available. Do you want to update now?\n\nRelease Notes:\n%s</string>

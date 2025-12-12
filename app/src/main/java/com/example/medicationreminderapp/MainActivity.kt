@@ -97,14 +97,9 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
     }
 
     private fun checkForUpdates() {
-        val channel = prefs.getString("update_channel", "official") ?: "official"
-        // val shouldCheck = prefs.getBoolean("check_for_updates_on_startup", true)
-        
-        // Always check on startup if enabled, or triggered manually from settings (not implemented yet for manual only)
-        // For now we check on every startup. Ideally we should respect a preference.
-        
+        // Automatically checks based on the channel defined in BuildConfig
         lifecycleScope.launch {
-            val updateInfo = updateManager.checkForUpdates(channel)
+            val updateInfo = updateManager.checkForUpdates()
             if (updateInfo != null) {
                 showUpdateDialog(updateInfo)
             }

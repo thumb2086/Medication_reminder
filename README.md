@@ -15,8 +15,12 @@ A smart medication reminder application integrated with an ESP32-based smart pil
 *   **Wi-Fi Configuration:** Configure the ESP32's Wi-Fi credentials directly from the app via BLE, now conveniently located within the App Settings.
 *   **Alarm System:** Set up to 4 alarms on the ESP32 pillbox for standalone reminders.
 *   **Interactive Charts:** View temperature and humidity trends with interactive line charts, supporting pan, zoom, and data point inspection.
-*   **In-App Updates:** Automatically checks for updates from GitHub Releases. Users can choose between "Stable" (Official), "Dev" (Beta), and "Nightly" (Experimental) update channels.
+*   **In-App Updates:** Automatically checks for updates from GitHub Releases.
+    *   **Smart Channel Detection:** The app automatically detects which branch it was built from (e.g., `main`, `dev`, `feat-new-ui`) and subscribes to updates for that specific channel.
+    *   **Stable:** Official releases from the `main` branch.
+    *   **Dev/Nightly:** Cutting-edge builds from development branches.
 *   **Robust Update Installation:** Smart handling of APK downloads with automatic fallback mechanisms to ensure successful installation on various Android versions (including Android 13+).
+*   **Multi-Channel CI/CD:** Supports dynamic "Feature Branch" releases. Every branch gets its own update channel (e.g., `feat-new-ui`), allowing parallel testing without interference.
 
 ## Bluetooth Protocol Versioning
 
@@ -39,8 +43,10 @@ To ensure compatibility between the App and the ESP32 firmware as features evolv
 This project uses GitHub Actions for continuous integration and automated version management.
 
 *   **Stable Releases:** Triggered by pushing a tag starting with `v` (e.g., `v1.1.8`). Creates a permanent release on the `stable` channel.
-*   **Dev Releases:** Triggered by pushing to the `dev` branch. Updates the `latest-dev` rolling release on the `dev` channel.
-*   **Nightly Builds:** Triggered by pushing to any other branch. Updates the `nightly` rolling release on the `nightly` channel.
+*   **Feature/Dev Releases:** Triggered by pushing to `dev`, `fix-*`, or `feat-*` branches.
+    *   Generates a dedicated update channel for that branch (e.g., `update_feat_login.json`).
+    *   Builds an APK with a corresponding version name.
+    *   Testers installing the APK from a specific branch will only receive updates for that branch.
 *   **Versioning:** The `versionCode` is generated based on the build timestamp (`yyMMddHH`) to ensure strictly increasing versions across branches, preventing downgrade issues. The `versionName` includes branch and commit information.
 
 ## License

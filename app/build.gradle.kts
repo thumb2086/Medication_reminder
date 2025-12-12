@@ -48,7 +48,8 @@ android {
     val devApiUrl = appConfig["devApiUrl"] as String
 
     // Determine branch-specific configuration
-    val safeBranchName = branchName.replace("-", "_").replace(Regex("[^a-zA-Z0-9_]"), "")
+    // Replace / and - with _ to be consistent with CI/CD logic
+    val safeBranchName = branchName.replace("/", "_").replace("-", "_").replace(Regex("[^a-zA-Z0-9_]"), "")
 
     // Treat main, master, and unknown as production/default
     val isProduction = safeBranchName == "main" || safeBranchName == "master" || safeBranchName == "unknown"
@@ -102,6 +103,7 @@ android {
         // Dynamically set BuildConfig fields
         buildConfigField("String", "API_URL", "\"$finalApiUrl\"")
         buildConfigField("boolean", "ENABLE_LOGGING", enableLogging.toString())
+        buildConfigField("String", "UPDATE_CHANNEL", "\"$safeBranchName\"")
 
         // Dynamically set Android resources (e.g., app_name)
         resValue("string", "app_name", finalAppName)
