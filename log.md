@@ -1,5 +1,131 @@
 # 更新日誌
 
+## Bug Fixes
+*   **0127:** **修復設定頁面「關於」區塊無英文翻譯問題。**
+    *   **國際化 (i18n):** 將 `preferences.xml` 中硬編碼的中文標題 ("關於", "作者", "版本") 提取至 `strings.xml` 資源檔 (`about_category`, `about_author`, `about_version`)。
+    *   **翻譯:** 在 `values-en/strings.xml` 中新增了對應的英文翻譯，確保在英文語系下能正確顯示 "About", "Author", "Version"。
+
+## DevOps
+*   **0127:** **實作多頻道 (Multi-Channel) CI/CD 架構。**
+    *   **動態頻道:** 支援基於 Git 分支名稱的動態更新頻道 (例如 `dev`, `feat-new-ui`, `fix-login-bug`)。每個分支現在都擁有獨立的 `update_<branch>.json` 更新設定檔與 Nightly Release。
+    *   **Gradle 配置:** 更新 `app/build.gradle.kts`，自動將 Git 分支名稱轉換為安全的 `UPDATE_CHANNEL` 並注入 `BuildConfig`。
+    *   **GitHub Actions:** 更新 `.github/workflows/android-cicd.yml`，針對 `push` 事件自動生成對應頻道的 JSON 設定檔，並利用 `gh-pages` 部署，同時保留其他頻道的設定檔 (`keep_files: true`)。
+    *   **App 邏輯:** 重構 `UpdateManager.kt` 與 `SettingsFragment.kt`，現在 App 會自動根據建置時的分支 (`BuildConfig.UPDATE_CHANNEL`) 檢查對應的更新來源，無需使用者手動切換頻道。
+    *   **UI 調整:** 設定頁面中的「更新頻道」選項改為唯讀顯示，直接告知使用者當前所在的頻道。
+
+## DevOps
+*   **0127:** **修復 Nightly 版本號溢出 (Integer Overflow) 問題。**
+    *   **CI/CD:** 將 `.github/workflows/android-cicd.yml` 中的時間戳格式從 `yyyyMMddHH` (10位數, 可能溢出 32-bit Integer) 修改為 `yyMMddHH` (8位數, 如 `25012710`)。
+    *   此修改確保了生成的 Version Code (約 25,000,000) 遠小於 Integer 上限 (2,147,483,647)，同時保持了版本號的單調遞增特性。
+
+## DevOps
+*   **0127:** **修復 Nightly 版本倒退與無法更新問題。**
+    *   **CI/CD 更新:** 修改 `.github/workflows/android-cicd.yml`，在建置流程中引入了 `TIMESTAMP` (格式: `yyyyMMddHH`)。
+        *   現在 Gradle 建置時會接收環境變數 `VERSION_CODE_OVERRIDE`，將版本號 (VersionCode) 設定為當前時間戳。
+    *   **Gradle 配置:** 修改 `app/build.gradle.kts`，新增讀取 `VERSION_CODE_OVERRIDE` 環境變數的邏輯。
+        *   這確保了無論在哪個分支進行建置，只要是較晚建置的版本，其 VersionCode 一定大於舊版本，解決了因切換分支導致 Commit Count 變少而無法更新的問題。
+
+## Bug Fixes
+*   **0127:** **修復 UpdateManager 重複宣告與無效條件警告。**
+    *   **重複宣告:** 移除了 `UpdateManager.kt` 中意外導致的重複變數宣告 (`currentVersion`, `isUpdateAvailable`)。
+    *   **無效條件:** 移除了 `if (responseBody == null)` 的判斷，因為 `response.body` 在 `OkHttp` 的 `response.isSuccessful` 為 true 時理論上不為空，且編譯器提示該條件恆為 false (可能因 Kotlin 的 Null Safety 推斷)，確保代碼簡潔。
+
+## Bug Fixes
+*   **0127:** **修復設定頁面 UI 與新增版本資訊。**
+    *   **UI 遮擋:** 在 `SettingsFragment` 中加入了 `OnApplyWindowInsetsListener`，動態為列表底部增加 Padding，防止內容被系統手勢導航條遮擋。
+    *   **UI 異常:** 修復了從設定頁面切換 App 再返回時，底部主分頁按鈕錯誤顯示的問題 (移除了 `onPause` 中的重置邏輯)。
+    *   **版本資訊:** 在設定頁面底部新增了「關於」區塊，顯示作者與當前 App 版本號。
+
+## Bug Fixes
+*   **0126:** **修復 App 內更新下載後無法自動安裝問題 (Part 3)。**
+    *   **路徑解析修復:** 
+        *   重構了 `UpdateManager` 中的 `onReceive` 邏輯。現在會優先嘗試從 `DownloadManager` 的 `COLUMN_LOCAL_URI` 獲取檔案路徑。
+        *   新增了**回退機制 (Fallback)**：若 URI 解析失敗或為空，會自動回退至預期的下載目錄 (`Download/`) 尋找同名檔案，解決了因 `DownloadManager` 路徑返回不穩定導致的安裝失敗。
+        *   **日誌增強:** 加入了更詳細的 Log 輸出 (`Install target found`, `Could not resolve file via URI`)，方便排查路徑問題。
+
+## Bug Fixes
+*   **0126:** **修復 UpdateManager Lint 警告 (Part 2)。**
+    *   **Runtime Check:** 將 `BuildConfig.DEBUG` 替換為 `ApplicationInfo.FLAG_DEBUGGABLE` 運行時檢查。
+    *   **Lint Warning:** 移除了不再需要的 `@Suppress("ConstantConditionIf")`，徹底解決了「條件恆為假」與「多餘抑制」的警告，同時確保在 Debug 版本中仍能正確彈出簽名不符的提示。
+
+## Bug Fixes
+*   **0125:** **修復 UpdateManager Lint 錯誤與警告。**
+    *   **Lint Error:** 修復 `UnspecifiedRegisterReceiverFlag` 錯誤。將手動的 `if (Build.VERSION.SDK_INT >= TIRAMISU)` 判斷替換為 `ContextCompat.registerReceiver(..., ContextCompat.RECEIVER_EXPORTED)`，這既符合安全規範，也簡化了代碼。
+    *   **Lint Warning:** 
+        *   為 `BuildConfig.DEBUG` 判斷加入 `@Suppress("ConstantConditionIf")`，消除 Release 建置時的「條件恆為假」警告。
+        *   確認 `android.app.AlertDialog` 確有使用，無需移除。
+
+## Bug Fixes
+*   **0125:** **修復 App 內更新無法自動安裝問題 (API 33+)。**
+    *   **原因:** 在 Android 13 (API 33) 及以上版本，若要接收來自系統服務 (如 `DownloadManager`) 的廣播，動態註冊的 `BroadcastReceiver` 必須明確指定 `RECEIVER_EXPORTED`。先前使用 `ContextCompat.RECEIVER_NOT_EXPORTED` 導致應用程式無法接收 `ACTION_DOWNLOAD_COMPLETE` 廣播，因此下載完成後不會自動觸發安裝流程。
+    *   **修正:** 在 `UpdateManager.kt` 中，針對 Android 13+ 改用 `Context.RECEIVER_EXPORTED` 註冊廣播接收器，Android 12 及以下則保持預設行為。
+
+## Bug Fixes
+*   **0125:** **修復 CI/CD 版本號解析錯誤。**
+    *   **問題:** 在 `app/build.gradle.kts` 中使用 `println` 輸出 Keystore 狀態訊息，導致 CI/CD 流程中的 `VERSION_NAME` 變數抓取到額外的日誌資訊 (`Release keystore not found...`)，造成 APK 檔名格式錯誤與建置失敗。
+    *   **修正:** 將 `println` 改為 `logger.warn`。在 Gradle 的 `-q` (安靜模式) 下，`logger.warn` 訊息會被自動隱藏，確保 `printVersionName` task 只輸出純淨的版本號字串。
+
+## Configuration
+*   **0125:** **修復 CI/CD 與本地簽章不相容問題。**
+    *   **雙模組簽章 (Hybrid Signing):** 更新 `app/build.gradle.kts`，採用「優先讀取環境變數 (Cloud)，失敗則回退至 local.properties (Local)」的策略。這解決了 GitHub Actions 無法讀取 `local.properties` 導致建置失敗的問題，同時保留了本地開發的便利性。
+    *   **CI/CD 配置:** 更新 `.github/workflows/android-cicd.yml`，將 GitHub Secrets 對應到新的環境變數 (`RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`, `RELEASE_KEYSTORE_PATH`)，與 Gradle 設定保持一致。
+
+## Bug Fixes
+*   **0124:** **優化更新安裝流程與權限檢查 (Part 3)。**
+    *   **權限檢查:** 在 `UpdateManager.downloadAndInstall` 中加入了對 `canRequestPackageInstalls()` 的檢查。
+        *   若未授權「安裝未知應用程式」，現在會彈出 `AlertDialog` 引導使用者前往設定頁面開啟權限，避免安裝意圖被系統靜默攔截或失敗。
+    *   **簽名不符警告:** 加入了 `BuildConfig.DEBUG` 檢查。
+        *   若偵測到當前為 Debug 版本 (例如從 Android Studio 直接執行)，會彈出 Toast 警告使用者，說明更新可能會因簽名不符 (Debug vs Release) 而失敗，提示其先卸載測試版。
+
+## Configuration
+*   **0124:** **修復手動更新時套件無效問題 (Application ID Mismatch)。**
+    *   **Application ID:** 修改 `app/build.gradle.kts`，移除了基於分支名稱動態添加後綴 (如 `.dev`, `.fix_xxx`) 的邏輯。
+    *   **原因:** 該邏輯導致不同分支建置出的 App 被系統視為不同應用程式，無法互相更新。現在所有分支建置的 App 擁有統一的 Application ID，確保使用者能從本地測試版更新至 GitHub CI/CD 的 Release/Nightly 版本 (需注意簽章一致性)。
+
+## Bug Fixes
+*   **0124:** **修復 UpdateManager 警告。**
+    *   **代碼清理:**
+        *   移除了 `UpdateManager.kt` 中未使用的 `android.os.Build` 引用。
+        *   將 `Uri.parse(uriString)` 替換為 KTX 擴充函式 `uriString.toUri()`，保持代碼風格一致。
+
+## Bug Fixes
+*   **0124:** **修復 App 內更新點擊後無反應與安裝失敗問題 (Part 2)。**
+    *   **安裝失敗 (套件無效):**
+        *   在 `DownloadManager.Request` 中明確設定 `MIME Type` 為 `application/vnd.android.package-archive`，確保下載後的檔案被正確識別為 APK。
+        *   優化 `installApk` 邏輯，增加檔案大小檢查 (< 1KB 視為無效)，避免嘗試安裝損毀的檔案或錯誤頁面。
+    *   **無法自動開始安裝:**
+        *   修改 `downloadAndInstall` 中的 `onReceive` 邏輯，改為從 `DownloadManager` 的查詢結果 (`COLUMN_LOCAL_URI`) 獲取下載檔案的真實路徑，而非依賴硬編碼的假設路徑，解決了因路徑不一致導致找不到檔案的問題。
+        *   加入了詳細的 Log 輸出，方便追蹤檔案路徑與安裝意圖的建立過程。
+
+## Bug Fixes
+*   **0124:** **修復 XML 命名空間警告。**
+    *   **Provider Paths:** 移除了 `res/xml/provider_paths.xml` 中未使用的 `xmlns:android` 命名空間宣告，解決了 lint 警告 `Namespace declaration is never used`。
+
+## Bug Fixes
+*   **0124:** **修復 App 內更新點擊後無反應與安裝失敗問題。**
+    *   **流程優化:**
+        *   `UpdateManager` 現在會在下載前主動刪除舊的 APK 檔案，防止 `DownloadManager` 自動重新命名 (如 `App-1.apk`) 導致安裝路徑錯誤。
+        *   新增下載開始與失敗的 Toast 提示，提供更明確的用戶反饋。
+        *   強化廣播接收器 (`BroadcastReceiver`) 邏輯，增加對 `DownloadManager` 狀態的查詢，確保僅在下載成功 (`STATUS_SUCCESSFUL`) 時觸發安裝。
+        *   為 `installApk` 中的 `startActivity` 增加 `try-catch` 保護，防止潛在崩潰。
+    *   **配置修正:** 更新 `res/xml/provider_paths.xml`，補上 `<external-files-path>` 設定，確保 `FileProvider` 正確授權安裝程式讀取 APK 檔案。
+
+## DevOps
+*   **0123:** **優化更新檢查邏輯與 CI/CD 配置。**
+    *   **UpdateManager 改進:**
+        *   實作了 `isNewerVersion` 函式，支援 Semantic Versioning (SemVer) 比較，解決了僅依賴字串比對導致的誤判問題。
+        *   新增了對 Nightly 版本 (如 `1.2.0-nightly-161`) 的解析邏輯，優先比對 Commit Count 以確認是否有更新。
+        *   修正了從 GitHub Assets 檔名 (`MedicationReminder-<Version>.apk`) 提取版本號的邏輯，現在能正確處理包含連字號的版本字串。
+    *   **Config Update:** 將 `config.gradle.kts` 中的 `baseVersionName` 更新為 `1.2.0`。
+    *   **CI/CD:** 確認 `.github/workflows/android-cicd.yml` 中 APK 命名邏輯與 `UpdateManager` 的解析邏輯一致 (空白替換為連字號)。
+
+## Bug Fixes
+*   **0122:** **修復 UpdateManager 警告與字串資源不一致。**
+    *   **警告修復:**
+        *   移除 `UpdateManager.kt` 中不必要的安全呼叫 `response.body?.string()` (改為 `response.body.string()`)，因為在 `isSuccessful` 檢查後 `body` 不為空。
+        *   將 `catch` 區塊中未使用的參數 `e` 改為 `_` (download receiver) 或正確記錄日誌 (checkForUpdates)。
+    *   **資源修復:** 修正了 `values-en/strings.xml` 中 `update_channel_entries` 與 `update_channel_values` 數量與預設 `values/strings.xml` 不一致的問題 (從 2 個選項補齊為 3 個：Stable, Dev, Nightly)。
+
 ## DevOps
 *   **0121:** **優化更新頻道與策略。**
     *   **更新頻道:** 新增 `Stable`, `Dev`, `Nightly` 三個頻道。
@@ -158,7 +284,7 @@
 ## UI/UX 調整
 *   **0101:** **修正圖表線條顏色與顯示樣式。**
     *   **樣式調整:** 根據使用者回饋，將環境監測圖表調整為「折線圖」樣式。當有多個數據點時，隱藏圓點，只顯示平滑的曲線；只有在單一數據點時，才顯示圓點以確保可見性。
-    *   **顏色優化:** 更新了 `colors.xml` 和 `values-night/colors.xml`，為圖表的溫度與濕度線條設定了在亮色與暗色模式下都具備良好對比度的顏色，解決了深色模式下線條不可見的問題。
+    *   **顏色優化:** 更新了 `colors.xml`和 `values-night/colors.xml`，為圖表的溫度與濕度線條設定了在亮色與暗色模式下都具備良好對比度的顏色，解決了深色模式下線條不可見的問題。
 
 ## Bug Fixes
 *   **0102:** **修復 App 與 ESP32 之間的協定不一致並新增鬧鐘支援。**

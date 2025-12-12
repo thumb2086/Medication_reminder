@@ -1,4 +1,6 @@
 // app/build.gradle.kts
+import java.io.FileInputStream
+import java.util.Properties
 
 // Apply the external configuration file
 apply(from = "../config.gradle.kts")
@@ -46,22 +48,28 @@ android {
     val devApiUrl = appConfig["devApiUrl"] as String
 
     // Determine branch-specific configuration
-    val safeBranchName = branchName.replace("-", "_").replace(Regex("[^a-zA-Z0-9_]"), "")
+    // Replace / and - with _ to be consistent with CI/CD logic
+    val safeBranchName = branchName.replace("/", "_").replace("-", "_").replace(Regex("[^a-zA-Z0-9_]"), "")
 
     // Treat main, master, and unknown as production/default
     val isProduction = safeBranchName == "main" || safeBranchName == "master" || safeBranchName == "unknown"
     
     // Logic: Use environment variables from CI/CD if available, otherwise fallback to local logic
     val envBuildNumber = System.getenv("BUILD_NUMBER")?.toIntOrNull()
+    // Allow overriding versionCode directly (e.g. from timestamp) to prevent regression on branch switch
+    val envVersionCodeOverride = System.getenv("VERSION_CODE_OVERRIDE")?.toIntOrNull()
     val envVersionName = System.getenv("VERSION_NAME")
 
-    val finalVersionCode = envBuildNumber ?: commitCount
+    // Priority: Override (Timestamp) > BuildNumber (CI run) > CommitCount (Local)
+    val finalVersionCode = envVersionCodeOverride ?: envBuildNumber ?: commitCount
 
     val localVersionName = if (isProduction) {
         baseVersionName
     } else {
-        // Requested format: "1.0.0 nightly 5"
-        "$baseVersionName nightly $commitCount"
+        // Requested format: "1.0.0 nightly <Code>"
+        // Use finalVersionCode (timestamp in CI, commit count locally) for the suffix
+        // This ensures the App's UpdateManager sees a higher number for new CI builds compared to local builds or old branches.
+        "$baseVersionName nightly $finalVersionCode"
     }
     
     val finalVersionName = envVersionName ?: localVersionName
@@ -70,7 +78,10 @@ android {
     val safeVersionName = finalVersionName.replace(" ", "-")
     val finalArchivesBaseName = "$appName-v$safeVersionName"
     
-    val finalApplicationId = if (isProduction) baseApplicationId else "$baseApplicationId.$safeBranchName"
+    // REMOVED: Dynamic Application ID suffixing. 
+    // Consistent ID ensures updates work across branches (assuming signatures match).
+    val finalApplicationId = baseApplicationId 
+    
     val finalAppName = if (isProduction) appName else "$appName ($branchName)"
     val finalApiUrl = if (isProduction) prodApiUrl else devApiUrl
     val enableLogging = !isProduction
@@ -81,7 +92,8 @@ android {
         applicationId = finalApplicationId
         minSdk = 29
         targetSdk = 36
-        versionCode = finalVersionCode
+        // Ensure versionCode is at least 1
+        versionCode = if (finalVersionCode > 0) finalVersionCode else 1
         versionName = finalVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -91,6 +103,7 @@ android {
         // Dynamically set BuildConfig fields
         buildConfigField("String", "API_URL", "\"$finalApiUrl\"")
         buildConfigField("boolean", "ENABLE_LOGGING", enableLogging.toString())
+        buildConfigField("String", "UPDATE_CHANNEL", "\"$safeBranchName\"")
 
         // Dynamically set Android resources (e.g., app_name)
         resValue("string", "app_name", finalAppName)
@@ -98,18 +111,56 @@ android {
 
     signingConfigs {
         create("release") {
-            // System.getenv 用於讀取 GitHub Actions 設定的環境變數
-            val keystorePath = System.getenv("KEYSTORE_PATH")
-            storeFile = if (keystorePath != null) file(keystorePath) else file("release.keystore")
-            storePassword = System.getenv("KEYSTORE_PASSWORD")
-            keyAlias = System.getenv("KEY_ALIAS")
-            keyPassword = System.getenv("KEY_PASSWORD")
+            // 1. 嘗試載入 local.properties (為了本機開發)
+            val keystorePropertiesFile = rootProject.file("local.properties")
+            val keystoreProperties = Properties()
+            if (keystorePropertiesFile.exists()) {
+                keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+            }
+
+            // 2. 設定邏輯：優先讀取系統環境變數 (Cloud)，讀不到則讀取 local.properties (Local)
+            storePassword = System.getenv("RELEASE_STORE_PASSWORD") 
+                            ?: keystoreProperties["store.password"] as String?
+            
+            keyAlias = System.getenv("RELEASE_KEY_ALIAS") 
+                       ?: keystoreProperties["key.alias"] as String?
+            
+            keyPassword = System.getenv("RELEASE_KEY_PASSWORD") 
+                          ?: keystoreProperties["key.password"] as String?
+
+            // 3. 處理 Keystore 檔案路徑
+            // 在 GitHub Actions 中，通常會把 Base64 解碼後的檔案路徑設為環境變數
+            val cloudKeystorePath = System.getenv("RELEASE_KEYSTORE_PATH")
+            val localKeystorePath = keystoreProperties["store.file"] as String?
+
+            if (!cloudKeystorePath.isNullOrEmpty()) {
+                storeFile = file(cloudKeystorePath)
+            } else if (!localKeystorePath.isNullOrEmpty()) {
+                storeFile = file(localKeystorePath)
+            } else {
+                // 如果兩邊都找不到，預設找 release.keystore，避免報錯但可能無法簽名
+                val defaultFile = file("release.keystore")
+                if (defaultFile.exists()) {
+                     storeFile = defaultFile
+                }
+            }
         }
     }
 
     buildTypes {
         getByName("release") {
-            signingConfig = signingConfigs.getByName("release")
+            // Safety check: Only apply signing config if password exists AND file exists
+            // to avoid gradle sync/build failures if keystore is missing locally.
+            // If missing, fallback to debug signing to ensure build succeeds locally.
+            val releaseConfig = signingConfigs.getByName("release")
+            if (releaseConfig.storePassword != null && releaseConfig.storeFile?.exists() == true) {
+                signingConfig = releaseConfig
+            } else {
+                // Use logger.info or logger.warn instead of println to avoid polluting stdout which is captured by CI/CD scripts
+                logger.warn("Release keystore not found or configuration incomplete. Falling back to debug signing.")
+                signingConfig = signingConfigs.getByName("debug")
+            }
+            
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
