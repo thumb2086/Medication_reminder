@@ -20,6 +20,7 @@ import com.google.gson.Gson
 import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.CacheControl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
@@ -29,7 +30,6 @@ class UpdateManager(private val context: Context) {
 
     private val client = OkHttpClient()
     private val gson = Gson()
-    // Updated repo owner to match the active fork
     private val repoOwner = "thumb2086"
     private val repoName = "Medication_reminder"
 
@@ -40,106 +40,96 @@ class UpdateManager(private val context: Context) {
         val isNightly: Boolean
     )
 
-    suspend fun checkForUpdates(channel: String): UpdateInfo? {
+    suspend fun checkForUpdates(): UpdateInfo? {
+        // Explicitly cast to String to resolve "Argument type mismatch: actual type is 'Any!', but 'String' was expected"
+        // This can happen if Kotlin interprets the Java static field as Object or platform type
+        val buildChannel = BuildConfig.UPDATE_CHANNEL.toString()
+        val isStable = buildChannel == "main" || buildChannel == "master" || buildChannel == "stable"
+
         return withContext(Dispatchers.IO) {
             try {
-                // Official (Stable) -> Fetch latest release (tags starting with v)
-                // Dev -> Fetch release with tag 'latest-dev'
-                // Nightly -> Fetch release with tag 'nightly'
-
-                val url = when (channel) {
-                    "stable" -> "https://api.github.com/repos/$repoOwner/$repoName/releases/latest"
-                    "dev" -> "https://api.github.com/repos/$repoOwner/$repoName/releases/tags/latest-dev"
-                    "nightly" -> "https://api.github.com/repos/$repoOwner/$repoName/releases/tags/nightly"
-                    else -> "https://api.github.com/repos/$repoOwner/$repoName/releases/latest" // Default to stable
-                }
-
-                val request = Request.Builder()
-                    .url(url)
-                    .build()
-
-                val response = client.newCall(request).execute()
-                if (!response.isSuccessful) {
-                    Log.e("UpdateManager", "Failed to fetch updates: ${response.code}")
-                    return@withContext null
-                }
-
-                // response.body is nullable, so we use safe call or check
-                val responseBody = response.body
-                if (responseBody == null) {
-                    Log.e("UpdateManager", "Response body is null")
-                    return@withContext null
-                }
-                val jsonStr = responseBody.string()
-                val json = gson.fromJson(jsonStr, JsonObject::class.java)
-
-                val tagName = json.get("tag_name").asString
-                val releaseNotes = json.get("body").asString
-                
-                val currentVersion = BuildConfig.VERSION_NAME
-                
-                val isUpdateAvailable = if (channel == "official") {
-                     val cleanTag = tagName.removePrefix("v")
-                     cleanTag != currentVersion.split(" ").first() 
+                if (isStable) {
+                    checkStableUpdates()
                 } else {
-                    !releaseNotes.contains(currentVersion) 
+                    checkDynamicChannelUpdates(buildChannel)
                 }
-                
-                if (!isUpdateAvailable) return@withContext null
-
-                val assets = json.getAsJsonArray("assets")
-                if (assets.size() == 0) return@withContext null
-                
-                // Find .apk asset and extract version from filename
-                var apkUrl = ""
-                var remoteFilename = ""
-                
-                for (asset in assets) {
-                    val assetObj = asset.asJsonObject
-                    val name = assetObj.get("name").asString
-                    if (name.endsWith(".apk")) {
-                        apkUrl = assetObj.get("browser_download_url").asString
-                        remoteFilename = name
-                        break
-                    }
-                }
-                
-                if (apkUrl.isEmpty()) return@withContext null
-
-                // Determine Remote Version
-                val remoteVersion = if (channel == "stable") {
-                    // For Stable, rely on the Tag Name as the source of truth
-                    tagName.removePrefix("v")
-                } else {
-                    // For Dev/Nightly, extract from filename or fallback
-                    val prefix = "MedicationReminder-"
-                    val suffix = ".apk"
-                    if (remoteFilename.startsWith(prefix) && remoteFilename.endsWith(suffix)) {
-                        remoteFilename.removePrefix(prefix).removeSuffix(suffix)
-                    } else {
-                        tagName.removePrefix("v")
-                    }
-                }
-
-                val currentVersion = BuildConfig.VERSION_NAME
-                val currentVersionNormalized = currentVersion.replace(" ", "-")
-
-                Log.d("UpdateManager", "Channel: $channel, Remote: $remoteVersion, Local: $currentVersionNormalized")
-
-                // Check for update using semantic versioning logic
-                val isUpdateAvailable = isNewerVersion(currentVersionNormalized, remoteVersion)
-
-                if (!isUpdateAvailable) {
-                    return@withContext null
-                }
-
-                UpdateInfo(remoteVersion, apkUrl, releaseNotes, channel != "stable")
-
             } catch (e: Exception) {
                 Log.e("UpdateManager", "Error checking for updates", e)
                 null
             }
         }
+    }
+
+    private fun checkDynamicChannelUpdates(channel: String): UpdateInfo? {
+        // Fetch JSON from GitHub Pages
+        val jsonUrl = "https://$repoOwner.github.io/$repoName/update_$channel.json"
+        
+        val request = Request.Builder()
+            .url(jsonUrl)
+            .cacheControl(CacheControl.FORCE_NETWORK) // Always fetch latest
+            .build()
+
+        val response = client.newCall(request).execute()
+        if (!response.isSuccessful) {
+            Log.e("UpdateManager", "Failed to fetch channel config: ${response.code}")
+            return null
+        }
+
+        val jsonStr = response.body.string()
+        val json = gson.fromJson(jsonStr, JsonObject::class.java)
+
+        // Parse JSON
+        val remoteVersionCode = json.get("versionCode").asInt
+        val latestVersionName = json.get("latestVersion").asString
+        val downloadUrl = json.get("url").asString
+        val releaseNotes = json.get("releaseNotes").asString
+
+        // Compare versionCode (Timestamp based)
+        if (remoteVersionCode > BuildConfig.VERSION_CODE) {
+            return UpdateInfo(latestVersionName, downloadUrl, releaseNotes, true)
+        }
+        return null
+    }
+
+    private fun checkStableUpdates(): UpdateInfo? {
+        val url = "https://api.github.com/repos/$repoOwner/$repoName/releases/latest"
+        val request = Request.Builder().url(url).build()
+
+        val response = client.newCall(request).execute()
+        if (!response.isSuccessful) return null
+
+        val responseBody = response.body
+        val jsonStr = responseBody.string()
+        val json = gson.fromJson(jsonStr, JsonObject::class.java)
+
+        val tagName = json.get("tag_name").asString
+        val releaseNotes = json.get("body").asString
+        
+        val currentVersion = BuildConfig.VERSION_NAME
+
+        val assets = json.getAsJsonArray("assets")
+        if (assets.size() == 0) return null
+        
+        var apkUrl = ""
+        
+        for (asset in assets) {
+            val assetObj = asset.asJsonObject
+            val name = assetObj.get("name").asString
+            if (name.endsWith(".apk")) {
+                apkUrl = assetObj.get("browser_download_url").asString
+                break
+            }
+        }
+        
+        if (apkUrl.isEmpty()) return null
+
+        val remoteVersion = tagName.removePrefix("v")
+        val currentVersionNormalized = currentVersion.replace(" ", "-")
+
+        if (isNewerVersion(currentVersionNormalized, remoteVersion)) {
+             return UpdateInfo(remoteVersion, apkUrl, releaseNotes, false)
+        }
+        return null
     }
     
     private fun isNewerVersion(local: String, remote: String): Boolean {
@@ -161,21 +151,13 @@ class UpdateManager(private val context: Context) {
             }
         }
         
+        // Fallback or secondary check
         val localCount = getCommitCount(local)
         val remoteCount = getCommitCount(remote)
         
         if (localCount != null && remoteCount != null) {
             return remoteCount > localCount
         }
-        
-        if (localCount == null && remoteCount != null) {
-            return false
-        }
-        
-        if (localCount != null) {
-            return true
-        }
-        
         return false
     }
 
@@ -185,13 +167,11 @@ class UpdateManager(private val context: Context) {
     }
 
     fun downloadAndInstall(url: String, fileName: String) {
-        // Warning if updating from Debug build (signature mismatch risk)
         val isDebuggable = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
         if (isDebuggable) {
             Toast.makeText(context, "警告: 正在使用除錯版本，更新可能會因簽名不符而失敗。", Toast.LENGTH_LONG).show()
         }
 
-        // Check for INSTALL_PACKAGES permission (Android 8+)
         if (!context.packageManager.canRequestPackageInstalls()) {
              AlertDialog.Builder(context)
                 .setTitle("需要安裝權限")
@@ -206,7 +186,6 @@ class UpdateManager(private val context: Context) {
             return
         }
 
-        // Delete any existing file with the same name to avoid DownloadManager renaming it
         val existingFile = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName)
         if (existingFile.exists()) {
             existingFile.delete()
@@ -217,7 +196,7 @@ class UpdateManager(private val context: Context) {
             .setDescription(fileName)
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
             .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, fileName)
-            .setMimeType("application/vnd.android.package-archive") // Explicitly set MIME type
+            .setMimeType("application/vnd.android.package-archive")
             .setAllowedOverMetered(true)
             .setAllowedOverRoaming(true)
 
@@ -226,7 +205,6 @@ class UpdateManager(private val context: Context) {
 
         Toast.makeText(context, R.string.downloading_update, Toast.LENGTH_SHORT).show()
 
-        // Register receiver for download complete
         val onComplete = object : BroadcastReceiver() {
             override fun onReceive(ctxt: Context, intent: Intent) {
                 val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
@@ -242,7 +220,6 @@ class UpdateManager(private val context: Context) {
                             if (status == DownloadManager.STATUS_SUCCESSFUL) {
                                 var downloadedFile: File? = null
 
-                                // Strategy 1: Attempt to get file from DownloadManager URI
                                 if (uriIndex != -1) {
                                     val uriString = cursor.getString(uriIndex)
                                     if (uriString != null) {
@@ -256,7 +233,6 @@ class UpdateManager(private val context: Context) {
                                     }
                                 }
 
-                                // Strategy 2: Fallback to expected location if Strategy 1 failed
                                 if (downloadedFile == null || !downloadedFile.exists()) {
                                     Log.w("UpdateManager", "Could not resolve file via URI. Falling back to hardcoded path.")
                                     downloadedFile = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName)
@@ -281,14 +257,12 @@ class UpdateManager(private val context: Context) {
                     try {
                         context.unregisterReceiver(this)
                     } catch (_: IllegalArgumentException) {
-                        // Ignore if already unregistered
+                        // Ignore
                     }
                 }
             }
         }
         
-        // Correctly register receiver for system broadcast on Android 13+ (API 33)
-        // DownloadManager sends a system broadcast, so we MUST use RECEIVER_EXPORTED.
         ContextCompat.registerReceiver(
             context,
             onComplete,
@@ -300,14 +274,11 @@ class UpdateManager(private val context: Context) {
     private fun installApk(file: File) {
         try {
             if (!file.exists()) {
-                Log.e("UpdateManager", "APK file not found at ${file.absolutePath}")
                 Toast.makeText(context, "安裝檔案未找到", Toast.LENGTH_SHORT).show()
                 return
             }
             
-            // Check file size (e.g., < 1KB likely implies a corrupt file or an HTML error page)
             if (file.length() < 1024) {
-                 Log.e("UpdateManager", "APK file is too small (${file.length()} bytes). Possible download error.")
                  Toast.makeText(context, "安裝檔案損毀", Toast.LENGTH_SHORT).show()
                  return
             }
@@ -317,8 +288,6 @@ class UpdateManager(private val context: Context) {
                 "${context.packageName}.provider",
                 file
             )
-
-            Log.d("UpdateManager", "Installing APK from $uri")
 
             val intent = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(uri, "application/vnd.android.package-archive")

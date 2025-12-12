@@ -48,22 +48,28 @@ android {
     val devApiUrl = appConfig["devApiUrl"] as String
 
     // Determine branch-specific configuration
-    val safeBranchName = branchName.replace("-", "_").replace(Regex("[^a-zA-Z0-9_]"), "")
+    // Replace / and - with _ to be consistent with CI/CD logic
+    val safeBranchName = branchName.replace("/", "_").replace("-", "_").replace(Regex("[^a-zA-Z0-9_]"), "")
 
     // Treat main, master, and unknown as production/default
     val isProduction = safeBranchName == "main" || safeBranchName == "master" || safeBranchName == "unknown"
     
     // Logic: Use environment variables from CI/CD if available, otherwise fallback to local logic
     val envBuildNumber = System.getenv("BUILD_NUMBER")?.toIntOrNull()
+    // Allow overriding versionCode directly (e.g. from timestamp) to prevent regression on branch switch
+    val envVersionCodeOverride = System.getenv("VERSION_CODE_OVERRIDE")?.toIntOrNull()
     val envVersionName = System.getenv("VERSION_NAME")
 
-    val finalVersionCode = envBuildNumber ?: commitCount
+    // Priority: Override (Timestamp) > BuildNumber (CI run) > CommitCount (Local)
+    val finalVersionCode = envVersionCodeOverride ?: envBuildNumber ?: commitCount
 
     val localVersionName = if (isProduction) {
         baseVersionName
     } else {
-        // Requested format: "1.0.0 nightly 5"
-        "$baseVersionName nightly $commitCount"
+        // Requested format: "1.0.0 nightly <Code>"
+        // Use finalVersionCode (timestamp in CI, commit count locally) for the suffix
+        // This ensures the App's UpdateManager sees a higher number for new CI builds compared to local builds or old branches.
+        "$baseVersionName nightly $finalVersionCode"
     }
     
     val finalVersionName = envVersionName ?: localVersionName
@@ -97,6 +103,7 @@ android {
         // Dynamically set BuildConfig fields
         buildConfigField("String", "API_URL", "\"$finalApiUrl\"")
         buildConfigField("boolean", "ENABLE_LOGGING", enableLogging.toString())
+        buildConfigField("String", "UPDATE_CHANNEL", "\"$safeBranchName\"")
 
         // Dynamically set Android resources (e.g., app_name)
         resValue("string", "app_name", finalAppName)

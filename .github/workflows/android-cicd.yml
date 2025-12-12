@@ -3,9 +3,9 @@ name: Android CI/CD
 on:
   push:
     branches:
-      - "dev"           # 觸發 Dev Release
-      - "fix-*"         # 觸發 Nightly (所有 fix- 開頭的分支)
-      - "feat-*"        # 觸發 Nightly (所有 feat- 開頭的分支)
+      - "dev"
+      - "fix-*"
+      - "feat-*"
     tags:
       - 'v*' # Trigger on tags starting with v (e.g. v1.0.0)
 
@@ -29,6 +29,22 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
+      - name: Extract Branch Name and Channel
+        id: branch_info
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+             echo "Triggered by Tag. Skipping Channel Logic."
+             echo "CHANNEL_NAME=official" >> $GITHUB_ENV
+          else
+             # Extract branch name
+             RAW_BRANCH=${GITHUB_REF#refs/heads/}
+             # Replace / and - with _ to match Gradle logic
+             SAFE_NAME=$(echo "$RAW_BRANCH" | sed 's/[\/\-]/\_/g')
+             
+             echo "CHANNEL_NAME=$SAFE_NAME" >> $GITHUB_ENV
+             echo "Current Channel: $SAFE_NAME"
+          fi
+
       - name: Grant Execute Permission for Gradlew
         run: chmod +x gradlew
 
@@ -51,6 +67,15 @@ jobs:
           fileName: 'release.keystore'
           encodedString: ${{ secrets.KEYSTORE_BASE64 }}
 
+      - name: Generate Version Code
+        id: version_code
+        run: |
+          # Generate a timestamp-based version code (e.g., 25012710)
+          # Format: yyMMddHH (8 digits).
+          TIMESTAMP=$(date +'%y%m%d%H')
+          echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
+          echo "Generated Version Code: $TIMESTAMP"
+
       - name: Build with Gradle (Release)
         env:
           # Map Secrets to Env Vars used in app/build.gradle.kts
@@ -61,8 +86,8 @@ jobs:
           
           # Inject Versioning Info
           BUILD_NUMBER: ${{ github.run_number }}
-          # We do NOT inject VERSION_NAME here. We let app/build.gradle.kts calculate it based on Git tags/commits.
-          # This ensures version names like "1.2.0 nightly 161" are generated correctly.
+          # Override versionCode with timestamp to ensure strictly increasing versions for Nightly builds across branches
+          VERSION_CODE_OVERRIDE: ${{ env.TIMESTAMP }}
         run: ./gradlew assembleRelease --stacktrace
 
       - name: Get Version Name
@@ -97,13 +122,6 @@ jobs:
           retention-days: 7
 
       # ------------------------------------------------------------------
-      # Release Strategy: Triple Track
-      # 1. Official Release (Tags starting with v) -> Permanent Release
-      # 2. Dev Release (Push to dev branch) -> Rolling "latest-dev" Release
-      # 3. Nightly Release (Push to other branches) -> Rolling "nightly" Release
-      # ------------------------------------------------------------------
-
-      # ------------------------------------------------------------------
       # 1. Official Release (Stable)
       # Trigger: Only on v* tags (e.g., v1.0.0)
       # ------------------------------------------------------------------
@@ -118,38 +136,55 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ------------------------------------------------------------------
-      # 2. Dev Release (Beta)
-      # Trigger: Push to 'dev' branch
-      # Purpose: Relatively stable build for QA/Testers
+      # 2. Dynamic Channel Release (Dev & Nightly)
+      # Trigger: Push to supported branches (dev, fix-*, feat-*)
       # ------------------------------------------------------------------
-      - name: Update Dev Release
-        if: github.ref == 'refs/heads/dev'
-        uses: marvinpinto/action-automatic-releases@latest
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          automatic_release_tag: "latest-dev"
-          prerelease: true
-          title: "Dev Build"
-          files: |
-            app/build/outputs/apk/release/*.apk
+      - name: Generate Channel Update JSON
+        if: "!startsWith(github.ref, 'refs/tags/')"
+        run: |
+          # Create a directory to hold the file for deployment
+          mkdir -p public
+          
+          JSON_FILENAME="update_${{ env.CHANNEL_NAME }}.json"
+          TAG_NAME="nightly-${{ env.CHANNEL_NAME }}"
+          APK_URL="https://github.com/thumb2086/Medication_reminder/releases/download/$TAG_NAME/${{ env.APK_FILENAME }}"
+          
+          echo "Generating $JSON_FILENAME..."
+          
+          cat <<EOF > public/$JSON_FILENAME
+          {
+            "latestVersion": "${{ steps.version.outputs.VERSION_NAME }}",
+            "versionCode": ${{ env.TIMESTAMP }},
+            "url": "$APK_URL",
+            "releaseNotes": "Update for ${{ env.CHANNEL_NAME }} channel. Build: ${{ steps.version.outputs.VERSION_NAME }}"
+          }
+          EOF
+          
+          # Print content for debugging
+          cat public/$JSON_FILENAME
+          
+          # Copy to root workspace for the next step (Create Release) to pick it up easily
+          cp public/$JSON_FILENAME .
 
-      # ------------------------------------------------------------------
-      # 3. Nightly Release (Experimental)
-      # Trigger: Push to any branch except main, master, dev, and tags
-      # Purpose: Experimental builds for developers
-      # ------------------------------------------------------------------
-      - name: Update Nightly Release
-        if: |
-          github.event_name == 'push' && 
-          !startsWith(github.ref, 'refs/tags/') && 
-          github.ref != 'refs/heads/dev' && 
-          github.ref != 'refs/heads/main' && 
-          github.ref != 'refs/heads/master'
-        uses: marvinpinto/action-automatic-releases@latest
+      - name: Deploy JSON to GitHub Pages
+        if: "!startsWith(github.ref, 'refs/tags/')"
+        uses: peaceiris/actions-gh-pages@v3
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          automatic_release_tag: "nightly"
-          prerelease: true
-          title: "Nightly Build"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+          keep_files: true  # Essential! Ensures other channel JSONs are preserved
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Create Channel Release
+        if: "!startsWith(github.ref, 'refs/tags/')"
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: "nightly-${{ env.CHANNEL_NAME }}"
           files: |
-            app/build/outputs/apk/release/*.apk
+            app/build/outputs/apk/release/${{ env.APK_FILENAME }}
+            update_${{ env.CHANNEL_NAME }}.json
+          prerelease: true
+          body: "Auto-generated nightly build for channel ${{ env.CHANNEL_NAME }}."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

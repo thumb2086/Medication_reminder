@@ -7,6 +7,9 @@ import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.commit
 import androidx.lifecycle.Lifecycle
@@ -29,7 +32,16 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         findPreference<ListPreference>("theme")?.let { it.summary = it.entry }
         findPreference<ListPreference>("language")?.let { it.summary = it.entry }
         findPreference<ListPreference>("character")?.let { it.summary = it.entry }
-        findPreference<ListPreference>("update_channel")?.let { it.summary = it.entry }
+        
+        // Dynamically set update channel info
+        findPreference<Preference>("update_channel")?.let {
+             // BuildConfig is in the same package, so no import is needed.
+             // If IDE shows error here but build succeeds, it is an IDE cache issue.
+             it.summary = getString(R.string.update_channel_summary, BuildConfig.UPDATE_CHANNEL)
+        }
+
+        // Dynamically set version info
+        findPreference<Preference>("app_version")?.summary = BuildConfig.VERSION_NAME
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -37,6 +49,13 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         val typedValue = TypedValue()
         requireContext().theme.resolveAttribute(com.google.android.material.R.attr.colorSurface, typedValue, true)
         view.setBackgroundColor(typedValue.data)
+
+        // Handle Window Insets to avoid content being obscured by gesture navigation bar
+        ViewCompat.setOnApplyWindowInsetsListener(listView) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.updatePadding(bottom = systemBars.bottom)
+            insets
+        }
 
         // Observe the engineering mode status from the ViewModel
         viewLifecycleOwner.lifecycleScope.launch {
@@ -72,13 +91,12 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
     }
 
     private fun checkForUpdates() {
-        val sharedPreferences = preferenceScreen.sharedPreferences ?: return
-        val channel = sharedPreferences.getString("update_channel", "official") ?: "official"
+        // Automatically checks based on the channel defined in BuildConfig
         val updateManager = UpdateManager(requireContext())
         
         lifecycleScope.launch {
             Toast.makeText(requireContext(), "正在檢查更新...", Toast.LENGTH_SHORT).show()
-            val updateInfo = updateManager.checkForUpdates(channel)
+            val updateInfo = updateManager.checkForUpdates()
             if (updateInfo != null) {
                 AlertDialog.Builder(requireContext())
                     .setTitle(getString(R.string.update_available_title))
@@ -103,8 +121,11 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
     override fun onPause() {
         super.onPause()
         preferenceScreen.sharedPreferences?.unregisterOnSharedPreferenceChangeListener(this)
-        activity?.title = getString(R.string.app_name)
-        (activity as? MainActivity)?.updateUiForFragment(false)
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+         activity?.title = getString(R.string.app_name)
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences, key: String?) {
@@ -131,11 +152,6 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                 findPreference<ListPreference>(key)?.let { characterPreference ->
                     characterPreference.summary = characterPreference.entry
                     activity?.recreate()
-                }
-            }
-            "update_channel" -> {
-                 findPreference<ListPreference>(key)?.let { pref ->
-                    pref.summary = pref.entry
                 }
             }
             "engineering_mode" -> {
