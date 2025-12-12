@@ -1,5 +1,10 @@
 # 更新日誌
 
+## UI/UX 調整
+*   **0127:** **修復設定頁面重複開啟問題。**
+    *   **選單控制:** 在 `MainActivity.kt` 中實作了 `onPrepareOptionsMenu`，根據 Fragment BackStack 的狀態動態顯示或隱藏設定按鈕 (`action_settings`)。
+    *   **邏輯:** 當使用者進入設定頁面 (BackStack Count > 0) 時，隱藏 Toolbar 上的設定圖示，防止使用者重複點擊堆疊多個設定頁面；回到主頁面時則重新顯示。
+
 ## Bug Fixes
 *   **0127:** **修復設定頁面「關於」區塊無英文翻譯問題。**
     *   **國際化 (i18n):** 將 `preferences.xml` 中硬編碼的中文標題 ("關於", "作者", "版本") 提取至 `strings.xml` 資源檔 (`about_category`, `about_author`, `about_version`)。
