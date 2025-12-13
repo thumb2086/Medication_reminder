@@ -207,12 +207,12 @@ jobs:
           echo "Branch Deleted: $RAW_BRANCH (Channel: $SAFE_NAME)"
 
       - name: Delete Channel Release and Tag
-        uses: dev-drprasad/delete-tag-and-release@v0.2.1
+        uses: dev-drprasad/delete-tag-and-release@v1.1
         with:
           tag_name: "nightly-${{ env.CHANNEL_NAME }}"
           delete_release: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          delete_tag: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           
       - name: Checkout gh-pages
         uses: actions/checkout@v4
