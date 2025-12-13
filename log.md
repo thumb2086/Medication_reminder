@@ -1,6 +1,12 @@
 # 更新日誌
 
 ## 2025-01-27
+### UI/UX
+*   **動態表單角色圖示修復:**
+    *   修復在 `ReminderSettingsFragment` 中，動態生成的藥物輸入表單 (`medication_input_item.xml`) 內的圖片固定顯示為酷洛米的問題。
+    *   現在新增或編輯藥物時，表單內的圖片會正確跟隨設定頁面的角色選擇 (酷洛米/櫻桃小丸子) 進行切換。
+    *   實作 `updateCharacterImage()` 同步更新所有已存在的動態卡片圖片。
+
 ### DevOps
 *   **多頻道 (Multi-Channel) CI/CD 架構:**
     *   **動態頻道:** 支援基於 Git 分支名稱的動態更新頻道 (例如 `dev`, `feat-new-ui`, `fix-login-bug`)。每個分支現在都擁有獨立的 `update_<branch>.json` 更新設定檔與 Nightly Release。
@@ -12,7 +18,7 @@
     *   **Integer Overflow 修復:** 將 `.github/workflows/android-cicd.yml` 中的時間戳格式從 `yyyyMMddHH` 修改為 `yyMMddHH` (8位數)，防止 Version Code 溢出。
     *   **版本倒退修復:** 引入 `VERSION_CODE_OVERRIDE` 環境變數 (時間戳)，確保無論分支如何切換，新建置的版本號始終大於舊版本，解決 Commit Count 變少導致無法更新的問題。
 
-### UI/UX
+### UI/UX (Previous)
 *   **設定頁面「關於」區塊:**
     *   在 `SettingsFragment` 中實作了「關於」區塊的連結跳轉。
     *   點擊「作者」、「專案」、「版本」可分別開啟 GitHub Profile, Repo 與 Releases 頁面。
@@ -24,11 +30,7 @@
 *   **國際化 (i18n):** 修復設定頁面「關於」區塊無英文翻譯問題 (`values-en/strings.xml`)。
 *   **BuildConfig 類型錯誤:** 修正 `build.gradle.kts` 中 `UPDATE_CHANNEL` 的定義，確保生成的 Java/Kotlin 代碼類型正確 (`String`)。
 *   **UpdateManager 清理:** 移除重複變數宣告與無效的空值檢查。
-
-### Code Quality
-*   **SettingsFragment 優化:**
-    *   修復未使用導入與代碼警告 (使用 KTX `toUri()`)。
-    *   修正 `ListPreference` 動態新增頻道的邏輯錯誤 (型別不匹配)。
+*   **SettingsFragment 優化:** 修復 `ListPreference` 動態新增頻道的邏輯錯誤。
 
 ## 2025-01-26
 ### Bug Fixes
