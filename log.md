@@ -3,14 +3,12 @@
 ## 2025-01-27
 ### DevOps
 *   **APK 命名修復:**
-    *   **問題:** 使用者回報 CI/CD 生成的 APK 檔名為 `MedicationReminder-nightly.apk`，表示 `versionName` 抓取失敗。
-    *   **原因:** 在 CI 環境中，`./gradlew -q app:properties` 可能會輸出包含 Gradle 守護程序或其他非屬性的資訊，導致 `grep` 和 `awk` 解析失敗，觸發了 fallback 機制。此外，`getProperty("archivesBaseName")` 在某些配置下可能未正確反映。
-    *   **解決方案:**
-        *   不再依賴 `app:properties` 任務輸出。
-        *   改為直接利用 Gradle 輸出的 APK 檔案本身。Gradle Build 會根據 `archivesBaseName` 生成 APK。
-        *   修改 `android-cicd.yml`，在 Build 步驟後，直接尋找 `app/build/outputs/apk/release` 目錄下以 `MedicationReminder-` 開頭的 APK。
-        *   若 Gradle 配置正確 (`archivesBaseName` 設定為 `$appName-v$safeVersionName`)，生成的 APK 應原本就包含版本號。
-        *   腳本將只做簡單的更名或確認，確保最終上傳的檔案名稱正確。
+    *   **問題:** CI/CD 編譯出的 APK 檔名為 `-v1.2.0-nightly-246.apk`，前綴消失。
+    *   **原因:** `app/build.gradle.kts` 中的 `appName` 變數在 CI 環境下可能因為 `extra["appConfig"]` 轉型或讀取失敗而變成 null 或空值。
+    *   **解決:** 
+        *   在 `build.gradle.kts` 中加入嚴格的 `null` 檢查與預設值 fallback (例如 `appName` 預設為 "MedicationReminder")。
+        *   將 APK 檔案名稱前綴 (`archivesBaseName`) 強制設定為英文的 "MedicationReminder"，避免因中文 `appName` ("藥到叮嚀") 在某些 CI/CD 環境或檔案系統中產生亂碼或遺失。App 顯示名稱仍維持中文。
+    *   **CI/CD 腳本:** `android-cicd.yml` 改為直接尋找 Gradle 生成的 APK，不再依賴不穩定的 `grep` 解析，增強穩定性。
 
 ### Code Quality
 *   **SettingsFragment 優化:**
