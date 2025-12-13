@@ -16,7 +16,8 @@ A smart medication reminder application integrated with an ESP32-based smart pil
 *   **Alarm System:** Set up to 4 alarms on the ESP32 pillbox for standalone reminders.
 *   **Interactive Charts:** View temperature and humidity trends with interactive line charts, supporting pan, zoom, and data point inspection.
 *   **In-App Updates:** Automatically checks for updates from GitHub Releases.
-    *   **Smart Channel Detection:** The app automatically detects which branch it was built from (e.g., `main`, `dev`, `feat-new-ui`) and subscribes to updates for that specific channel.
+    *   **Selectable Channels:** Users can choose between **Stable**, **Dev**, or **Nightly** update channels directly in the App Settings.
+    *   **Dynamic Update Checks:** The app intelligently fetches the latest build for the selected channel (e.g., `update_dev.json`, `update_nightly.json`).
     *   **Stable:** Official releases from the `main` branch.
     *   **Dev/Nightly:** Cutting-edge builds from development branches.
 *   **Robust Update Installation:** Smart handling of APK downloads with automatic fallback mechanisms to ensure successful installation on various Android versions (including Android 13+).

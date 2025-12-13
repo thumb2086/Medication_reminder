@@ -11,6 +11,18 @@
     *   **翻譯:** 在 `values-en/strings.xml` 中新增了對應的英文翻譯，確保在英文語系下能正確顯示 "About", "Author", "Version"。
 
 ## DevOps
+*   **0127:** **修復版本號顯示問題。**
+    *   **版本名稱優化:** 修改 `app/build.gradle.kts`，將 Nightly 版的版本名稱格式從 `1.2.0 nightly 25012710` (Timestamp) 改回更易讀的 `1.2.0 nightly 161` (Commit Count)，但 `versionCode` 仍維持 Timestamp 格式以確保版本單調遞增。
+    *   **UI 顯示:** 使用者在 App 中看到的版本號現在會更簡潔。
+
+## DevOps
+*   **0127:** **實作多頻道 (Multi-Channel) 更新切換功能。**
+    *   **使用者可選頻道:** 修改 `preferences.xml` 與 `SettingsFragment.kt`，將原本唯讀的「更新頻道」改為 `ListPreference`，允許使用者手動選擇 `Stable` (Main), `Dev`, 或 `Nightly` 頻道。
+    *   **動態列表:** `SettingsFragment` 會自動偵測當前 App 所屬的頻道 (若為非標準頻道，如 `feat-login`) 並將其動態加入選項列表，避免使用者切換後無法切回原頻道。
+    *   **更新邏輯:** 重構 `UpdateManager.kt`，現在會優先讀取使用者在設定中選擇的頻道 (`SharedPreferences`) 來檢查更新，而非僅依賴編譯時的 `BuildConfig.UPDATE_CHANNEL`。
+    *   **CI/CD:** 更新 `README.md` 與 `README_cn.md`，說明新的更新頻道切換功能。
+
+## DevOps
 *   **0127:** **實作多頻道 (Multi-Channel) CI/CD 架構。**
     *   **動態頻道:** 支援基於 Git 分支名稱的動態更新頻道 (例如 `dev`, `feat-new-ui`, `fix-login-bug`)。每個分支現在都擁有獨立的 `update_<branch>.json` 更新設定檔與 Nightly Release。
     *   **Gradle 配置:** 更新 `app/build.gradle.kts`，自動將 Git 分支名稱轉換為安全的 `UPDATE_CHANNEL` 並注入 `BuildConfig`。
@@ -250,7 +262,7 @@
 
 ## UI/UX 調整
 *   **0107:** **優化 Toolbar 下拉選單 (Popup Menu) 的視覺間距。**
-    *   **樣式調整:** 修改 `themes.xml` 和 `values-night/themes.xml`，自定義了 `Widget.App.PopupMenu` 和 `Widget.App.PopupMenu.Overflow` 樣式。
+    *   **樣式調整:** 修改 `themes.xml`和 `values-night/themes.xml`，自定義了 `Widget.App.PopupMenu` 和 `Widget.App.PopupMenu.Overflow` 樣式。
     *   **間距修正:** 設定 `android:dropDownVerticalOffset` 為 `4dp`，縮減了選單與 Toolbar 之間的垂直間距，使其更貼近標題列，解決了選單距離過遠導致視覺不緊湊的問題。
     *   **一致性:** 確保所有角色主題 (Kuromi, MyMelody, Cinnamoroll) 與深/淺色模式皆套用此 Popup Menu 樣式。
 

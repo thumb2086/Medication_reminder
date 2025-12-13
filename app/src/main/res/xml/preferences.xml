@@ -41,11 +41,13 @@
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/update_settings">
-        <Preference
+        <ListPreference
             app:key="update_channel"
             app:title="@string/update_channel"
             app:summary="@string/update_channel_summary"
-            app:selectable="false"
+            app:entries="@array/update_channel_entries"
+            app:entryValues="@array/update_channel_values"
+            app:defaultValue="main"
             app:icon="@drawable/ic_update" />
 
         <Preference
