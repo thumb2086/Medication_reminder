@@ -12,7 +12,7 @@ A smart medication reminder application integrated with an ESP32-based smart pil
 *   **Adherence Tracking:** records medication intake history and generates visual charts for compliance analysis.
 *   **Character Themes:** Choose between "Kuromi" and "Chibi Maruko-chan" themes for a personalized experience.
 *   **Engineering Mode:** toggle hardware engineering mode directly from the app for diagnostics.
-*   **Wi-Fi Configuration:** Configure the ESP32's Wi-Fi credentials directly from the app via BLE, now conveniently located within the App Settings.
+*   **Wi-Fi Configuration:** Configure the ESP32's Wi-Fi credentials directly from the app via BLE. The interface is now enhanced with Material Design visuals, input validation, and clear instructions.
 *   **Alarm System:** Set up to 4 alarms on the ESP32 pillbox for standalone reminders.
 *   **Interactive Charts:** View temperature and humidity trends with interactive line charts, supporting pan, zoom, and data point inspection.
 *   **In-App Updates:** Automatically checks for updates from GitHub Releases.

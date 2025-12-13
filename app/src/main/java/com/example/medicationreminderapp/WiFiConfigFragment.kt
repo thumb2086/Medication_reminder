@@ -2,7 +2,6 @@ package com.example.medicationreminderapp
 
 import android.content.Context
 import android.os.Bundle
-import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,6 +9,7 @@ import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.edit
+import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
 import com.example.medicationreminderapp.databinding.FragmentWifiConfigBinding
 
@@ -32,31 +32,47 @@ class WiFiConfigFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Set background color to match the theme
-        val typedValue = TypedValue()
-        requireContext().theme.resolveAttribute(com.google.android.material.R.attr.colorSurface, typedValue, true)
-        view.setBackgroundColor(typedValue.data)
-
         bluetoothLeManager = (activity as MainActivity).bluetoothLeManager
 
         loadSsidHistory()
+        setupValidation()
 
         binding.sendWifiCredentialsButton.setOnClickListener {
             val ssid = binding.ssidInput.text.toString()
             val password = binding.passwordInput.text.toString()
 
-            if (ssid.isNotBlank() && password.isNotBlank()) {
+            if (validateInput(ssid, password)) {
                 if (bluetoothLeManager.isConnected()) {
                     bluetoothLeManager.sendWifiCredentials(ssid, password)
                     saveSsid(ssid)
-                    Toast.makeText(requireContext(), "Wi-Fi credentials sent", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), R.string.wifi_credentials_sent, Toast.LENGTH_SHORT).show()
                 } else {
-                    Toast.makeText(requireContext(), "Bluetooth not connected", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), R.string.ble_status_disconnected, Toast.LENGTH_SHORT).show()
                 }
-            } else {
-                Toast.makeText(requireContext(), "Please enter SSID and password", Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    private fun setupValidation() {
+        binding.ssidInput.doAfterTextChanged {
+            binding.ssidLayout.error = null
+        }
+        binding.passwordInput.doAfterTextChanged {
+            binding.passwordLayout.error = null
+        }
+    }
+
+    private fun validateInput(ssid: String, password: String): Boolean {
+        var isValid = true
+        if (ssid.isBlank()) {
+            binding.ssidLayout.error = getString(R.string.fill_all_fields)
+            isValid = false
+        }
+        if (password.isBlank()) {
+            binding.passwordLayout.error = getString(R.string.fill_all_fields)
+            isValid = false
+        }
+        return isValid
     }
 
     override fun onResume() {

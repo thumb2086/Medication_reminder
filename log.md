@@ -1,7 +1,14 @@
 # 更新日誌
 
 ## 2025-01-27
-### Configuration & Build Logic
+### UI/UX
+*   **WiFi 設定頁面優化:** 
+    *   **介面翻新:** 引入 Material Design 風格，新增 `TextInputLayout` 提升輸入體驗。
+    *   **視覺增強:** 加入 Wi-Fi 圖示、標題與詳細說明文字，使介面更加直觀。
+    *   **輸入驗證:** 新增 SSID 與密碼的非空驗證，並提供即時錯誤提示。
+    *   **回饋優化:** 完善 Toast 提示訊息。
+
+### Configuration & Build Logic (Previous)
 *   **版本號獲取優化:** 修正 `getGitTagVersion` 邏輯，加入 `--exact-match` 參數。現在只有當 Commit 剛好打上 Tag 時才會使用 Tag 的版本號 (Release)。其餘情況下 (Nightly/Dev)，會忽略舊 Tag，強制使用 `config.gradle.kts` 中的 `baseVersionName` (目前為 1.2.1) 進行拼接，解決了 Nightly 版本號停留在舊 Tag (1.2.0) 的問題。
 
 ### DevOps (Previous)
