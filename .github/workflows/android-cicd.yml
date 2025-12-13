@@ -212,11 +212,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG_NAME="nightly-${{ env.CHANNEL_NAME }}"
-          echo "Attempting to delete Release and Tag: $TAG_NAME"
-          # Use GitHub CLI to delete release (which can also cleanup tag)
-          # || true prevents the workflow from failing if the release doesn't exist
-          gh release delete "$TAG_NAME" --cleanup-tag --yes || echo "Release $TAG_NAME not found or already deleted. Skipping."
+          # 1. 取得分支名稱
+          RAW_BRANCH="${{ github.event.ref }}"
+          
+          # 2. 將 '-' 與 '/' 替換為 '_' (匹配 Build 邏輯)
+          NORMALIZED_BRANCH=$(echo "$RAW_BRANCH" | sed 's/[\/\-]/\_/g')
+          
+          # 3. 組合正確的 Tag 名稱
+          TAG_NAME="nightly-${NORMALIZED_BRANCH}"
+          
+          echo "正在刪除: $TAG_NAME"
+          
+          # 4. 執行刪除
+          gh release delete "$TAG_NAME" --cleanup-tag --yes || true
           
       - name: Checkout gh-pages
         uses: actions/checkout@v4
