@@ -1,16 +1,16 @@
 # 更新日誌
 
-## UI/UX 調整
-*   **0127:** **修復設定頁面重複開啟問題。**
-    *   **選單控制:** 在 `MainActivity.kt` 中實作了 `onPrepareOptionsMenu`，根據 Fragment BackStack 的狀態動態顯示或隱藏設定按鈕 (`action_settings`)。
-    *   **邏輯:** 當使用者進入設定頁面 (BackStack Count > 0) 時，隱藏 Toolbar 上的設定圖示，防止使用者重複點擊堆疊多個設定頁面；回到主頁面時則重新顯示。
-
 ## Code Quality
 *   **0127:** **修復 SettingsFragment 中的未使用導入警告。**
     *   **Import Cleanup:** 移除了 `android.net.Uri` 的導入，因為使用了 KTX 擴充 `androidx.core.net.toUri`，不再直接依賴原始 Uri 類別解析字串。
 *   **0127:** **修復 SettingsFragment 中的代碼警告。**
     *   **KTX 擴充:** 將 `Uri.parse(url)` 替換為 `url.toUri()`，使代碼更符合 Kotlin 風格。
     *   **未使用的參數:** 將 `catch` 區塊中的 `e` 參數重命名為 `_`，以表明該變數未被使用。
+*   **0127:** **修復 SettingsFragment 中的編譯錯誤。**
+    *   **ListPreference 處理:** 修正了動態新增更新頻道的邏輯。
+        *   將 `isNotEmpty()` 用於 `CharSequence` 檢查而非 `Array`。
+        *   正確將 `CharSequence` 型別新增到 `MutableList<CharSequence>`，解決了型別不匹配問題。
+        *   將字串格式化結果賦值給 `listPref.summary` 時進行了空值檢查與型別轉換。
 
 ## UI/UX
 *   **0127:** **實作設定頁面「關於」區塊連結跳轉。**
@@ -24,18 +24,6 @@
 *   **0127:** **修復設定頁面「關於」區塊無英文翻譯問題。**
     *   **國際化 (i18n):** 將 `preferences.xml` 中硬編碼的中文標題 ("關於", "作者", "版本") 提取至 `strings.xml` 資源檔 (`about_category`, `about_author`, `about_version`)。
     *   **翻譯:** 在 `values-en/strings.xml` 中新增了對應的英文翻譯，確保在英文語系下能正確顯示 "About", "Author", "Version"。
-
-## DevOps
-*   **0127:** **修復版本號顯示問題。**
-    *   **版本名稱優化:** 修改 `app/build.gradle.kts`，將 Nightly 版的版本名稱格式從 `1.2.0 nightly 25012710` (Timestamp) 改回更易讀的 `1.2.0 nightly 161` (Commit Count)，但 `versionCode` 仍維持 Timestamp 格式以確保版本單調遞增。
-    *   **UI 顯示:** 使用者在 App 中看到的版本號現在會更簡潔。
-
-## DevOps
-*   **0127:** **實作多頻道 (Multi-Channel) 更新切換功能。**
-    *   **使用者可選頻道:** 修改 `preferences.xml` 與 `SettingsFragment.kt`，將原本唯讀的「更新頻道」改為 `ListPreference`，允許使用者手動選擇 `Stable` (Main), `Dev`, 或 `Nightly` 頻道。
-    *   **動態列表:** `SettingsFragment` 會自動偵測當前 App 所屬的頻道 (若為非標準頻道，如 `feat-login`) 並將其動態加入選項列表，避免使用者切換後無法切回原頻道。
-    *   **更新邏輯:** 重構 `UpdateManager.kt`，現在會優先讀取使用者在設定中選擇的頻道 (`SharedPreferences`) 來檢查更新，而非僅依賴編譯時的 `BuildConfig.UPDATE_CHANNEL`。
-    *   **CI/CD:** 更新 `README.md` 與 `README_cn.md`，說明新的更新頻道切換功能。
 
 ## DevOps
 *   **0127:** **實作多頻道 (Multi-Channel) CI/CD 架構。**

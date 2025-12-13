@@ -36,9 +36,9 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         findPreference<ListPreference>("character")?.let { it.summary = it.entry }
         
         findPreference<ListPreference>("update_channel")?.let { listPref ->
-            val currentChannel = BuildConfig.UPDATE_CHANNEL
-            val entries = listPref.entries.toMutableList()
-            val entryValues = listPref.entryValues.toMutableList()
+            val currentChannel: String = BuildConfig.UPDATE_CHANNEL
+            val entries: MutableList<CharSequence> = listPref.entries?.toMutableList() ?: mutableListOf()
+            val entryValues: MutableList<CharSequence> = listPref.entryValues?.toMutableList() ?: mutableListOf()
 
             // Check if current channel is already in the list
             val isStandard = entryValues.contains(currentChannel)
