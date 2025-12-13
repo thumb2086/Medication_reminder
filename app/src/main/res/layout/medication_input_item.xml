@@ -42,7 +42,9 @@
                     android:id="@+id/slotNumberSpinner"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="none" />
+                    android:inputType="none"
+                    android:hint="@string/slot_number"
+                    android:textColorHint="@android:color/transparent" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- Date Range -->
@@ -50,6 +52,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
+                android:baselineAligned="false"
                 android:orientation="horizontal">
 
                 <com.google.android.material.textfield.TextInputLayout

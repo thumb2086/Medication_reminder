@@ -230,10 +230,14 @@
     <string name="update_settings">Update Settings</string>
     <string name="update_channel">Update Channel</string>
     <string-array name="update_channel_entries">
-        <item>Auto</item>
+        <item>Stable (Main)</item>
+        <item>Development (Dev)</item>
+        <item>Nightly</item>
     </string-array>
     <string-array name="update_channel_values">
-        <item>auto</item>
+        <item>main</item>
+        <item>dev</item>
+        <item>nightly</item>
     </string-array>
     <string name="update_channel_summary">Current Channel: %s</string>
     <string name="check_for_updates">Check for Updates</string>
@@ -255,6 +259,7 @@
     <!-- About -->
     <string name="about_category">About</string>
     <string name="about_author">Author</string>
+    <string name="about_project">Project</string>
     <string name="about_version">Version</string>
 
 </resources>

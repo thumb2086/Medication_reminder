@@ -1,12 +1,15 @@
 package com.example.medicationreminderapp
 
+import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.util.Log
 import android.util.TypedValue
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.net.toUri
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
@@ -20,7 +23,13 @@ import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
 import com.example.medicationreminderapp.util.UpdateManager
+import com.google.gson.Gson
+import com.google.gson.JsonArray
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
 
 class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedPreferenceChangeListener {
 
@@ -33,15 +42,106 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         findPreference<ListPreference>("language")?.let { it.summary = it.entry }
         findPreference<ListPreference>("character")?.let { it.summary = it.entry }
         
-        // Dynamically set update channel info
-        findPreference<Preference>("update_channel")?.let {
-             // BuildConfig is in the same package, so no import is needed.
-             // If IDE shows error here but build succeeds, it is an IDE cache issue.
-             it.summary = getString(R.string.update_channel_summary, BuildConfig.UPDATE_CHANNEL)
-        }
+        setupUpdateChannelPreference()
 
         // Dynamically set version info
         findPreference<Preference>("app_version")?.summary = BuildConfig.VERSION_NAME
+    }
+
+    private fun setupUpdateChannelPreference() {
+        findPreference<ListPreference>("update_channel")?.let { listPref ->
+            val currentChannel: String = BuildConfig.UPDATE_CHANNEL
+            
+            // Initial simple setup with local current channel
+            val entries = mutableListOf<CharSequence>("Stable (Main)")
+            val entryValues = mutableListOf<CharSequence>("main")
+            
+            // Add current channel if it's not already in the list (e.g. not "main")
+            if (currentChannel.isNotEmpty() && !entryValues.contains(currentChannel)) {
+                entries.add("Current ($currentChannel)")
+                entryValues.add(currentChannel)
+            }
+            
+            // Add Dev by default if not present
+            if (!entryValues.contains("dev")) {
+                entries.add("Dev")
+                entryValues.add("dev")
+            }
+
+            listPref.entries = entries.toTypedArray()
+            listPref.entryValues = entryValues.toTypedArray()
+
+            if (listPref.value == null) {
+                listPref.value = currentChannel
+            }
+            listPref.summary = listPref.entry ?: getString(R.string.update_channel_summary, listPref.value)
+            
+            // Fetch available channels from GitHub Releases
+            fetchAvailableChannels(listPref, currentChannel)
+        }
+    }
+
+    private fun fetchAvailableChannels(listPref: ListPreference, currentChannel: String) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val client = OkHttpClient()
+                val request = Request.Builder()
+                    .url("https://api.github.com/repos/thumb2086/Medication_reminder/releases")
+                    .build()
+
+                val response = client.newCall(request).execute()
+                if (response.isSuccessful) {
+                    val jsonStr = response.body.string()
+                    val gson = Gson()
+                    val releases = gson.fromJson(jsonStr, JsonArray::class.java)
+                    
+                    val remoteChannels = mutableSetOf<String>()
+                    
+                    releases.forEach { element ->
+                        val release = element.asJsonObject
+                        val tagName = release.get("tag_name").asString
+                        if (tagName.startsWith("nightly-")) {
+                            val channelName = tagName.removePrefix("nightly-")
+                            remoteChannels.add(channelName)
+                        }
+                    }
+
+                    withContext(Dispatchers.Main) {
+                        updateChannelList(listPref, remoteChannels, currentChannel)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("SettingsFragment", "Failed to fetch channels", e)
+            }
+        }
+    }
+
+    private fun updateChannelList(listPref: ListPreference, remoteChannels: Set<String>, currentChannel: String) {
+        val entries = mutableListOf<CharSequence>("Stable (Main)")
+        val entryValues = mutableListOf<CharSequence>("main")
+        
+        // Add current if valid
+        if (currentChannel.isNotEmpty() && !entryValues.contains(currentChannel)) {
+            entries.add("Current ($currentChannel)")
+            entryValues.add(currentChannel)
+        }
+
+        // Add remote channels (filtering out duplicates)
+        remoteChannels.forEach { channel ->
+            if (!entryValues.contains(channel)) {
+                entries.add(channel.replaceFirstChar { it.uppercase() }) // Capitalize for display
+                entryValues.add(channel)
+            }
+        }
+
+        // Sort: Stable -> Current -> Dev -> Others
+        // Note: The simple addition order above mostly handles this, but 'dev' might be in remoteChannels
+        
+        listPref.entries = entries.toTypedArray()
+        listPref.entryValues = entryValues.toTypedArray()
+        
+        // Refresh summary
+        listPref.summary = listPref.entry ?: getString(R.string.update_channel_summary, listPref.value)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -86,7 +186,28 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                 checkForUpdates()
                 true
             }
+            "app_author" -> {
+                openUrl("https://github.com/thumb2086")
+                true
+            }
+            "app_project" -> {
+                openUrl("https://github.com/thumb2086/Medication_reminder")
+                true
+            }
+            "app_version" -> {
+                openUrl("https://github.com/thumb2086/Medication_reminder/releases")
+                true
+            }
             else -> super.onPreferenceTreeClick(preference)
+        }
+    }
+
+    private fun openUrl(url: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, url.toUri())
+            startActivity(intent)
+        } catch (_: Exception) {
+            Toast.makeText(requireContext(), "無法開啟連結", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -152,6 +273,11 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                 findPreference<ListPreference>(key)?.let { characterPreference ->
                     characterPreference.summary = characterPreference.entry
                     activity?.recreate()
+                }
+            }
+            "update_channel" -> {
+                findPreference<ListPreference>(key)?.let { 
+                    it.summary = it.entry 
                 }
             }
             "engineering_mode" -> {

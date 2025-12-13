@@ -41,11 +41,13 @@
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/update_settings">
-        <Preference
+        <ListPreference
             app:key="update_channel"
             app:title="@string/update_channel"
             app:summary="@string/update_channel_summary"
-            app:selectable="false"
+            app:entries="@array/update_channel_entries"
+            app:entryValues="@array/update_channel_values"
+            app:defaultValue="main"
             app:icon="@drawable/ic_update" />
 
         <Preference
@@ -70,14 +72,18 @@
             app:key="app_author"
             app:title="@string/about_author"
             app:summary="Thumb2086"
-            app:selectable="false"
             app:icon="@drawable/ic_face" />
+
+        <Preference
+            app:key="app_project"
+            app:title="@string/about_project"
+            app:summary="GitHub"
+            app:icon="@drawable/ic_developer_mode" />
 
         <Preference
             app:key="app_version"
             app:title="@string/about_version"
             app:summary="1.0.0"
-            app:selectable="false"
             app:icon="@drawable/ic_update" />
     </PreferenceCategory>
 

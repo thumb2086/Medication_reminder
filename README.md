@@ -2,7 +2,7 @@
 
 A smart medication reminder application integrated with an ESP32-based smart pillbox. It helps users track their medication schedule, monitors environmental conditions, and ensures timely intake through a combination of mobile notifications and hardware alerts.
 
-[![Android CI/CD](https://github.com/CPXru/Medication_reminder/actions/workflows/android-cicd.yml/badge.svg)](https://github.com/CPXru/Medication_reminder/actions/workflows/android-cicd.yml)
+[![Android CI/CD](https://github.com/thumb2086/Medication_reminder/actions/workflows/android-cicd.yml/badge.svg)](https://github.com/thumb2086/Medication_reminder/actions/workflows/android-cicd.yml)
 
 ## Features
 
@@ -16,11 +16,50 @@ A smart medication reminder application integrated with an ESP32-based smart pil
 *   **Alarm System:** Set up to 4 alarms on the ESP32 pillbox for standalone reminders.
 *   **Interactive Charts:** View temperature and humidity trends with interactive line charts, supporting pan, zoom, and data point inspection.
 *   **In-App Updates:** Automatically checks for updates from GitHub Releases.
-    *   **Smart Channel Detection:** The app automatically detects which branch it was built from (e.g., `main`, `dev`, `feat-new-ui`) and subscribes to updates for that specific channel.
+    *   **Selectable Channels:** Users can choose between **Stable**, **Dev**, or browse **Active Development Branches** directly in the App Settings.
+    *   **Dynamic Update Checks:** The app intelligently fetches the latest build for the selected channel (e.g., `update_dev.json`, `update_nightly.json`).
     *   **Stable:** Official releases from the `main` branch.
-    *   **Dev/Nightly:** Cutting-edge builds from development branches.
+    *   **Dev:** Cutting-edge builds from the `dev` branch.
+    *   **Dynamic Branch Discovery:** The app queries GitHub Releases to find available active branches (tagged as `nightly-<branch>`), allowing you to test specific feature branches easily.
 *   **Robust Update Installation:** Smart handling of APK downloads with automatic fallback mechanisms to ensure successful installation on various Android versions (including Android 13+).
 *   **Multi-Channel CI/CD:** Supports dynamic "Feature Branch" releases. Every branch gets its own update channel (e.g., `feat-new-ui`), allowing parallel testing without interference.
+
+## Bluetooth Low Energy Protocol
+
+The communication between the App and the ESP32 Smart Pillbox relies on a custom binary protocol over BLE UART Service.
+
+**Service UUID:** `4fafc201-1fb5-459e-8fcc-c5c9c331914b`
+**TX Characteristic (Write):** `beb5483e-36e1-4688-b7f5-ea07361b26a8`
+**RX Characteristic (Notify):** `c8c7c599-809c-43a5-b825-1038aa349e5d`
+
+### Command Reference (App -> ESP32)
+
+| Command Name | OpCode | Parameters | Description |
+| :--- | :---: | :--- | :--- |
+| **Get Protocol Version** | `0x01` | None | Requests the device protocol version (Returns `0x71`). |
+| **Sync Time** | `0x11` | `Year(1B)`, `Month(1B)`, `Day(1B)`, `Hour(1B)`, `Min(1B)`, `Sec(1B)` | Syncs RTC time. Year is relative to 2000 (e.g., 24 for 2024). |
+| **Set Wi-Fi** | `0x12` | `LenSSID(1B)`, `SSID(...)`, `LenPass(1B)`, `Password(...)` | Sends Wi-Fi credentials to the device. |
+| **Set Engineering Mode** | `0x13` | `Enable(1B)` | `0x01`: Enable, `0x00`: Disable. |
+| **Get Eng. Mode Status** | `0x14` | None | Queries if Engineering Mode is active (Returns `0x83`). |
+| **Get Status** | `0x20` | None | Requests current medication status (Returns `0x80`). |
+| **Get Env Data** | `0x30` | None | Single request for current temperature/humidity (Returns `0x90`). |
+| **Get Historic Data** | `0x31` | None | Requests stored environmental history (Returns series of `0x91`, ends with `0x92`). |
+| **Subscribe Realtime** | `0x32` | None | Enables automatic pushing of environmental data. |
+| **Set Alarm** | `0x41` | `Slot(1B)`, `Hour(1B)`, `Minute(1B)`, `Enable(1B)` | Sets a hardware alarm. `Slot`: 0-3, `Enable`: 1/0. |
+
+### Response Reference (ESP32 -> App)
+
+| Response Name | OpCode | Data Payload | Description |
+| :--- | :---: | :--- | :--- |
+| **Protocol Report** | `0x71` | `Version(1B)` | Reports protocol version (e.g., `0x03`). |
+| **Status Report** | `0x80` | `SlotMask(1B)` | Bitmask of medication slots status. |
+| **Medication Taken** | `0x81` | `SlotID(1B)` | Notification when a pill is taken. |
+| **Time Sync Ack** | `0x82` | None | Acknowledges time synchronization. |
+| **Eng. Mode Report** | `0x83` | `Status(1B)` | `0x01`: Enabled, `0x00`: Disabled. |
+| **Env Data** | `0x90` | `Temp(2B)`, `Hum(2B)` | Real-time sensor data. Values are `Short` (x100). |
+| **Historic Data** | `0x91` | `Timestamp(4B)`, `Temp(2B)`, `Hum(2B)` | One or more historic records. |
+| **Sync Complete** | `0x92` | None | Indicates end of historic data transmission. |
+| **Error Report** | `0xEE` | `ErrorCode(1B)` | `0x02`: Sensor Error, `0x03`: Unknown Cmd, `0x04`: Access Error. |
 
 ## Bluetooth Protocol Versioning
 
@@ -34,7 +73,7 @@ To ensure compatibility between the App and the ESP32 firmware as features evolv
 
 ## Getting Started
 
-1.  **Clone the repository:** `git clone https://github.com/CPXru/Medication_reminder.git`
+1.  **Clone the repository:** `git clone https://github.com/thumb2086/Medication_reminder.git`
 2.  **Open in Android Studio:** Import the project into Android Studio (Ladybug | 2024.2.1 or later recommended).
 3.  **Build and Run:** Connect an Android device (Android 10+) or use an emulator to run the application.
 
@@ -47,6 +86,7 @@ This project uses GitHub Actions for continuous integration and automated versio
     *   Generates a dedicated update channel for that branch (e.g., `update_feat_login.json`).
     *   Builds an APK with a corresponding version name.
     *   Testers installing the APK from a specific branch will only receive updates for that branch.
+*   **Branch Cleanup:** When a branch is deleted, the corresponding nightly release and tag are automatically removed to keep the release list clean.
 *   **Versioning:** The `versionCode` is generated based on the build timestamp (`yyMMddHH`) to ensure strictly increasing versions across branches, preventing downgrade issues. The `versionName` includes branch and commit information.
 
 ## License

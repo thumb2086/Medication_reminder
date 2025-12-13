@@ -8,10 +8,14 @@ on:
       - "feat-*"
     tags:
       - 'v*' # Trigger on tags starting with v (e.g. v1.0.0)
+  delete: 
+    # Trigger when a branch or tag is deleted.
+    # NOTE: This workflow MUST be present in the default branch (main) to handle delete events for other branches.
 
 jobs:
   build:
     name: Build and Release
+    if: github.event_name == 'push' # Only run build on push
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -188,3 +192,45 @@ jobs:
           body: "Auto-generated nightly build for channel ${{ env.CHANNEL_NAME }}."
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  cleanup:
+    name: Cleanup Deleted Branch Release
+    if: github.event_name == 'delete' && github.event.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Extract Branch Name and Channel
+        id: branch_info
+        run: |
+          RAW_BRANCH=${{ github.event.ref }}
+          SAFE_NAME=$(echo "$RAW_BRANCH" | sed 's/[\/\-]/\_/g')
+          echo "CHANNEL_NAME=$SAFE_NAME" >> $GITHUB_ENV
+          echo "Branch Deleted: $RAW_BRANCH (Channel: $SAFE_NAME)"
+
+      - name: Delete Channel Release and Tag
+        uses: dev-drprasad/delete-tag-and-release@v1.1
+        with:
+          tag_name: "nightly-${{ env.CHANNEL_NAME }}"
+          delete_release: true
+          delete_tag: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          
+      - name: Remove Channel JSON
+        run: |
+          JSON_FILE="update_${{ env.CHANNEL_NAME }}.json"
+          if [ -f "$JSON_FILE" ]; then
+            echo "Removing $JSON_FILE..."
+            git config --global user.name 'github-actions[bot]'
+            git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+            git rm "$JSON_FILE"
+            git commit -m "Cleanup $JSON_FILE after branch deletion"
+            git push origin gh-pages
+          else
+            echo "$JSON_FILE not found, nothing to clean."
+          fi

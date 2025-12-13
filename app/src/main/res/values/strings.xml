@@ -229,11 +229,14 @@
     <!-- Update -->
     <string name="update_settings">更新設定</string>
     <string name="update_channel">更新頻道</string>
+    <!-- 預設只有 Stable，其他動態加入 -->
     <string-array name="update_channel_entries">
-        <item>自動 (Auto)</item>
+        <item>正式版 (Main)</item>
+        <item>開發版 (Dev)</item>
     </string-array>
     <string-array name="update_channel_values">
-        <item>auto</item>
+        <item>main</item>
+        <item>dev</item>
     </string-array>
     <string name="update_channel_summary">目前所在頻道: %s</string>
     <string name="check_for_updates">檢查更新</string>
@@ -255,6 +258,7 @@
     <!-- About -->
     <string name="about_category">關於</string>
     <string name="about_author">作者</string>
+    <string name="about_project">專案</string>
     <string name="about_version">版本</string>
 
 </resources>

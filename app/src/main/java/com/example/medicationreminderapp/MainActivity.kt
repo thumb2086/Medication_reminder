@@ -137,6 +137,7 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         supportActionBar?.setDisplayHomeAsUpEnabled(isFragmentOnBackStack)
         binding.tabLayout.visibility = if (isFragmentOnBackStack) View.GONE else View.VISIBLE
         binding.viewPager.visibility = if (isFragmentOnBackStack) View.GONE else View.VISIBLE
+        invalidateOptionsMenu()
     }
 
     private fun applyCharacterTheme() {
@@ -175,6 +176,11 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.main_menu, menu)
         return true
+    }
+
+    override fun onPrepareOptionsMenu(menu: Menu): Boolean {
+        menu.findItem(R.id.action_settings)?.isVisible = supportFragmentManager.backStackEntryCount == 0
+        return super.onPrepareOptionsMenu(menu)
     }
 
     private fun setupViewPagerAndTabs() {
