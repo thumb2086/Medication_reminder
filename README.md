@@ -2,7 +2,7 @@
 
 A smart medication reminder application integrated with an ESP32-based smart pillbox. It helps users track their medication schedule, monitors environmental conditions, and ensures timely intake through a combination of mobile notifications and hardware alerts.
 
-[![Android CI/CD](https://github.com/CPXru/Medication_reminder/actions/workflows/android-cicd.yml/badge.svg)](https://github.com/CPXru/Medication_reminder/actions/workflows/android-cicd.yml)
+[![Android CI/CD](https://github.com/thumb2086/Medication_reminder/actions/workflows/android-cicd.yml/badge.svg)](https://github.com/thumb2086/Medication_reminder/actions/workflows/android-cicd.yml)
 
 ## Features
 
@@ -73,7 +73,7 @@ To ensure compatibility between the App and the ESP32 firmware as features evolv
 
 ## Getting Started
 
-1.  **Clone the repository:** `git clone https://github.com/CPXru/Medication_reminder.git`
+1.  **Clone the repository:** `git clone https://github.com/thumb2086/Medication_reminder.git`
 2.  **Open in Android Studio:** Import the project into Android Studio (Ladybug | 2024.2.1 or later recommended).
 3.  **Build and Run:** Connect an Android device (Android 10+) or use an emulator to run the application.
 

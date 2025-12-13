@@ -3,6 +3,7 @@
 ## 2025-01-27
 ### Documentation
 *   **README 更新:**
+    *   將 `README.md` 與 `README_cn.md` 中的 GitHub 專案連結從 `CPXru/Medication_reminder` 更新為 `thumb2086/Medication_reminder`，以反映正確的 Releases 位置。
     *   移除了 `README.md` 與 `README_cn.md` 中舊的說明圖片連結。
     *   新增了 **Bluetooth Low Energy Protocol (藍牙低功耗通訊協定)** 章節，詳細列出 App 與 ESP32 之間的通訊指令與回應代碼 (Hex format)。
         *   包含指令: `0x01` (Version), `0x11` (Time Sync), `0x12` (Wi-Fi), `0x13`/`0x14` (Eng Mode), `0x20` (Status), `0x30`/`0x31`/`0x32` (Env Data), `0x41` (Alarm).

@@ -2,7 +2,7 @@
 
 一個結合 ESP32 智慧藥盒的藥物提醒應用程式。協助使用者追蹤服藥時間、監測環境溫濕度，並透過手機通知與硬體警示雙重提醒，確保按時服藥。
 
-[![Android CI/CD](https://github.com/CPXru/Medication_reminder/actions/workflows/android-cicd.yml/badge.svg)](https://github.com/CPXru/Medication_reminder/actions/workflows/android-cicd.yml)
+[![Android CI/CD](https://github.com/thumb2086/Medication_reminder/actions/workflows/android-cicd.yml/badge.svg)](https://github.com/thumb2086/Medication_reminder/actions/workflows/android-cicd.yml)
 
 ## 功能特色
 
@@ -90,7 +90,7 @@ App 與 ESP32 智慧藥盒之間的通訊是基於 BLE UART 服務的自定義�
 
 ## 開始使用
 
-1.  **複製專案:** `git clone https://github.com/CPXru/Medication_reminder.git`
+1.  **複製專案:** `git clone https://github.com/thumb2086/Medication_reminder.git`
 2.  **開啟專案:** 使用 Android Studio (建議 Ladybug | 2024.2.1 或更新版本) 開啟。
 3.  **編譯執行:** 連接 Android 手機 (Android 10+) 或使用模擬器執行。
 
