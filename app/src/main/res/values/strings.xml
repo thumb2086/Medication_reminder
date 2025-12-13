@@ -230,10 +230,14 @@
     <string name="update_settings">更新設定</string>
     <string name="update_channel">更新頻道</string>
     <string-array name="update_channel_entries">
-        <item>自動 (Auto)</item>
+        <item>正式版 (Main)</item>
+        <item>開發版 (Dev)</item>
+        <item>Nightly</item>
     </string-array>
     <string-array name="update_channel_values">
-        <item>auto</item>
+        <item>main</item>
+        <item>dev</item>
+        <item>nightly</item>
     </string-array>
     <string name="update_channel_summary">目前所在頻道: %s</string>
     <string name="check_for_updates">檢查更新</string>

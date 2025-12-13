@@ -35,11 +35,29 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         findPreference<ListPreference>("language")?.let { it.summary = it.entry }
         findPreference<ListPreference>("character")?.let { it.summary = it.entry }
         
-        // Dynamically set update channel info
-        findPreference<Preference>("update_channel")?.let {
-             // BuildConfig is in the same package, so no import is needed.
-             // If IDE shows error here but build succeeds, it is an IDE cache issue.
-             it.summary = getString(R.string.update_channel_summary, BuildConfig.UPDATE_CHANNEL)
+        findPreference<ListPreference>("update_channel")?.let { listPref ->
+            val currentChannel = BuildConfig.UPDATE_CHANNEL
+            val entries = listPref.entries.toMutableList()
+            val entryValues = listPref.entryValues.toMutableList()
+
+            // Check if current channel is already in the list
+            val isStandard = entryValues.contains(currentChannel)
+
+            if (!isStandard && currentChannel.isNotEmpty()) {
+                // Add current channel to the list dynamically
+                entries.add("Current ($currentChannel)")
+                entryValues.add(currentChannel)
+                listPref.entries = entries.toTypedArray()
+                listPref.entryValues = entryValues.toTypedArray()
+            }
+
+            // If no value is set, default to the current build channel
+            if (listPref.value == null) {
+                listPref.value = currentChannel
+            }
+
+            // Update summary
+            listPref.summary = listPref.entry ?: getString(R.string.update_channel_summary, listPref.value)
         }
 
         // Dynamically set version info
@@ -175,6 +193,11 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                 findPreference<ListPreference>(key)?.let { characterPreference ->
                     characterPreference.summary = characterPreference.entry
                     activity?.recreate()
+                }
+            }
+            "update_channel" -> {
+                findPreference<ListPreference>(key)?.let { 
+                    it.summary = it.entry 
                 }
             }
             "engineering_mode" -> {
