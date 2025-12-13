@@ -77,6 +77,7 @@ class UpdateManager(private val context: Context) {
                             devUpdate
                         }
                     } else {
+                        // devUpdate could be null, so check if stableUpdate is not null
                         devUpdate ?: stableUpdate
                     }
                 }
@@ -102,7 +103,8 @@ class UpdateManager(private val context: Context) {
             return null
         }
 
-        val jsonStr = response.body.string()
+        val responseBody = response.body
+        val jsonStr = responseBody.string() // response.body is not null if isSuccessful
         val json = gson.fromJson(jsonStr, JsonObject::class.java)
 
         // Parse JSON

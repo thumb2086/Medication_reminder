@@ -1,9 +1,13 @@
 # 更新日誌
 
 ## 2025-01-27
-### DevOps
+### Configuration
+*   **版本號回滾:** 專案基礎版本號還原為 `1.2.0`。
 *   **APK 命名修復:** 優化 CI/CD 腳本 (`android-cicd.yml`)，使其能正確解析 Gradle 動態生成的版本號，解決 APK 檔名顯示為 `MedicationReminder-nightly.apk` 的問題。
 *   **Stable Channel JSON 生成:** CI/CD 流程中，Stable Release 現在也會生成 `update_main.json`，供其他頻道檢查是否有正式版更新。
+
+### Code Quality
+*   **UpdateManager 優化:** 修復 `UpdateManager.kt` 中不必要的非空斷言 (Safe Call reduction)，移除 `response.body` 的可空性檢查，因為 `isSuccessful` 為真時 `response.body` 通常不為空。
 
 ### Configuration & Build Logic
 *   **版本號獲取邏輯優化:** 修正 `getGitTagVersion`，加入 `--exact-match` 參數。只有當 Commit 完全對應到 Tag 時才會使用 Tag 版本號，否則 (Dev/Nightly) 會強制使用 `config.gradle.kts` 中的 `baseVersionName` 並拼接後綴，解決版本號停滯問題。
