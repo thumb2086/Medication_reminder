@@ -200,23 +200,29 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Extract Branch Name and Channel
-        id: branch_info
-        run: |
-          RAW_BRANCH=${{ github.event.ref }}
-          SAFE_NAME=$(echo "$RAW_BRANCH" | sed 's/[\/\-]/\_/g')
-          echo "CHANNEL_NAME=$SAFE_NAME" >> $GITHUB_ENV
-          echo "Branch Deleted: $RAW_BRANCH (Channel: $SAFE_NAME)"
-
       - name: Delete Channel Release and Tag
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DELETED_BRANCH: ${{ github.event.ref }}
         run: |
-          TAG_NAME="nightly-${{ env.CHANNEL_NAME }}"
+          echo "Deleted Branch: $DELETED_BRANCH"
+          
+          # 1. 將 '-' 與 '/' 替換為 '_' (匹配 Build 邏輯)
+          # 使用 tr 替代 sed 避免轉義問題
+          NORMALIZED_BRANCH=$(echo "$DELETED_BRANCH" | tr '/-' '__')
+          
+          # 3. 組合正確的 Tag 名稱
+          TAG_NAME="nightly-${NORMALIZED_BRANCH}"
+          
+          echo "Target Tag: $TAG_NAME"
+          
+          # 4. Debug: List current releases
+          echo "Listing current releases..."
+          gh release list --limit 5 || true
+
           echo "Attempting to delete Release and Tag: $TAG_NAME"
           
-          # Use GitHub CLI to delete release (which can also cleanup tag)
-          # || echo ... prevents the workflow from failing if the release doesn't exist
+          # 5. 執行刪除
           gh release delete "$TAG_NAME" --cleanup-tag --yes || echo "Release $TAG_NAME not found or already deleted. Skipping."
           
       - name: Checkout gh-pages
@@ -225,8 +231,13 @@ jobs:
           ref: gh-pages
           
       - name: Remove Channel JSON
+        env:
+          DELETED_BRANCH: ${{ github.event.ref }}
         run: |
-          JSON_FILE="update_${{ env.CHANNEL_NAME }}.json"
+          NORMALIZED_BRANCH=$(echo "$DELETED_BRANCH" | tr '/-' '__')
+          CHANNEL_NAME=$NORMALIZED_BRANCH
+          
+          JSON_FILE="update_${CHANNEL_NAME}.json"
           if [ -f "$JSON_FILE" ]; then
             echo "Removing $JSON_FILE..."
             git config --global user.name 'github-actions[bot]'
