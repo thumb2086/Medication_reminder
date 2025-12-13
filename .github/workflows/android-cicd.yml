@@ -39,41 +39,38 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      # ---------------------------------------------------
-      # [核心重構] 命名邏輯：全數轉為減號 (-)
-      # ---------------------------------------------------
+      # [邏輯統一] 命名標準化：全數轉為減號 (-)
       - name: Determine Channel & Tag Name
         id: names
         run: |
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
              echo "IS_OFFICIAL=true" >> $GITHUB_ENV
           else
-             # 1. 取得原始分支名稱 (去除 refs/heads/)
              RAW_BRANCH=${GITHUB_REF#refs/heads/}
-          
-             # 2. 【標準化】將 '/' 和 '_' 全部替換為 '-'
-             # 例如: feat/new_fun -> feat-new-fun
-             # 例如: fix_bug      -> fix-bug
+             # feat/new_fun -> feat-new-fun
              SAFE_NAME=$(echo "$RAW_BRANCH" | tr '/_' '-')
           
              echo "CHANNEL_NAME=$SAFE_NAME" >> $GITHUB_ENV
              echo "TAG_NAME=nightly-$SAFE_NAME" >> $GITHUB_ENV
              echo "IS_OFFICIAL=false" >> $GITHUB_ENV
-          
-             echo "::notice::Branch processed: $RAW_BRANCH -> $SAFE_NAME (Tag: nightly-$SAFE_NAME)"
           fi
 
       - name: Grant Execute Permission for Gradlew
         run: chmod +x gradlew
 
+      # [防呆] 產生 google-services.json，防止 Build 失敗
       - name: Decode Secrets
         run: |
           if [ ! -z "${{ secrets.GOOGLE_SERVICES_JSON }}" ]; then
             echo "${{ secrets.GOOGLE_SERVICES_JSON }}" > app/google-services.json
           else
-            echo "{}" > app/google-services.json
+            echo '{"project_info":{"project_number":"000000000000","project_id":"dummy-project","storage_bucket":"dummy.appspot.com"},"client":[{"client_info":{"mobilesdk_app_id":"1:000000000000:android:0000000000000000","android_client_info":{"package_name":"com.example.dummy"}},"api_key":[{"current_key":"dummy_key"}]}]}' > app/google-services.json
+            echo "::warning::Generated dummy google-services.json because secret is empty."
           fi
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+          
+          if [ ! -z "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+             echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+          fi
 
       - name: Generate Version Code
         run: |
@@ -90,10 +87,15 @@ jobs:
           VERSION_CODE_OVERRIDE: ${{ env.TIMESTAMP }}
         run: ./gradlew assembleRelease
 
+      # [優化] 不依賴 Gradle Task，直接解析檔案抓版本號 (支援 build.gradle 和 .kts)
       - name: Rename APK
         run: |
-          VERSION_NAME=$(./gradlew -q app:printVersionName)
-          # 版本號中的空白也轉成減號
+          # 嘗試從 Gradle 檔抓取 versionName "1.x.x" 或 versionName = "1.x.x"
+          VERSION_NAME=$(grep -m 1 'versionName' app/build.gradle* | sed -E 's/.*"([^"]+)".*/\1/')
+          
+          # 如果抓不到，給一個預設值防止報錯
+          if [ -z "$VERSION_NAME" ]; then VERSION_NAME="nightly"; fi
+          
           SAFE_VERSION=$(echo "$VERSION_NAME" | tr ' ' '-')
           
           SRC_APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
@@ -118,7 +120,6 @@ jobs:
         if: env.IS_OFFICIAL == 'false'
         run: |
           mkdir -p public
-          # 檔名統一使用 SAFE_NAME (全減號)
           JSON_FILE="update_${{ env.CHANNEL_NAME }}.json"
           APK_URL="https://github.com/${{ github.repository }}/releases/download/${{ env.TAG_NAME }}/${{ env.APK_FILENAME }}"
           
@@ -145,6 +146,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ env.TAG_NAME }}
+          target_commitish: ${{ github.sha }} # [優化] 確保 Tag 指向最新 Commit
           files: |
             app/build/outputs/apk/release/${{ env.APK_FILENAME }}
             update_${{ env.CHANNEL_NAME }}.json
@@ -154,7 +156,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ========================================================
-  # Job 2: Cleanup (保持邏輯 100% 一致)
+  # Job 2: Cleanup (暴力刪除 + 並發保護)
   # ========================================================
   cleanup:
     name: Cleanup Release & JSON
@@ -165,7 +167,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Determine Target Branch Name
+      - name: Determine Target
         id: target
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
@@ -176,10 +178,7 @@ jobs:
             echo "::notice::Trigger: Branch Deletion for $RAW_BRANCH"
           fi
           
-          # ---------------------------------------------------
-          # [核心重構] 命名邏輯：必須與 Build Job 完全一致
-          # 將 '/' 和 '_' 全部替換為 '-'
-          # ---------------------------------------------------
+          # [邏輯統一] 必須與 Build Job 完全一致 (tr '/_' '-')
           SAFE_NAME=$(echo "$RAW_BRANCH" | tr '/_' '-')
           
           TAG_NAME="nightly-$SAFE_NAME"
@@ -190,12 +189,30 @@ jobs:
           
           echo "::notice::Targeting -> Tag: $TAG_NAME | JSON: $JSON_FILE"
 
-      - name: Delete GitHub Release and Tag
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Debug - List Releases
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release delete "${{ env.TAG_NAME }}" --cleanup-tag --yes || echo "::warning::Release/Tag $TAG_NAME not found (might be already deleted)"
+          echo "=== Current Releases (Top 5) ==="
+          gh release list --limit 5 || echo "Failed to list releases"
+          echo "================================"
 
+      # 1. 第一刀：嘗試刪除 Release (溫和)
+      - name: Delete GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete "${{ env.TAG_NAME }}" --cleanup-tag --yes || echo "::warning::Release not found via API."
+
+      # 2. 第二刀：Git 強制刪除 Tag (暴力)
+      - name: Force Delete Git Tag
+        run: |
+          git push origin --delete "refs/tags/${{ env.TAG_NAME }}" || echo "::notice::Git Tag already gone."
+
+      # 3. 清理 JSON (含並發保護)
       - name: Cleanup JSON from gh-pages
         uses: actions/checkout@v4
         with:
@@ -205,9 +222,13 @@ jobs:
       - name: Remove JSON File
         run: |
           TARGET_FILE="${{ env.JSON_FILE }}"
+          
+          # [優化] 並發保護：先拉取最新變更，避免 Push Rejected
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git pull origin gh-pages --rebase
+          
           if [ -f "$TARGET_FILE" ]; then
-            git config --global user.name 'github-actions[bot]'
-            git config --global user.email 'github-actions[bot]@users.noreply.github.com'
             git rm "$TARGET_FILE"
             git commit -m "Cleanup $TARGET_FILE"
             git push origin gh-pages
