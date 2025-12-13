@@ -23,7 +23,7 @@
         *   **Dev 版本:** 預設為 `Dev` 頻道。
         *   **Feature 版本:** 預設為該功能分支的頻道 (例如 `feat-new-ui`)。
     *   **動態檢查:** App 會智慧地抓取所選頻道的最新建置設定檔 (例如 `update_dev.json`, `update_nightly.json`)。
-        *   **Dev 頻道邏輯:** 開發版使用者除了接收 Dev 頻道的更新外，若有更新的 Stable 版本發布，也會收到通知，確保不錯過正式版。
+        *   **跨頻道提醒:** 開發版或功能分支使用者除了接收當前頻道的更新外，若有更新的 Stable 版本發布，也會收到通知，確保不錯過正式版。
     *   **正式版 (Stable):** 來自 `main` 分支的官方發布。
     *   **開發版 (Dev):** 來自 `dev` 分支的最新建置。
     *   **動態分支發現 (Dynamic Discovery):** App 會自動查詢 GitHub Releases API，列出所有活躍的開發分支 (標記為 `nightly-<branch>`)，讓您輕鬆測試特定功能分支。
