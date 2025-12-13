@@ -6,6 +6,14 @@
     *   修復在 `ReminderSettingsFragment` 中，動態生成的藥物輸入表單 (`medication_input_item.xml`) 內的圖片固定顯示為酷洛米的問題。
     *   現在新增或編輯藥物時，表單內的圖片會正確跟隨設定頁面的角色選擇 (酷洛米/櫻桃小丸子) 進行切換。
     *   實作 `updateCharacterImage()` 同步更新所有已存在的動態卡片圖片。
+*   **動態更新頻道列表 (SettingsFragment):**
+    *   **GitHub Releases 整合:** 移除了手動「自訂頻道」輸入功能，改為自動從 GitHub API 獲取所有 Release Tags。
+    *   **智能解析:** 自動過濾出以 `nightly-` 開頭的標籤，並解析出分支名稱 (例如 `nightly-feat-ui` -> `feat-ui`)，動態填充至更新頻道列表供使用者選擇。
+    *   **列表排序:** 優先顯示 `Stable (Main)` 與 `Current`，接著顯示自動抓取的其他開發分支。
+*   **SettingsFragment 優化:**
+    *   **設定頁面「關於」區塊:** 實作連結跳轉 (GitHub Profile, Repo, Releases)。
+    *   **UI 遮擋修復:** 加入 `OnApplyWindowInsetsListener` 防止底部內容被系統手勢導航條遮擋。
+    *   **底部導航列修復:** 修復從設定頁面返回時，底部主分頁按鈕顯示異常的問題。
 
 ### Code Quality
 *   **SettingsFragment 警告修復:**
@@ -27,23 +35,6 @@
     *   **GitHub Actions:** 更新 `.github/workflows/android-cicd.yml`，針對 `push` 事件自動生成對應頻道的 JSON 設定檔，並利用 `gh-pages` 部署。
     *   **App 邏輯:** 重構 `UpdateManager.kt` 與 `SettingsFragment.kt`，現在 App 會自動根據建置時的分支 (`BuildConfig.UPDATE_CHANNEL`) 檢查對應的更新來源。
     *   **UI 調整:** 設定頁面中的「更新頻道」選項改為唯讀顯示 (或根據最新改動為可選列表)，直接告知使用者當前所在的頻道。
-
-### UI/UX
-*   **動態更新頻道列表 (SettingsFragment):**
-    *   **GitHub Releases 整合:** 移除了手動「自訂頻道」輸入功能，改為自動從 GitHub API 獲取所有 Release Tags。
-    *   **智能解析:** 自動過濾出以 `nightly-` 開頭的標籤，並解析出分支名稱 (例如 `nightly-feat-ui` -> `feat-ui`)，動態填充至更新頻道列表供使用者選擇。
-    *   **列表排序:** 優先顯示 `Stable (Main)` 與 `Current`，接著顯示自動抓取的其他開發分支。
-*   **SettingsFragment 優化:**
-    *   **設定頁面「關於」區塊:** 實作連結跳轉 (GitHub Profile, Repo, Releases)。
-    *   **UI 遮擋修復:** 加入 `OnApplyWindowInsetsListener` 防止底部內容被系統手勢導航條遮擋。
-    *   **底部導航列修復:** 修復從設定頁面返回時，底部主分頁按鈕顯示異常的問題。
-### UI/UX (Previous)
-*   **設定頁面「關於」區塊:**
-    *   在 `SettingsFragment` 中實作了「關於」區塊的連結跳轉。
-    *   點擊「作者」、「專案」、「版本」可分別開啟 GitHub Profile, Repo 與 Releases 頁面。
-    *   在 `preferences.xml` 新增 `app_project` 設定項。
-*   **UI 遮擋修復:** 在 `SettingsFragment` 加入 `OnApplyWindowInsetsListener`，防止底部內容被系統手勢導航條遮擋。
-*   **底部導航列修復:** 修復從設定頁面返回時，底部主分頁按鈕顯示異常的問題。
 
 ### Bug Fixes
 *   **國際化 (i18n):** 修復設定頁面「關於」區塊無英文翻譯問題 (`values-en/strings.xml`)。
