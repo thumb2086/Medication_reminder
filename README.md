@@ -89,6 +89,7 @@ This project uses GitHub Actions for continuous integration and automated versio
     *   Testers installing the APK from a specific branch will only receive updates for that branch.
 *   **Branch Cleanup:** When a branch is deleted, the corresponding nightly release and tag are automatically removed to keep the release list clean. Manual cleanup is also supported via GitHub Actions workflow dispatch.
 *   **Versioning:** The `versionCode` is generated based on the build timestamp (`yyMMddHH`) to ensure strictly increasing versions across branches, preventing downgrade issues. The `versionName` includes branch and commit information.
+*   **Release Naming:** Nightly releases now use a clearer title format: `<Branch> | <VersionName>` (e.g., `feat-ui | 1.2.0 nightly 205`) to easily identify the source branch and version details.
 
 ## License
 

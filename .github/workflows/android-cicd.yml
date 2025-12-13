@@ -51,6 +51,12 @@ jobs:
              SAFE_NAME=$(echo "$RAW_BRANCH" | tr '/_' '-')
           
              echo "CHANNEL_NAME=$SAFE_NAME" >> $GITHUB_ENV
+             
+             # 改動：不再只使用 nightly-<branch>，改為 nightly-<branch>-<build_number> 或其他後綴
+             # 但 Release Tag 必須是固定的 (mutable tag) 才能覆蓋發布，
+             # 或是採用 immutable tag 策略 (每次發布新 Tag)。
+             # 此專案採用 mutable release 策略 (更新同一個 Release)。
+             # 所以 Tag Name 維持不變，但 Release Title 會在後面的步驟動態設定。
              echo "TAG_NAME=nightly-$SAFE_NAME" >> $GITHUB_ENV
              echo "IS_OFFICIAL=false" >> $GITHUB_ENV
           fi
@@ -105,6 +111,8 @@ jobs:
           SAFE_VERSION=$(echo "$VERSION_NAME" | tr ' ' '-')
           
           SRC_APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          
+          # [命名修正] 檔名使用 Safe Version
           NEW_FILENAME="MedicationReminder-$SAFE_VERSION.apk"
           
           if [ ! -z "$SRC_APK" ]; then
@@ -158,12 +166,14 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ env.TAG_NAME }}
+          # [命名修正] Release Title 優化: <Branch> | <VersionName>
+          name: "${{ env.CHANNEL_NAME }} | ${{ env.VERSION_NAME }}"
           target_commitish: ${{ github.sha }} # [優化] 確保 Tag 指向最新 Commit
           files: |
             app/build/outputs/apk/release/${{ env.APK_FILENAME }}
             update_${{ env.CHANNEL_NAME }}.json
           prerelease: true
-          body: "Auto-generated nightly build for channel ${{ env.CHANNEL_NAME }}."
+          body: "Auto-generated nightly build for channel ${{ env.CHANNEL_NAME }}.\nVersion: ${{ env.VERSION_NAME }}\nCommit: ${{ github.sha }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

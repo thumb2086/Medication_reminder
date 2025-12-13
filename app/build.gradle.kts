@@ -27,6 +27,12 @@ fun getGitCommandOutput(vararg command: String): String {
     }
 }
 
+// Helper to get the latest Git tag version (e.g. v1.2.0 -> 1.2.0)
+fun getGitTagVersion(): String? {
+    val tag = getGitCommandOutput("git", "describe", "--tags", "--abbrev=0", "--match", "v*")
+    return if (tag.startsWith("v")) tag.substring(1) else null
+}
+
 android {
     namespace = "com.example.medicationreminderapp"
     compileSdk = 36
@@ -41,8 +47,12 @@ android {
     }
 
     // Get base config values
+    // Priority: Git Tag > config.gradle.kts
+    val gitTagVersion = getGitTagVersion()
+    val configVersionName = appConfig["baseVersionName"] as String
+    val baseVersionName = gitTagVersion ?: configVersionName
+    
     val baseApplicationId = appConfig["baseApplicationId"] as String
-    val baseVersionName = appConfig["baseVersionName"] as String
     val appName = appConfig["appName"] as String
     val prodApiUrl = appConfig["prodApiUrl"] as String
     val devApiUrl = appConfig["devApiUrl"] as String
@@ -77,9 +87,15 @@ android {
     val safeVersionName = finalVersionName.replace(" ", "-")
     val finalArchivesBaseName = "$appName-v$safeVersionName"
     
-    // REMOVED: Dynamic Application ID suffixing. 
-    // Consistent ID ensures updates work across branches (assuming signatures match).
-    val finalApplicationId = baseApplicationId 
+    // Application ID Suffix logic for Side-by-Side installation
+    // Production (Main) -> com.example.medicationreminderapp
+    // Dev -> com.example.medicationreminderapp.dev
+    // Nightly (Others) -> com.example.medicationreminderapp.nightly
+    val finalApplicationId = when {
+        isProduction -> baseApplicationId
+        isDev -> "$baseApplicationId.dev"
+        else -> "$baseApplicationId.nightly"
+    }
     
     val finalAppName = if (isProduction) appName else "$appName ($branchName)"
     val finalApiUrl = if (isProduction) prodApiUrl else devApiUrl
