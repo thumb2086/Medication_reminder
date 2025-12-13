@@ -11,6 +11,9 @@
         *   將 `isNotEmpty()` 用於 `CharSequence` 檢查而非 `Array`。
         *   正確將 `CharSequence` 型別新增到 `MutableList<CharSequence>`，解決了型別不匹配問題。
         *   將字串格式化結果賦值給 `listPref.summary` 時進行了空值檢查與型別轉換。
+*   **0127:** **修復 BuildConfig 屬性類型錯誤。**
+    *   **build.gradle.kts:** 修正 `UPDATE_CHANNEL` 在 `buildConfigField` 中的類型定義。從 `String` (會生成為 `String`) 改為 `String` 但值包裹引號 (即 `"\"$safeBranchName\""`)，確保生成的 Java/Kotlin 代碼為 `public static final String UPDATE_CHANNEL = "main";` 而非 `public static final String UPDATE_CHANNEL = main;` (這會被視為變數引用)。
+    *   這解決了 `SettingsFragment.kt` 中 `BuildConfig.UPDATE_CHANNEL` 類型推斷錯誤的問題 (Expected String, Actual Any!)。
 
 ## UI/UX
 *   **0127:** **實作設定頁面「關於」區塊連結跳轉。**
