@@ -14,6 +14,7 @@ import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
+import androidx.preference.PreferenceManager
 import com.example.medicationreminderapp.BuildConfig
 import com.example.medicationreminderapp.R
 import com.google.gson.Gson
@@ -41,17 +42,20 @@ class UpdateManager(private val context: Context) {
     )
 
     suspend fun checkForUpdates(): UpdateInfo? {
-        // Explicitly cast to String to resolve "Argument type mismatch: actual type is 'Any!', but 'String' was expected"
-        // This can happen if Kotlin interprets the Java static field as Object or platform type
-        val buildChannel = BuildConfig.UPDATE_CHANNEL.toString()
-        val isStable = buildChannel == "main" || buildChannel == "master" || buildChannel == "stable"
-
         return withContext(Dispatchers.IO) {
             try {
+                val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+                // Get user selected channel, default to "main"
+                val selectedChannel = prefs.getString("update_channel", "main") ?: "main"
+                
+                Log.d("UpdateManager", "Checking for updates on channel: $selectedChannel")
+
+                val isStable = selectedChannel == "main" || selectedChannel == "master" || selectedChannel == "stable"
+
                 if (isStable) {
                     checkStableUpdates()
                 } else {
-                    checkDynamicChannelUpdates(buildChannel)
+                    checkDynamicChannelUpdates(selectedChannel)
                 }
             } catch (e: Exception) {
                 Log.e("UpdateManager", "Error checking for updates", e)
@@ -84,10 +88,12 @@ class UpdateManager(private val context: Context) {
         val downloadUrl = json.get("url").asString
         val releaseNotes = json.get("releaseNotes").asString
 
-        // Compare versionCode (Timestamp based)
+        // Compare logic:
+        // 1. If remote VersionCode > local VersionCode, update is available.
         if (remoteVersionCode > BuildConfig.VERSION_CODE) {
             return UpdateInfo(latestVersionName, downloadUrl, releaseNotes, true)
-        }
+        } 
+        
         return null
     }
 
@@ -105,8 +111,7 @@ class UpdateManager(private val context: Context) {
         val tagName = json.get("tag_name").asString
         val releaseNotes = json.get("body").asString
         
-        val currentVersion = BuildConfig.VERSION_NAME
-
+        // Check for assets
         val assets = json.getAsJsonArray("assets")
         if (assets.size() == 0) return null
         
@@ -124,7 +129,7 @@ class UpdateManager(private val context: Context) {
         if (apkUrl.isEmpty()) return null
 
         val remoteVersion = tagName.removePrefix("v")
-        val currentVersionNormalized = currentVersion.replace(" ", "-")
+        val currentVersionNormalized = BuildConfig.VERSION_NAME.replace(" ", "-")
 
         if (isNewerVersion(currentVersionNormalized, remoteVersion)) {
              return UpdateInfo(remoteVersion, apkUrl, releaseNotes, false)
@@ -151,19 +156,21 @@ class UpdateManager(private val context: Context) {
             }
         }
         
-        // Fallback or secondary check
+        // Fallback or secondary check using commit count if available in version string
         val localCount = getCommitCount(local)
         val remoteCount = getCommitCount(remote)
         
         if (localCount != null && remoteCount != null) {
             return remoteCount > localCount
         }
+        
         return false
     }
 
     private fun getCommitCount(version: String): Int? {
-        val parts = version.split("-")
-        return parts.lastOrNull()?.toIntOrNull()
+        val parts = version.split("-", " ")
+        val lastPart = parts.lastOrNull()
+        return lastPart?.toIntOrNull()
     }
 
     fun downloadAndInstall(url: String, fileName: String) {
