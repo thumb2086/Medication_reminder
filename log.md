@@ -1,19 +1,26 @@
 # 更新日誌
 
 ## 2025-01-27
+### DevOps
+*   **APK 命名修復:**
+    *   **問題:** 使用者回報 CI/CD 生成的 APK 檔名為 `MedicationReminder-nightly.apk`，表示 `versionName` 抓取失敗。
+    *   **原因:** 在 CI 環境中，`./gradlew -q app:properties` 可能會輸出包含 Gradle 守護程序或其他非屬性的資訊，導致 `grep` 和 `awk` 解析失敗，觸發了 fallback 機制。此外，`getProperty("archivesBaseName")` 在某些配置下可能未正確反映。
+    *   **解決方案:**
+        *   不再依賴 `app:properties` 任務輸出。
+        *   改為直接利用 Gradle 輸出的 APK 檔案本身。Gradle Build 會根據 `archivesBaseName` 生成 APK。
+        *   修改 `android-cicd.yml`，在 Build 步驟後，直接尋找 `app/build/outputs/apk/release` 目錄下以 `MedicationReminder-` 開頭的 APK。
+        *   若 Gradle 配置正確 (`archivesBaseName` 設定為 `$appName-v$safeVersionName`)，生成的 APK 應原本就包含版本號。
+        *   腳本將只做簡單的更名或確認，確保最終上傳的檔案名稱正確。
+
 ### Code Quality
 *   **SettingsFragment 優化:**
     *   **Lint 警告修復:** 移除了 `SettingsFragment.kt` 中多餘的 `@Suppress` 註解。
-    *   **重構:** 移除了 `fetchAvailableChannels` 與 `updateChannelList` 中多餘的 `currentChannel` 參數，改為直接引用 `BuildConfig.UPDATE_CHANNEL`，解決了參數恆定值的警告。
-    *   **Lint 警告修復 (Final):** 針對 `Condition 'currentChannel == "main"' is always false` 的警告，採用了委派策略。在 `MainViewModel` 中新增 `getCurrentUpdateChannel()` 方法來動態獲取 `BuildConfig.UPDATE_CHANNEL`，讓編譯器將其視為執行期變數，從而繞過常數條件檢查的 Lint 警告。
+    *   **重構:** 移除了 `fetchAvailableChannels` 與 `updateChannelList` 中多餘的 `currentChannel` 參數，改為直接引用 `BuildConfig.UPDATE_CHANNEL`。
+    *   **Lint 警告修復 (Final):** 新增 `MainViewModel.getCurrentUpdateChannel()` 以繞過常數條件檢查。
 
 ### Configuration
 *   **Application ID 三軌並行:**
-    *   **Side-by-Side 安裝支援升級:** 修正 `app/build.gradle.kts` 的 Application ID 邏輯，現在嚴格區分三種環境，允許同時安裝三個版本的 App。
-    *   **Stable (Main):** `com.example.medicationreminderapp`
-    *   **Dev (Dev):** `com.example.medicationreminderapp.dev`
-    *   **Nightly (Others):** `com.example.medicationreminderapp.nightly`
-    *   **目的:** 支援開發者同時測試正式版、開發版與功能分支版。
+    *   **Side-by-Side 安裝支援升級:** 修正 `app/build.gradle.kts` 的 Application ID 邏輯，區分 Main, Dev, Nightly。
 
 ### Configuration & Build Logic (Previous)
 *   **版本號策略優化:**
