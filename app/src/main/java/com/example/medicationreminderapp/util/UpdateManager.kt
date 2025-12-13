@@ -47,15 +47,17 @@ class UpdateManager(private val context: Context) {
                 val prefs = PreferenceManager.getDefaultSharedPreferences(context)
                 // Get user selected channel, default to "main"
                 val selectedChannel = prefs.getString("update_channel", "main") ?: "main"
+                val currentChannel = BuildConfig.UPDATE_CHANNEL
                 
-                Log.d("UpdateManager", "Checking for updates on channel: $selectedChannel")
+                val isChannelSwitch = selectedChannel != currentChannel
+                Log.d("UpdateManager", "Checking for updates on channel: $selectedChannel (Switch: $isChannelSwitch)")
 
                 val isStable = selectedChannel == "main" || selectedChannel == "master" || selectedChannel == "stable"
 
                 if (isStable) {
-                    checkStableUpdates()
+                    checkStableUpdates(isChannelSwitch)
                 } else {
-                    checkDynamicChannelUpdates(selectedChannel)
+                    checkDynamicChannelUpdates(selectedChannel, isChannelSwitch)
                 }
             } catch (e: Exception) {
                 Log.e("UpdateManager", "Error checking for updates", e)
@@ -64,7 +66,7 @@ class UpdateManager(private val context: Context) {
         }
     }
 
-    private fun checkDynamicChannelUpdates(channel: String): UpdateInfo? {
+    private fun checkDynamicChannelUpdates(channel: String, force: Boolean): UpdateInfo? {
         // Fetch JSON from GitHub Pages
         val jsonUrl = "https://$repoOwner.github.io/$repoName/update_$channel.json"
         
@@ -90,14 +92,15 @@ class UpdateManager(private val context: Context) {
 
         // Compare logic:
         // 1. If remote VersionCode > local VersionCode, update is available.
-        if (remoteVersionCode > BuildConfig.VERSION_CODE) {
+        // 2. If it's a forced channel switch, allow update.
+        if (remoteVersionCode > BuildConfig.VERSION_CODE || force) {
             return UpdateInfo(latestVersionName, downloadUrl, releaseNotes, true)
         } 
         
         return null
     }
 
-    private fun checkStableUpdates(): UpdateInfo? {
+    private fun checkStableUpdates(force: Boolean): UpdateInfo? {
         val url = "https://api.github.com/repos/$repoOwner/$repoName/releases/latest"
         val request = Request.Builder().url(url).build()
 
@@ -131,7 +134,7 @@ class UpdateManager(private val context: Context) {
         val remoteVersion = tagName.removePrefix("v")
         val currentVersionNormalized = BuildConfig.VERSION_NAME.replace(" ", "-")
 
-        if (isNewerVersion(currentVersionNormalized, remoteVersion)) {
+        if (isNewerVersion(currentVersionNormalized, remoteVersion) || force) {
              return UpdateInfo(remoteVersion, apkUrl, releaseNotes, false)
         }
         return null

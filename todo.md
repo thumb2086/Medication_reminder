@@ -1,5 +1,3 @@
 # 待辦事項 (To-Do List)
 
-- [ ] DevOps: 驗證 `android-cicd.yml` (Cleanup Job)
-    - [ ] 觀察 GitHub Actions 運行狀況，確認手動觸發 (workflow_dispatch) 是否能成功清理舊的 Tag 和 Release。
-    - [ ] 觀察自動刪除分支時，Cleanup Job 是否正常觸發。
+- [ ] (Optional) 觀察降級安裝行為: 跨頻道更新若涉及 VersionCode 降級 (例如 Dev -> Stable)，Android 系統安裝程式可能會拒絕更新。需確認是否需要提示使用者先移除舊版。

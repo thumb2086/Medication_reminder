@@ -2,6 +2,9 @@
 
 ## 2025-01-27
 ### DevOps
+*   **跨頻道更新支援 (Cross-Channel Updates):**
+    *   **邏輯更新:** 修改 `UpdateManager.kt` 中的 `checkForUpdates` 邏輯。現在，當使用者在設定頁面切換頻道 (例如從 `Stable` 切換到 `Dev`) 時，系統會識別這是一個頻道切換操作 (`isChannelSwitch = true`)，並強制允許下載該頻道的最新版本，即使該版本的 VersionCode 可能低於或等於當前安裝的版本。
+    *   這解決了使用者無法從較新的 `Dev` 版本回退到 `Stable` 版本，或在不同開發分支間切換的問題 (需注意：降級安裝可能仍需手動解除安裝舊版，視 Android 系統限制而定，但現在 App 內會正確跳出更新提示)。
 *   **CI/CD 重構 (Final Attempt):**
     *   **手動清理模式 (Manual Cleanup):** 新增 `workflow_dispatch` 觸發器，允許開發者手動輸入分支名稱（例如 `fix-old-bug`），強制執行 Cleanup Job。這解決了已經刪除的分支無法觸發 Workflow 的問題，提供了補救舊帳的手段。
     *   **命名邏輯統一 (Normalize Name):** 重寫並統一了 Build Job 與 Cleanup Job 的分支名稱轉 Tag 名稱邏輯。
@@ -22,6 +25,7 @@
         *   加入 `|| echo ...` 錯誤處理，避免因 Release 不存在而報錯。
 *   **Documentation**
     *   **README 更新:**
+        *   更新了 `README_cn.md`，說明了新的跨頻道更新機制。
         *   將 `README.md` 與 `README_cn.md` 中的 GitHub 專案連結從 `CPXru/Medication_reminder` 更新為 `thumb2086/Medication_reminder`，以反映正確的 Releases 位置。
         *   移除了 `README.md` 與 `README_cn.md` 中舊的說明圖片連結。
         *   新增了 **Bluetooth Low Energy Protocol (藍牙低功耗通訊協定)** 章節，詳細列出 App 與 ESP32 之間的通訊指令與回應代碼 (Hex format)。
