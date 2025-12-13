@@ -2,11 +2,14 @@
 
 ## 2025-01-27
 ### DevOps
-*   **CI/CD 修復:**
-    *   **Cleanup Job 邏輯修正 (二次修正):**
-        *   之前的修正並未完全生效，原因是 `cleanup` job 中包含了重複的 `Extract Branch Name` 步驟，且該步驟的邏輯與 Build job 不完全一致（或者是變數傳遞順序問題）。
-        *   **解決:** 移除了 `cleanup` job 中冗餘的 `Extract Branch Name` 步驟。現在直接在 `Delete Channel Release and Tag` 步驟中進行分支名稱的解析與正規化 (`sed 's/[\/\-]/\_/g'`)，確保邏輯單一且正確。
-        *   **結果:** 現在刪除分支時（例如 `fix-nightly-del-bench`），CI/CD 能正確計算出 Tag 名稱 (`nightly-fix_nightly_del_bench`) 並執行刪除。
+*   **CI/CD 修復 (Third Attempt):**
+    *   **Cleanup Job 深度優化:**
+        *   **環境變數傳遞:** 發現 `Extract Branch Name` 步驟在 cleanup job 中可能無法正確共享變數，因此將分支名稱處理邏輯直接整合進 `Delete Channel Release and Tag` 步驟。
+        *   **變數注入:** 使用 `env: DELETED_BRANCH: ${{ github.event.ref }}` 明確注入變數，避免直接在 Shell script 中引用 GitHub Context 可能導致的解析問題。
+        *   **字元替換工具:** 改用 `tr '/-' '__'` 替代 `sed`，以避免潛在的正則表達式轉義問題，確保 `-` 能正確替換為 `_`。
+        *   **除錯訊息:** 新增 `gh release list` 指令，以便在未來失敗時能查看當前的 Release 列表狀態。
+        *   **JSON 清理同步:** 同步更新了 `Remove Channel JSON` 步驟中的分支名稱處理邏輯，確保能正確找到並刪除 `update_<branch>.json`。
+    *   **Cleanup Job 邏輯修正 (Previous):** 嘗試修正分支名稱處理邏輯，移除了冗餘步驟。
     *   **Schema Validation 修正:** 修正了 `android-cicd.yml` 中 `on.delete` 觸發器的語法錯誤 (`delete: {}`)。
     *   **Cleanup Job 優化:**
         *   使用 GitHub CLI (`gh release delete`) 替代第三方 Action。
