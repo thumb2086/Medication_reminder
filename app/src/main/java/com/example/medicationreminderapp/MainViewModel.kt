@@ -38,6 +38,11 @@ class MainViewModel @Inject constructor(
         // Data loading is now handled by Repository's init
     }
 
+    // --- Helper to avoid constant expression warnings in UI ---
+    fun getCurrentUpdateChannel(): String {
+        return BuildConfig.UPDATE_CHANNEL
+    }
+
     // --- Public Methods to update state ---
 
     fun setBleConnectionState(isConnected: Boolean) {

@@ -51,6 +51,12 @@ jobs:
              SAFE_NAME=$(echo "$RAW_BRANCH" | tr '/_' '-')
           
              echo "CHANNEL_NAME=$SAFE_NAME" >> $GITHUB_ENV
+             
+             # 改動：不再只使用 nightly-<branch>，改為 nightly-<branch>-<build_number> 或其他後綴
+             # 但 Release Tag 必須是固定的 (mutable tag) 才能覆蓋發布，
+             # 或是採用 immutable tag 策略 (每次發布新 Tag)。
+             # 此專案採用 mutable release 策略 (更新同一個 Release)。
+             # 所以 Tag Name 維持不變，但 Release Title 會在後面的步驟動態設定。
              echo "TAG_NAME=nightly-$SAFE_NAME" >> $GITHUB_ENV
              echo "IS_OFFICIAL=false" >> $GITHUB_ENV
           fi
@@ -87,23 +93,67 @@ jobs:
           VERSION_CODE_OVERRIDE: ${{ env.TIMESTAMP }}
         run: ./gradlew assembleRelease
 
-      # [優化] 不依賴 Gradle Task，直接解析檔案抓版本號 (支援 build.gradle 和 .kts)
-      - name: Rename APK
+      # [優化] 直接尋找 Gradle 生成的帶有版本號的 APK
+      - name: Find and Rename APK
         run: |
-          # 嘗試從 Gradle 檔抓取 versionName "1.x.x" 或 versionName = "1.x.x"
-          VERSION_NAME=$(grep -m 1 'versionName' app/build.gradle* | sed -E 's/.*"([^"]+)".*/\1/')
+          # 嘗試從 Gradle properties 取得 versionName 作為備用 (不依賴它做主要判斷)
+          GRADLE_VERSION_NAME=$(./gradlew -q app:printVersionName | tail -n 1)
+          echo "Gradle reported versionName: $GRADLE_VERSION_NAME"
+
+          # 尋找 release 目錄下的 APK (Gradle 設定已經會生成 MedicationReminder-*.apk)
+          # find app/build/outputs/apk/release -name "*.apk"
           
-          # 如果抓不到，給一個預設值防止報錯
-          if [ -z "$VERSION_NAME" ]; then VERSION_NAME="nightly"; fi
+          # 我們預期 Gradle 已經生成了類似 "藥到叮嚀 (dev)-v1.2.1-dev-205.apk" 或 "MedicationReminder-v1.2.1.apk"
+          # 但因為 archivesBaseName 設定為 "MedicationReminder-v...", 實際檔案應該是 "MedicationReminder-v...-release.apk"
           
-          SAFE_VERSION=$(echo "$VERSION_NAME" | tr ' ' '-')
-          
+          # 找出最新的 APK
           SRC_APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
-          NEW_FILENAME="MedicationReminder-$SAFE_VERSION.apk"
           
-          mv "$SRC_APK" "app/build/outputs/apk/release/$NEW_FILENAME"
-          echo "APK_FILENAME=$NEW_FILENAME" >> $GITHUB_ENV
-          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+          if [ -z "$SRC_APK" ]; then
+             echo "::error::No APK found in app/build/outputs/apk/release"
+             exit 1
+          fi
+          
+          echo "Found APK: $SRC_APK"
+          
+          # 如果檔案名稱看起來像預設的 "app-release.apk" (代表 archivesBaseName 沒生效)，我們手動改名
+          if [[ "$SRC_APK" == *"app-release.apk" ]]; then
+              echo "::warning::APK name is default. Renaming manually based on detected version."
+              if [ -z "$GRADLE_VERSION_NAME" ] || [ "$GRADLE_VERSION_NAME" == "unknown" ]; then
+                  VERSION_NAME="nightly-${{ env.TIMESTAMP }}"
+              else
+                  VERSION_NAME="$GRADLE_VERSION_NAME"
+              fi
+              SAFE_VERSION=$(echo "$VERSION_NAME" | tr ' ' '-')
+              NEW_FILENAME="MedicationReminder-$SAFE_VERSION.apk"
+              mv "$SRC_APK" "app/build/outputs/apk/release/$NEW_FILENAME"
+              APK_FILENAME="$NEW_FILENAME"
+              FINAL_VERSION_NAME="$VERSION_NAME"
+          else
+              # 如果 Gradle 已經生成了正確名稱 (例如包含版本號)，我們就用它
+              # 但為了確保一致性，我們把 "-release" 拿掉 (如果有的話)
+              FILENAME=$(basename "$SRC_APK")
+              NEW_FILENAME=${FILENAME//-release/} # Remove -release
+              
+              if [ "$FILENAME" != "$NEW_FILENAME" ]; then
+                  mv "$SRC_APK" "app/build/outputs/apk/release/$NEW_FILENAME"
+              fi
+              
+              APK_FILENAME="$NEW_FILENAME"
+              
+              # 嘗試從檔名反推版本號 (MedicationReminder-v1.2.1-dev-205.apk -> 1.2.1 dev 205)
+              # 這只是一個顯示用的字串
+              if [ ! -z "$GRADLE_VERSION_NAME" ] && [ "$GRADLE_VERSION_NAME" != "unknown" ]; then
+                  FINAL_VERSION_NAME="$GRADLE_VERSION_NAME"
+              else
+                  # Fallback
+                  FINAL_VERSION_NAME="nightly"
+              fi
+          fi
+          
+          echo "APK_FILENAME=$APK_FILENAME" >> $GITHUB_ENV
+          echo "VERSION_NAME=$FINAL_VERSION_NAME" >> $GITHUB_ENV
+          echo "::notice::Final APK: $APK_FILENAME (Version: $FINAL_VERSION_NAME)"
 
       # --- Official Release ---
       - name: Create Official Release
@@ -146,12 +196,14 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ env.TAG_NAME }}
+          # [命名修正] Release Title 優化: <Branch> | <VersionName>
+          name: "${{ env.CHANNEL_NAME }} | ${{ env.VERSION_NAME }}"
           target_commitish: ${{ github.sha }} # [優化] 確保 Tag 指向最新 Commit
           files: |
             app/build/outputs/apk/release/${{ env.APK_FILENAME }}
             update_${{ env.CHANNEL_NAME }}.json
           prerelease: true
-          body: "Auto-generated nightly build for channel ${{ env.CHANNEL_NAME }}."
+          body: "Auto-generated nightly build for channel ${{ env.CHANNEL_NAME }}.\nVersion: ${{ env.VERSION_NAME }}\nCommit: ${{ github.sha }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

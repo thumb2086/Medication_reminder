@@ -50,8 +50,10 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
 
     private fun setupUpdateChannelPreference() {
         findPreference<ListPreference>("update_channel")?.let { listPref ->
-            val currentChannel: String = BuildConfig.UPDATE_CHANNEL
-            
+            // Use ViewModel helper to avoid Lint constant expression warning
+            val currentChannel: String = viewModel.getCurrentUpdateChannel()
+            val savedChannel = preferenceManager.sharedPreferences?.getString("update_channel", null)
+
             // Initial simple setup with local current channel
             val entries = mutableListOf<CharSequence>("Stable (Main)")
             val entryValues = mutableListOf<CharSequence>("main")
@@ -71,17 +73,36 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
             listPref.entries = entries.toTypedArray()
             listPref.entryValues = entryValues.toTypedArray()
 
+            // Logic to set default value:
+            // 1. If user has manually selected a channel (savedChannel != null), use it.
+            // 2. If no selection (first install or clear data):
+            //    - If the installed version is from "main" (Stable), default to "main".
+            //    - If the installed version is from a specific branch (e.g., "dev" or "feat-x"), default to that branch ("Current").
+            //    - This ensures that if a user installs a Nightly build, they stay on that channel by default.
+            //    - But if they are on Stable, it stays Stable.
+            
             if (listPref.value == null) {
-                listPref.value = currentChannel
+                if (savedChannel != null) {
+                    listPref.value = savedChannel
+                } else {
+                    // No saved preference, use build config
+                    if (currentChannel == "main" || currentChannel.isEmpty()) {
+                        listPref.value = "main"
+                    } else {
+                        // User installed a non-stable build, so default to that channel to keep receiving updates for it
+                         listPref.value = currentChannel
+                    }
+                }
             }
+            
             listPref.summary = listPref.entry ?: getString(R.string.update_channel_summary, listPref.value)
             
             // Fetch available channels from GitHub Releases
-            fetchAvailableChannels(listPref, currentChannel)
+            fetchAvailableChannels(listPref)
         }
     }
 
-    private fun fetchAvailableChannels(listPref: ListPreference, currentChannel: String) {
+    private fun fetchAvailableChannels(listPref: ListPreference) {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val client = OkHttpClient()
@@ -107,7 +128,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                     }
 
                     withContext(Dispatchers.Main) {
-                        updateChannelList(listPref, remoteChannels, currentChannel)
+                        updateChannelList(listPref, remoteChannels)
                     }
                 }
             } catch (e: Exception) {
@@ -116,7 +137,8 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         }
     }
 
-    private fun updateChannelList(listPref: ListPreference, remoteChannels: Set<String>, currentChannel: String) {
+    private fun updateChannelList(listPref: ListPreference, remoteChannels: Set<String>) {
+        val currentChannel = viewModel.getCurrentUpdateChannel()
         val entries = mutableListOf<CharSequence>("Stable (Main)")
         val entryValues = mutableListOf<CharSequence>("main")
         

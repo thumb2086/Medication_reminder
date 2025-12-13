@@ -27,12 +27,22 @@ fun getGitCommandOutput(vararg command: String): String {
     }
 }
 
+// Helper to get the latest Git tag version (e.g. v1.2.0 -> 1.2.0)
+// CHANGED: Added --exact-match to ensure we only use the tag if the current commit IS the tag.
+// If we are ahead of the tag (nightly/dev), this returns empty/error, so we fallback to config.gradle.kts.
+fun getGitTagVersion(): String? {
+    val tag = getGitCommandOutput("git", "describe", "--tags", "--exact-match", "--match", "v*")
+    return if (tag.startsWith("v")) tag.substring(1) else null
+}
+
 android {
     namespace = "com.example.medicationreminderapp"
     compileSdk = 36
 
     // --- Dynamic versioning and configuration logic starts ---
-    val appConfig: Map<String, Any> by extra
+    // Safe casting for appConfig
+    @Suppress("UNCHECKED_CAST")
+    val appConfig = extra["appConfig"] as? Map<String, Any> ?: emptyMap()
 
     // Get Git info
     val commitCount = getGitCommandOutput("git", "rev-list", "--count", "HEAD").toIntOrNull() ?: 1
@@ -40,15 +50,18 @@ android {
         if (it.isBlank() || it == "HEAD" || it == "git-error") "main" else it // Default to main if detached HEAD or error
     }
 
-    // Get base config values
-    val baseApplicationId = appConfig["baseApplicationId"] as String
-    val baseVersionName = appConfig["baseVersionName"] as String
-    val appName = appConfig["appName"] as String
-    val prodApiUrl = appConfig["prodApiUrl"] as String
-    val devApiUrl = appConfig["devApiUrl"] as String
+    // Get base config values with fallback
+    val gitTagVersion = getGitTagVersion()
+    val configVersionName = appConfig["baseVersionName"] as? String ?: "1.0.0"
+    val baseVersionName = gitTagVersion ?: configVersionName
+    
+    val baseApplicationId = appConfig["baseApplicationId"] as? String ?: "com.example.medicationreminderapp"
+    // Fallback appName if missing to prevent empty filename prefix
+    val appName = appConfig["appName"] as? String ?: "MedicationReminder"
+    val prodApiUrl = appConfig["prodApiUrl"] as? String ?: "https://api.production.com"
+    val devApiUrl = appConfig["devApiUrl"] as? String ?: "https://api.dev.com"
 
     // Determine branch-specific configuration
-    // Replace / and - with _ to be consistent with CI/CD logic
     val safeBranchName = branchName.replace("/", "_").replace("-", "_").replace(Regex("[^a-zA-Z0-9_]"), "")
 
     // Treat main, master, and unknown as production/default
@@ -57,12 +70,9 @@ android {
     
     // Logic: Use environment variables from CI/CD if available, otherwise fallback to local logic
     val envBuildNumber = System.getenv("BUILD_NUMBER")?.toIntOrNull()
-    // Allow overriding versionCode directly (e.g. from timestamp) to prevent regression on branch switch
     val envVersionCodeOverride = System.getenv("VERSION_CODE_OVERRIDE")?.toIntOrNull()
     val envVersionName = System.getenv("VERSION_NAME")
 
-    // Priority: Override (Timestamp) > BuildNumber (CI run) > CommitCount (Local)
-    // This ensures increasing version codes for updates
     val finalVersionCode = envVersionCodeOverride ?: envBuildNumber ?: commitCount
 
     val localVersionName = when {
@@ -75,11 +85,17 @@ android {
     
     // Ensure filename doesn't have spaces
     val safeVersionName = finalVersionName.replace(" ", "-")
-    val finalArchivesBaseName = "$appName-v$safeVersionName"
     
-    // REMOVED: Dynamic Application ID suffixing. 
-    // Consistent ID ensures updates work across branches (assuming signatures match).
-    val finalApplicationId = baseApplicationId 
+    // Use a hardcoded prefix "MedicationReminder" for file naming to avoid issues with Chinese characters or missing config
+    // The display name (app_name) can still use the Chinese name.
+    val filePrefix = "MedicationReminder"
+    val finalArchivesBaseName = "$filePrefix-v$safeVersionName"
+    
+    val finalApplicationId = when {
+        isProduction -> baseApplicationId
+        isDev -> "$baseApplicationId.dev"
+        else -> "$baseApplicationId.nightly"
+    }
     
     val finalAppName = if (isProduction) appName else "$appName ($branchName)"
     val finalApiUrl = if (isProduction) prodApiUrl else devApiUrl
@@ -91,7 +107,6 @@ android {
         applicationId = finalApplicationId
         minSdk = 29
         targetSdk = 36
-        // Ensure versionCode is at least 1
         versionCode = if (finalVersionCode > 0) finalVersionCode else 1
         versionName = finalVersionName
 
@@ -99,25 +114,21 @@ android {
 
         setProperty("archivesBaseName", finalArchivesBaseName)
 
-        // Dynamically set BuildConfig fields
         buildConfigField("String", "API_URL", "\"$finalApiUrl\"")
         buildConfigField("boolean", "ENABLE_LOGGING", enableLogging.toString())
         buildConfigField("String", "UPDATE_CHANNEL", "\"$safeBranchName\"")
 
-        // Dynamically set Android resources (e.g., app_name)
         resValue("string", "app_name", finalAppName)
     }
 
     signingConfigs {
         create("release") {
-            // 1. 嘗試載入 local.properties (為了本機開發)
             val keystorePropertiesFile = rootProject.file("local.properties")
             val keystoreProperties = Properties()
             if (keystorePropertiesFile.exists()) {
                 keystoreProperties.load(FileInputStream(keystorePropertiesFile))
             }
 
-            // 2. 設定邏輯：優先讀取系統環境變數 (Cloud)，讀不到則讀取 local.properties (Local)
             storePassword = System.getenv("RELEASE_STORE_PASSWORD") 
                             ?: keystoreProperties["store.password"] as String?
             
@@ -127,8 +138,6 @@ android {
             keyPassword = System.getenv("RELEASE_KEY_PASSWORD") 
                           ?: keystoreProperties["key.password"] as String?
 
-            // 3. 處理 Keystore 檔案路徑
-            // 在 GitHub Actions 中，通常會把 Base64 解碼後的檔案路徑設為環境變數
             val cloudKeystorePath = System.getenv("RELEASE_KEYSTORE_PATH")
             val localKeystorePath = keystoreProperties["store.file"] as String?
 
@@ -137,7 +146,6 @@ android {
             } else if (!localKeystorePath.isNullOrEmpty()) {
                 storeFile = file(localKeystorePath)
             } else {
-                // 如果兩邊都找不到，預設找 release.keystore，避免報錯但可能無法簽名
                 val defaultFile = file("release.keystore")
                 if (defaultFile.exists()) {
                      storeFile = defaultFile
@@ -148,14 +156,10 @@ android {
 
     buildTypes {
         getByName("release") {
-            // Safety check: Only apply signing config if password exists AND file exists
-            // to avoid gradle sync/build failures if keystore is missing locally.
-            // If missing, fallback to debug signing to ensure build succeeds locally.
             val releaseConfig = signingConfigs.getByName("release")
             if (releaseConfig.storePassword != null && releaseConfig.storeFile?.exists() == true) {
                 signingConfig = releaseConfig
             } else {
-                // Use logger.info or logger.warn instead of println to avoid polluting stdout which is captured by CI/CD scripts
                 logger.warn("Release keystore not found or configuration incomplete. Falling back to debug signing.")
                 signingConfig = signingConfigs.getByName("debug")
             }
@@ -177,7 +181,6 @@ android {
         buildConfig = true
     }
 
-    // Temporary fix for Lint crash during release build (AGP/Kotlin issue)
     lint {
         checkReleaseBuilds = false
         abortOnError = false
@@ -201,8 +204,6 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-
-    // Hilt
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
 }
@@ -218,9 +219,7 @@ kapt {
     correctErrorTypes = true
 }
 
-// Task to print the version name for CI/CD
 tasks.register("printVersionName") {
-    // Use legacy AppExtension to get the version name safely
     doLast {
         val android = project.extensions.findByName("android") as? com.android.build.gradle.AppExtension
         println(android?.defaultConfig?.versionName ?: "unknown")
