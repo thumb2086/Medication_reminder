@@ -53,6 +53,7 @@ android {
 
     // Treat main, master, and unknown as production/default
     val isProduction = safeBranchName == "main" || safeBranchName == "master" || safeBranchName == "unknown"
+    val isDev = safeBranchName == "dev"
     
     // Logic: Use environment variables from CI/CD if available, otherwise fallback to local logic
     val envBuildNumber = System.getenv("BUILD_NUMBER")?.toIntOrNull()
@@ -64,13 +65,10 @@ android {
     // This ensures increasing version codes for updates
     val finalVersionCode = envVersionCodeOverride ?: envBuildNumber ?: commitCount
 
-    val localVersionName = if (isProduction) {
-        baseVersionName
-    } else {
-        // Requested format: "1.0.0 nightly <CommitCount>"
-        // We use commitCount here for display purposes, even if versionCode uses timestamp
-        // This provides a cleaner version string like "1.2.0 nightly 161" instead of "1.2.0 nightly 25012710"
-        "$baseVersionName nightly $commitCount"
+    val localVersionName = when {
+        isProduction -> baseVersionName
+        isDev -> "$baseVersionName dev $commitCount"
+        else -> "$baseVersionName nightly $commitCount"
     }
     
     val finalVersionName = envVersionName ?: localVersionName

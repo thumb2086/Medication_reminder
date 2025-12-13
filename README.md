@@ -16,10 +16,11 @@ A smart medication reminder application integrated with an ESP32-based smart pil
 *   **Alarm System:** Set up to 4 alarms on the ESP32 pillbox for standalone reminders.
 *   **Interactive Charts:** View temperature and humidity trends with interactive line charts, supporting pan, zoom, and data point inspection.
 *   **In-App Updates:** Automatically checks for updates from GitHub Releases.
-    *   **Selectable Channels:** Users can choose between **Stable**, **Dev**, or **Nightly** update channels directly in the App Settings.
+    *   **Selectable Channels:** Users can choose between **Stable**, **Dev**, or browse **Active Development Branches** directly in the App Settings.
     *   **Dynamic Update Checks:** The app intelligently fetches the latest build for the selected channel (e.g., `update_dev.json`, `update_nightly.json`).
     *   **Stable:** Official releases from the `main` branch.
-    *   **Dev/Nightly:** Cutting-edge builds from development branches.
+    *   **Dev:** Cutting-edge builds from the `dev` branch.
+    *   **Dynamic Branch Discovery:** The app queries GitHub Releases to find available active branches (tagged as `nightly-<branch>`), allowing you to test specific feature branches easily.
 *   **Robust Update Installation:** Smart handling of APK downloads with automatic fallback mechanisms to ensure successful installation on various Android versions (including Android 13+).
 *   **Multi-Channel CI/CD:** Supports dynamic "Feature Branch" releases. Every branch gets its own update channel (e.g., `feat-new-ui`), allowing parallel testing without interference.
 
@@ -48,6 +49,7 @@ This project uses GitHub Actions for continuous integration and automated versio
     *   Generates a dedicated update channel for that branch (e.g., `update_feat_login.json`).
     *   Builds an APK with a corresponding version name.
     *   Testers installing the APK from a specific branch will only receive updates for that branch.
+*   **Branch Cleanup:** When a branch is deleted, the corresponding nightly release and tag are automatically removed to keep the release list clean.
 *   **Versioning:** The `versionCode` is generated based on the build timestamp (`yyMMddHH`) to ensure strictly increasing versions across branches, preventing downgrade issues. The `versionName` includes branch and commit information.
 
 ## License

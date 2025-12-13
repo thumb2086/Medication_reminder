@@ -1,34 +1,41 @@
 # 更新日誌
 
 ## 2025-01-27
+### Code Quality
+*   **SettingsFragment 警告修復:**
+    *   **未使用導入:** 移除了 `SettingsFragment.kt` 中未使用的 `android.content.Context`。
+    *   **多餘條件:** 移除了 `setupUpdateChannelPreference` 中 `if (currentChannel != "main")` 與 `currentChannel.isNotEmpty()` 的多餘檢查，簡化了列表構建邏輯，直接判斷 `entryValues` 是否包含當前頻道。
+    *   **資源清理:** 移除了 `strings.xml` 中未使用的 `add_custom_channel_title`, `add_custom_channel_hint` 資源，解決了翻譯遺失的 Error。
+    *   **排版修正:** 將 `update_channel_summary` 中的省略號從 `...` 替換為標準的 Unicode 省略號 `…` (&#8230;)。
+
 ### DevOps
+*   **分支發布管理 (Branch Release Cleanup):**
+    *   **GitHub Actions:** 在 `.github/workflows/android-cicd.yml` 中新增了 `delete` 事件觸發器。
+    *   **自動清理:** 當 Git 分支被刪除時，Workflow 會自動執行 `cleanup` 作業，刪除對應的 `nightly-<branch>` Release 和 Tag，並清理 `gh-pages` 分支上的 `update_<branch>.json` 設定檔，保持發布環境整潔。
+*   **版本號顯示修復:**
+    *   **Dev 頻道顯示:** 更新 `app/build.gradle.kts`，當分支為 `dev` 時，版本號將顯示為 `<Version> dev <CommitCount>` (例如 `1.2.0 dev 201`)，不再顯示為 `nightly`。
+    *   **Nightly 頻道:** 非 `main` 且非 `dev` 的分支維持 `<Version> nightly <CommitCount>` 格式。
 *   **多頻道 (Multi-Channel) CI/CD 架構:**
     *   **動態頻道:** 支援基於 Git 分支名稱的動態更新頻道 (例如 `dev`, `feat-new-ui`, `fix-login-bug`)。每個分支現在都擁有獨立的 `update_<branch>.json` 更新設定檔與 Nightly Release。
     *   **Gradle 配置:** 更新 `app/build.gradle.kts`，自動將 Git 分支名稱轉換為安全的 `UPDATE_CHANNEL` 並注入 `BuildConfig`。
     *   **GitHub Actions:** 更新 `.github/workflows/android-cicd.yml`，針對 `push` 事件自動生成對應頻道的 JSON 設定檔，並利用 `gh-pages` 部署。
     *   **App 邏輯:** 重構 `UpdateManager.kt` 與 `SettingsFragment.kt`，現在 App 會自動根據建置時的分支 (`BuildConfig.UPDATE_CHANNEL`) 檢查對應的更新來源。
     *   **UI 調整:** 設定頁面中的「更新頻道」選項改為唯讀顯示 (或根據最新改動為可選列表)，直接告知使用者當前所在的頻道。
-*   **版本號機制優化:**
-    *   **Integer Overflow 修復:** 將 `.github/workflows/android-cicd.yml` 中的時間戳格式從 `yyyyMMddHH` 修改為 `yyMMddHH` (8位數)，防止 Version Code 溢出。
-    *   **版本倒退修復:** 引入 `VERSION_CODE_OVERRIDE` 環境變數 (時間戳)，確保無論分支如何切換，新建置的版本號始終大於舊版本，解決 Commit Count 變少導致無法更新的問題。
 
 ### UI/UX
-*   **設定頁面「關於」區塊:**
-    *   在 `SettingsFragment` 中實作了「關於」區塊的連結跳轉。
-    *   點擊「作者」、「專案」、「版本」可分別開啟 GitHub Profile, Repo 與 Releases 頁面。
-    *   在 `preferences.xml` 新增 `app_project` 設定項。
-*   **UI 遮擋修復:** 在 `SettingsFragment` 加入 `OnApplyWindowInsetsListener`，防止底部內容被系統手勢導航條遮擋。
-*   **底部導航列修復:** 修復從設定頁面返回時，底部主分頁按鈕顯示異常的問題。
+*   **動態更新頻道列表 (SettingsFragment):**
+    *   **GitHub Releases 整合:** 移除了手動「自訂頻道」輸入功能，改為自動從 GitHub API 獲取所有 Release Tags。
+    *   **智能解析:** 自動過濾出以 `nightly-` 開頭的標籤，並解析出分支名稱 (例如 `nightly-feat-ui` -> `feat-ui`)，動態填充至更新頻道列表供使用者選擇。
+    *   **列表排序:** 優先顯示 `Stable (Main)` 與 `Current`，接著顯示自動抓取的其他開發分支。
+*   **SettingsFragment 優化:**
+    *   **設定頁面「關於」區塊:** 實作連結跳轉 (GitHub Profile, Repo, Releases)。
+    *   **UI 遮擋修復:** 加入 `OnApplyWindowInsetsListener` 防止底部內容被系統手勢導航條遮擋。
+    *   **底部導航列修復:** 修復從設定頁面返回時，底部主分頁按鈕顯示異常的問題。
 
 ### Bug Fixes
 *   **國際化 (i18n):** 修復設定頁面「關於」區塊無英文翻譯問題 (`values-en/strings.xml`)。
-*   **BuildConfig 類型錯誤:** 修正 `build.gradle.kts` 中 `UPDATE_CHANNEL` 的定義，確保生成的 Java/Kotlin 代碼類型正確 (`String`)。
 *   **UpdateManager 清理:** 移除重複變數宣告與無效的空值檢查。
-
-### Code Quality
-*   **SettingsFragment 優化:**
-    *   修復未使用導入與代碼警告 (使用 KTX `toUri()`)。
-    *   修正 `ListPreference` 動態新增頻道的邏輯錯誤 (型別不匹配)。
+*   **BuildConfig 類型錯誤:** 修正 `build.gradle.kts` 中 `UPDATE_CHANNEL` 的定義。
 
 ## 2025-01-26
 ### Bug Fixes
