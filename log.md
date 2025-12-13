@@ -1,24 +1,20 @@
 # 更新日誌
 
 ## 2025-01-27
-### DevOps
-*   **APK 命名修復:**
-    *   **問題:** CI/CD 編譯出的 APK 檔名為 `-v1.2.0-nightly-246.apk`，前綴消失。
-    *   **原因:** `app/build.gradle.kts` 中的 `appName` 變數在 CI 環境下可能因為 `extra["appConfig"]` 轉型或讀取失敗而變成 null 或空值。
-    *   **解決:** 
-        *   在 `build.gradle.kts` 中加入嚴格的 `null` 檢查與預設值 fallback (例如 `appName` 預設為 "MedicationReminder")。
-        *   將 APK 檔案名稱前綴 (`archivesBaseName`) 強制設定為英文的 "MedicationReminder"，避免因中文 `appName` ("藥到叮嚀") 在某些 CI/CD 環境或檔案系統中產生亂碼或遺失。App 顯示名稱仍維持中文。
-    *   **CI/CD 腳本:** `android-cicd.yml` 改為直接尋找 Gradle 生成的 APK，不再依賴不穩定的 `grep` 解析，增強穩定性。
+### Configuration & Build Logic
+*   **版本號獲取優化:** 修正 `getGitTagVersion` 邏輯，加入 `--exact-match` 參數。現在只有當 Commit 剛好打上 Tag 時才會使用 Tag 的版本號 (Release)。其餘情況下 (Nightly/Dev)，會忽略舊 Tag，強制使用 `config.gradle.kts` 中的 `baseVersionName` (目前為 1.2.1) 進行拼接，解決了 Nightly 版本號停留在舊 Tag (1.2.0) 的問題。
 
-### Code Quality
-*   **SettingsFragment 優化:**
-    *   **Lint 警告修復:** 移除了 `SettingsFragment.kt` 中多餘的 `@Suppress` 註解。
-    *   **重構:** 移除了 `fetchAvailableChannels` 與 `updateChannelList` 中多餘的 `currentChannel` 參數，改為直接引用 `BuildConfig.UPDATE_CHANNEL`。
-    *   **Lint 警告修復 (Final):** 新增 `MainViewModel.getCurrentUpdateChannel()` 以繞過常數條件檢查。
+### DevOps (Previous)
+*   **APK 命名修復:** 解決 CI/CD 生成的 APK 檔名為 `-v1.2.0-nightly-246.apk` 的問題。
+    *   **Fallback 機制:** 在 `build.gradle.kts` 中為 `appName` 等變數加入預設值。
+    *   **檔案前綴:** 強制設定 APK 檔名前綴為 "MedicationReminder"，避免中文亂碼或變數遺失。
+*   **CI/CD 腳本:** `android-cicd.yml` 改為直接尋找 Gradle 生成的 APK。
 
-### Configuration
-*   **Application ID 三軌並行:**
-    *   **Side-by-Side 安裝支援升級:** 修正 `app/build.gradle.kts` 的 Application ID 邏輯，區分 Main, Dev, Nightly。
+### Code Quality (Previous)
+*   **SettingsFragment 優化:** 移除多餘的 Suppress 警告，重構 `updateChannelList` 參數傳遞，新增 ViewModel 輔助方法繞過 Lint 檢查。
+
+### Configuration (Previous)
+*   **Application ID 三軌並行:** 區分 Main, Dev, Nightly 的 Application ID，支援同時安裝。
 
 ### Configuration & Build Logic (Previous)
 *   **版本號策略優化:**

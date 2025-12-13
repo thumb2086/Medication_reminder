@@ -28,8 +28,10 @@ fun getGitCommandOutput(vararg command: String): String {
 }
 
 // Helper to get the latest Git tag version (e.g. v1.2.0 -> 1.2.0)
+// CHANGED: Added --exact-match to ensure we only use the tag if the current commit IS the tag.
+// If we are ahead of the tag (nightly/dev), this returns empty/error, so we fallback to config.gradle.kts.
 fun getGitTagVersion(): String? {
-    val tag = getGitCommandOutput("git", "describe", "--tags", "--abbrev=0", "--match", "v*")
+    val tag = getGitCommandOutput("git", "describe", "--tags", "--exact-match", "--match", "v*")
     return if (tag.startsWith("v")) tag.substring(1) else null
 }
 

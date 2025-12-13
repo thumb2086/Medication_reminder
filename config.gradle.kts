@@ -4,7 +4,7 @@
 // Shared constants across all branches
 extra["appConfig"] = mapOf(
     "baseApplicationId" to "com.example.medicationreminderapp",
-    "baseVersionName" to "1.2.1",
+    "baseVersionName" to "1.2.0",
     "appName" to "藥到叮嚀",
     "prodApiUrl" to "https://api.production.com",
     "devApiUrl" to "https://api.dev.com"
