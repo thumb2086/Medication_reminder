@@ -61,15 +61,16 @@ android {
     val envVersionName = System.getenv("VERSION_NAME")
 
     // Priority: Override (Timestamp) > BuildNumber (CI run) > CommitCount (Local)
+    // This ensures increasing version codes for updates
     val finalVersionCode = envVersionCodeOverride ?: envBuildNumber ?: commitCount
 
     val localVersionName = if (isProduction) {
         baseVersionName
     } else {
-        // Requested format: "1.0.0 nightly <Code>"
-        // Use finalVersionCode (timestamp in CI, commit count locally) for the suffix
-        // This ensures the App's UpdateManager sees a higher number for new CI builds compared to local builds or old branches.
-        "$baseVersionName nightly $finalVersionCode"
+        // Requested format: "1.0.0 nightly <CommitCount>"
+        // We use commitCount here for display purposes, even if versionCode uses timestamp
+        // This provides a cleaner version string like "1.2.0 nightly 161" instead of "1.2.0 nightly 25012710"
+        "$baseVersionName nightly $commitCount"
     }
     
     val finalVersionName = envVersionName ?: localVersionName
