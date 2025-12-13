@@ -22,21 +22,25 @@
 
 ### Configuration (Previous)
 *   **Application ID 三軌並行:** 區分 Main, Dev, Nightly 的 Application ID，支援同時安裝。
+### Configuration
+*   **版本號回滾:** 專案基礎版本號還原為 `1.2.0`。
+*   **APK 命名修復:** 優化 CI/CD 腳本 (`android-cicd.yml`)，使其能正確解析 Gradle 動態生成的版本號，解決 APK 檔名顯示為 `MedicationReminder-nightly.apk` 的問題。
+*   **Stable Channel JSON 生成:** CI/CD 流程中，Stable Release 現在也會生成 `update_main.json`，供其他頻道檢查是否有正式版更新。
 
-### Configuration & Build Logic (Previous)
-*   **版本號策略優化:**
-    *   **Git Tag 優先:** 修改 `app/build.gradle.kts`，優先讀取 Git Tag。
-    *   **Base Version 升級:** 更新為 `1.2.1`。
+### Code Quality
+*   **UpdateManager 優化:** 修復 `UpdateManager.kt` 中不必要的非空斷言 (Safe Call reduction)，移除 `response.body` 的可空性檢查，因為 `isSuccessful` 為真時 `response.body` 通常不為空。
 
-### UI/UX (Previous)
-*   **SettingsFragment 預設頻道優化:** 修正 Nightly 版的預設更新頻道。
-*   **Accessibility 修復:** 修復無障礙標籤。
-*   **動態表單角色圖示修復:** 修復表單圖片未切換問題。
+### Configuration & Build Logic
+*   **版本號獲取邏輯優化:** 修正 `getGitTagVersion`，加入 `--exact-match` 參數。只有當 Commit 完全對應到 Tag 時才會使用 Tag 版本號，否則 (Dev/Nightly) 會強制使用 `config.gradle.kts` 中的 `baseVersionName` 並拼接後綴，解決版本號停滯問題。
 
-### DevOps (Previous)
-*   **Release 命名格式修正:** Nightly Release Title 優化為 `<Branch> | <VersionName>`。
-*   **跨頻道更新支援:** 允許使用者強制切換頻道並下載更新。
-*   **CI/CD 重構:** APK 命名優化、手動清理模式、命名邏輯統一。
+### App Logic
+*   **更新頻道預設值優化:** `SettingsFragment` 現在會根據 `BuildConfig.UPDATE_CHANNEL` 自動設定預設頻道。
+    *   Dev 建置預設使用 Dev 頻道。
+    *   Stable 建置預設使用 Main 頻道。
+*   **跨頻道更新檢查:** `UpdateManager` 邏輯增強。非 Stable 頻道的用戶 (例如 Dev 用戶) 現在會同時檢查當前頻道與 Stable 頻道的更新。若發現更新的 Stable 版本，會主動提示更新，確保不錯過正式發布。
+
+### Documentation
+*   **README 更新:** 更新中英文文件，說明新的更新頻道策略與跨頻道檢查功能。
 
 ## 2025-01-26
 ### Bug Fixes

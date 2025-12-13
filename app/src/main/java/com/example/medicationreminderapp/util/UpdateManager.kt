@@ -45,8 +45,13 @@ class UpdateManager(private val context: Context) {
         return withContext(Dispatchers.IO) {
             try {
                 val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-                // Get user selected channel, default to "main"
-                val selectedChannel = prefs.getString("update_channel", "main") ?: "main"
+                
+                // Determine default channel based on BuildConfig
+                // BuildConfig.UPDATE_CHANNEL is generated as a non-null String, so use isEmpty() instead of isNullOrEmpty()
+                val defaultChannel = if (BuildConfig.UPDATE_CHANNEL.isEmpty()) "main" else BuildConfig.UPDATE_CHANNEL
+                
+                // Get user selected channel, fallback to the build's channel
+                val selectedChannel = prefs.getString("update_channel", defaultChannel) ?: defaultChannel
                 val currentChannel = BuildConfig.UPDATE_CHANNEL
                 
                 val isChannelSwitch = selectedChannel != currentChannel
@@ -57,7 +62,25 @@ class UpdateManager(private val context: Context) {
                 if (isStable) {
                     checkStableUpdates(isChannelSwitch)
                 } else {
-                    checkDynamicChannelUpdates(selectedChannel, isChannelSwitch)
+                    // Check both Dynamic (Dev/Nightly) and Stable channels
+                    val devUpdate = checkDynamicChannelUpdates(selectedChannel, isChannelSwitch)
+                    val stableUpdate = checkStableUpdates(false) // Don't force, just check for newer stable
+
+                    // Logic to pick the best update:
+                    // 1. If both exist, pick the newer one.
+                    // 2. Note: isNewerVersion(A, B) returns true if B > A.
+                    if (devUpdate != null && stableUpdate != null) {
+                        if (isNewerVersion(devUpdate.version, stableUpdate.version)) {
+                            Log.d("UpdateManager", "Stable update (${stableUpdate.version}) is newer than Dev update (${devUpdate.version})")
+                            stableUpdate
+                        } else {
+                            Log.d("UpdateManager", "Dev update (${devUpdate.version}) is newer or equal to Stable update (${stableUpdate.version})")
+                            devUpdate
+                        }
+                    } else {
+                        // devUpdate could be null, so check if stableUpdate is not null
+                        devUpdate ?: stableUpdate
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("UpdateManager", "Error checking for updates", e)
@@ -81,7 +104,8 @@ class UpdateManager(private val context: Context) {
             return null
         }
 
-        val jsonStr = response.body.string()
+        val responseBody = response.body
+        val jsonStr = responseBody.string() // response.body is not null if isSuccessful
         val json = gson.fromJson(jsonStr, JsonObject::class.java)
 
         // Parse JSON
