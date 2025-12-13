@@ -8,7 +8,7 @@ on:
       - "feat-*"
     tags:
       - 'v*' # Trigger on tags starting with v (e.g. v1.0.0)
-  delete: 
+  delete: {}
     # Trigger when a branch or tag is deleted.
     # NOTE: This workflow MUST be present in the default branch (main) to handle delete events for other branches.
 
@@ -209,12 +209,14 @@ jobs:
           echo "Branch Deleted: $RAW_BRANCH (Channel: $SAFE_NAME)"
 
       - name: Delete Channel Release and Tag
-        uses: dev-drprasad/delete-tag-and-release@v1.1
-        with:
-          tag_name: "nightly-${{ env.CHANNEL_NAME }}"
-          delete_release: true
-          delete_tag: true
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="nightly-${{ env.CHANNEL_NAME }}"
+          echo "Attempting to delete Release and Tag: $TAG_NAME"
+          # Use GitHub CLI to delete release (which can also cleanup tag)
+          # || true prevents the workflow from failing if the release doesn't exist
+          gh release delete "$TAG_NAME" --cleanup-tag --yes || echo "Release $TAG_NAME not found or already deleted. Skipping."
           
       - name: Checkout gh-pages
         uses: actions/checkout@v4
