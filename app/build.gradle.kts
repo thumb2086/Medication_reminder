@@ -46,9 +46,20 @@ android {
 
     // Get Git info
     val commitCount = getGitCommandOutput("git", "rev-list", "--count", "HEAD").toIntOrNull() ?: 1
-    val branchName = getGitCommandOutput("git", "rev-parse", "--abbrev-ref", "HEAD").let {
-        if (it.isBlank() || it == "HEAD" || it == "git-error") "main" else it // Default to main if detached HEAD or error
+    
+    // Check for CHANNEL_NAME from CI/CD first, otherwise use git branch
+    val envChannelName = System.getenv("CHANNEL_NAME")
+    
+    val branchName = if (!envChannelName.isNullOrBlank()) {
+        envChannelName
+    } else {
+        getGitCommandOutput("git", "rev-parse", "--abbrev-ref", "HEAD").let {
+            if (it.isBlank() || it == "HEAD" || it == "git-error") "main" else it // Default to main if detached HEAD or error
+        }
     }
+    
+    // Debug Log: Check which channel is detected
+    println("⚠️ Current Build Channel: ${envChannelName ?: "local"} (Branch: $branchName)")
 
     // Get base config values with fallback
     val gitTagVersion = getGitTagVersion()
@@ -61,8 +72,18 @@ android {
     val prodApiUrl = appConfig["prodApiUrl"] as? String ?: "https://api.production.com"
     val devApiUrl = appConfig["devApiUrl"] as? String ?: "https://api.dev.com"
 
+    // Repo Info for Updates
+    val repoOwner = "thumb2086"
+    val repoName = "Medication_reminder"
+
     // Determine branch-specific configuration
-    val safeBranchName = branchName.replace("/", "_").replace("-", "_").replace(Regex("[^a-zA-Z0-9_]"), "")
+    // Use the provided channel name directly if possible, otherwise sanitize locally.
+    // CI uses hyphens (e.g. feat-new-fun), so we align local sanitization to hyphens too.
+    val safeBranchName = if (!envChannelName.isNullOrBlank()) {
+        envChannelName
+    } else {
+        branchName.replace("/", "-").replace("_", "-").replace(Regex("[^a-zA-Z0-9-]"), "")
+    }
 
     // Treat main, master, and unknown as production/default
     val isProduction = safeBranchName == "main" || safeBranchName == "master" || safeBranchName == "unknown"
@@ -101,6 +122,10 @@ android {
     val finalApiUrl = if (isProduction) prodApiUrl else devApiUrl
     val enableLogging = !isProduction
 
+    // Construct Update URLs
+    val updateJsonUrl = "https://$repoOwner.github.io/$repoName/update_$safeBranchName.json"
+    val stableUpdateJsonUrl = "https://$repoOwner.github.io/$repoName/update_main.json"
+
     // --- Dynamic versioning and configuration logic ends ---
 
     defaultConfig {
@@ -117,6 +142,10 @@ android {
         buildConfigField("String", "API_URL", "\"$finalApiUrl\"")
         buildConfigField("boolean", "ENABLE_LOGGING", enableLogging.toString())
         buildConfigField("String", "UPDATE_CHANNEL", "\"$safeBranchName\"")
+        
+        // Inject Update URLs
+        buildConfigField("String", "UPDATE_JSON_URL", "\"$updateJsonUrl\"")
+        buildConfigField("String", "STABLE_UPDATE_JSON_URL", "\"$stableUpdateJsonUrl\"")
 
         resValue("string", "app_name", finalAppName)
     }

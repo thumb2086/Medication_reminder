@@ -1,5 +1,8 @@
 # 待辦事項 (To-Do List)
 
-- [ ] 調整 App 啟動時的自動更新檢查行為
-    - [ ] 用戶希望手動下載更新，而非啟動時強制檢查正式版更新。 (已透過優化預設頻道解決部分問題，待觀察)
-    - 測試253可不可以更新到254
+- [ ] 修復 UpdateManager.kt 中的 "Unnecessary safe call" 警告
+- [x] 修復 UpdateManager.kt 中的 "Condition is always 'false'" 警告 (False Positive)
+- [ ] 驗證 CI/CD 修復結果
+    - [ ] 推送程式碼至 GitHub (`git push`)
+    - [ ] 檢查 GitHub Actions 的 "Build with Gradle" 步驟日誌
+    - [ ] 確認日誌顯示 `⚠️ Current Build Channel: <branch-name>` 而非 `local`

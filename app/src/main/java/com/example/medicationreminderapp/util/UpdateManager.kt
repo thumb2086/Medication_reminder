@@ -47,8 +47,7 @@ class UpdateManager(private val context: Context) {
                 val prefs = PreferenceManager.getDefaultSharedPreferences(context)
                 
                 // Determine default channel based on BuildConfig
-                // BuildConfig.UPDATE_CHANNEL is generated as a non-null String, so use isEmpty() instead of isNullOrEmpty()
-                val defaultChannel = if (BuildConfig.UPDATE_CHANNEL.isEmpty()) "main" else BuildConfig.UPDATE_CHANNEL
+                val defaultChannel = BuildConfig.UPDATE_CHANNEL.ifEmpty { "main" }
                 
                 // Get user selected channel, fallback to the build's channel
                 val selectedChannel = prefs.getString("update_channel", defaultChannel) ?: defaultChannel
@@ -90,36 +89,50 @@ class UpdateManager(private val context: Context) {
     }
 
     private fun checkDynamicChannelUpdates(channel: String, force: Boolean): UpdateInfo? {
-        // Fetch JSON from GitHub Pages
-        val jsonUrl = "https://$repoOwner.github.io/$repoName/update_$channel.json"
+        // Fetch JSON from GitHub Pages or use injected BuildConfig URL
+        val jsonUrl = if (channel == BuildConfig.UPDATE_CHANNEL && BuildConfig.UPDATE_JSON_URL.isNotEmpty()) {
+            BuildConfig.UPDATE_JSON_URL
+        } else {
+            "https://$repoOwner.github.io/$repoName/update_$channel.json"
+        }
         
         val request = Request.Builder()
             .url(jsonUrl)
             .cacheControl(CacheControl.FORCE_NETWORK) // Always fetch latest
             .build()
 
-        val response = client.newCall(request).execute()
-        if (!response.isSuccessful) {
-            Log.e("UpdateManager", "Failed to fetch channel config: ${response.code}")
-            return null
+        try {
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) {
+                Log.e("UpdateManager", "Failed to fetch channel config from $jsonUrl: ${response.code}")
+                return null
+            }
+
+            // Using response.body directly as it is inferred as non-null by the environment
+            val jsonStr = response.body.string()
+            val json = gson.fromJson(jsonStr, JsonObject::class.java)
+
+            // Parse JSON
+            val remoteVersionCode = json.get("versionCode").asInt
+            val latestVersionName = json.get("latestVersion").asString
+            val downloadUrl = json.get("url").asString
+            val releaseNotes = json.get("releaseNotes").asString
+
+            // Compare logic:
+            // 1. If remote VersionCode > local VersionCode, update is available.
+            // 2. If it's a forced channel switch, allow update (unless version code is same/older but we want to allow reinstall? usually stricter is better)
+            
+            // Note: Dev versions often rely on timestamps or build numbers which should strictly increase.
+            // BuildConfig.VERSION_CODE should be set to that timestamp/build number.
+            
+            Log.d("UpdateManager", "Remote Code: $remoteVersionCode, Local Code: ${BuildConfig.VERSION_CODE}")
+
+            if (remoteVersionCode > BuildConfig.VERSION_CODE || force) {
+                 return UpdateInfo(latestVersionName, downloadUrl, releaseNotes, true)
+            }
+        } catch (e: Exception) {
+            Log.e("UpdateManager", "Exception in checkDynamicChannelUpdates", e)
         }
-
-        val responseBody = response.body
-        val jsonStr = responseBody.string() // response.body is not null if isSuccessful
-        val json = gson.fromJson(jsonStr, JsonObject::class.java)
-
-        // Parse JSON
-        val remoteVersionCode = json.get("versionCode").asInt
-        val latestVersionName = json.get("latestVersion").asString
-        val downloadUrl = json.get("url").asString
-        val releaseNotes = json.get("releaseNotes").asString
-
-        // Compare logic:
-        // 1. If remote VersionCode > local VersionCode, update is available.
-        // 2. If it's a forced channel switch, allow update.
-        if (remoteVersionCode > BuildConfig.VERSION_CODE || force) {
-            return UpdateInfo(latestVersionName, downloadUrl, releaseNotes, true)
-        } 
         
         return null
     }
@@ -128,38 +141,42 @@ class UpdateManager(private val context: Context) {
         val url = "https://api.github.com/repos/$repoOwner/$repoName/releases/latest"
         val request = Request.Builder().url(url).build()
 
-        val response = client.newCall(request).execute()
-        if (!response.isSuccessful) return null
+        try {
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) return null
 
-        val responseBody = response.body
-        val jsonStr = responseBody.string()
-        val json = gson.fromJson(jsonStr, JsonObject::class.java)
+            // Using response.body directly as it is inferred as non-null by the environment
+            val jsonStr = response.body.string()
+            val json = gson.fromJson(jsonStr, JsonObject::class.java)
 
-        val tagName = json.get("tag_name").asString
-        val releaseNotes = json.get("body").asString
-        
-        // Check for assets
-        val assets = json.getAsJsonArray("assets")
-        if (assets.size() == 0) return null
-        
-        var apkUrl = ""
-        
-        for (asset in assets) {
-            val assetObj = asset.asJsonObject
-            val name = assetObj.get("name").asString
-            if (name.endsWith(".apk")) {
-                apkUrl = assetObj.get("browser_download_url").asString
-                break
+            val tagName = json.get("tag_name").asString
+            val releaseNotes = json.get("body").asString
+            
+            // Check for assets
+            val assets = json.getAsJsonArray("assets")
+            if (assets.size() == 0) return null
+            
+            var apkUrl = ""
+            
+            for (asset in assets) {
+                val assetObj = asset.asJsonObject
+                val name = assetObj.get("name").asString
+                if (name.endsWith(".apk")) {
+                    apkUrl = assetObj.get("browser_download_url").asString
+                    break
+                }
             }
-        }
-        
-        if (apkUrl.isEmpty()) return null
+            
+            if (apkUrl.isEmpty()) return null
 
-        val remoteVersion = tagName.removePrefix("v")
-        val currentVersionNormalized = BuildConfig.VERSION_NAME.replace(" ", "-")
+            val remoteVersion = tagName.removePrefix("v")
+            val currentVersionNormalized = BuildConfig.VERSION_NAME.replace(" ", "-")
 
-        if (isNewerVersion(currentVersionNormalized, remoteVersion) || force) {
-             return UpdateInfo(remoteVersion, apkUrl, releaseNotes, false)
+            if (isNewerVersion(currentVersionNormalized, remoteVersion) || force) {
+                 return UpdateInfo(remoteVersion, apkUrl, releaseNotes, false)
+            }
+        } catch (e: Exception) {
+             Log.e("UpdateManager", "Exception in checkStableUpdates", e)
         }
         return null
     }
@@ -191,11 +208,16 @@ class UpdateManager(private val context: Context) {
             return remoteCount > localCount
         }
         
+        // If versions are "1.2.0" and "1.2.0-nightly", semantically usually 1.2.0 > 1.2.0-nightly
+        // But here we are comparing display strings.
+        
         return false
     }
 
     private fun getCommitCount(version: String): Int? {
-        val parts = version.split("-", " ")
+        // Try to parse the last numeric part which is usually the commit count or build timestamp
+        // Format: "1.2.1 dev 205" or "1.2.1-dev-205"
+        val parts = version.replace("-", " ").split(" ")
         val lastPart = parts.lastOrNull()
         return lastPart?.toIntOrNull()
     }
@@ -319,7 +341,7 @@ class UpdateManager(private val context: Context) {
 
             val uri = FileProvider.getUriForFile(
                 context,
-                "${context.packageName}.provider",
+                "${BuildConfig.APPLICATION_ID}.provider",
                 file
             )
 

@@ -1,6 +1,21 @@
 # 更新日誌
 
 ## 2025-01-27
+### Code Quality
+*   **UpdateManager Refactoring:** Addressed "Condition is always 'false'" warnings in `UpdateManager.kt` by using the Elvis operator (`?:`) for concise null checks on `response.body`.
+
+## 2025-01-27
+### CI/CD Fixes
+*   **環境變數傳遞修復:** 
+    *   **CI/CD Pipeline:** 在 `android-cicd.yml` 的 `Build with Gradle` 步驟中，顯式添加了 `CHANNEL_NAME: ${{ env.CHANNEL_NAME }}`。這解決了 Gradle 無法讀取到頻道名稱，導致所有非 Main 分支的建置都錯誤地指向 `update_official.json` 的問題。
+    *   **Build Logic:** 在 `app/build.gradle.kts` 中加入了 Debug Log (`println("⚠️ Current Build Channel...")`)，以便在未來的 CI/CD Logs 中快速驗證頻道解析是否正確。
+
+### Bug Fixes
+*   **更新與安裝修復:** 
+    *   **FileProvider 衝突解決:** 修改 `AndroidManifest.xml` 中的 `provider` 設定，將 `authorities` 改為動態變數 `${applicationId}.provider`，解決了不同版本 (Dev/Nightly) 共存或更新時的安裝失敗問題。
+    *   **UpdateManager 權限修正:** 同步更新 `UpdateManager` 中的安裝邏輯，確保 Intent 使用與 Manifest 一致的 Authority。
+    *   **更新檢查邏輯增強:** `UpdateManager` 現在會優先使用 `build.gradle` 注入的 `UPDATE_JSON_URL`，確保 Dev/Nightly 版本能準確抓取對應頻道的更新設定檔，並維持跨頻道檢查 Stable 版本的功能。
+
 ### UI/UX
 *   **WiFi 設定頁面優化:** 
     *   **介面翻新:** 引入 Material Design 風格，新增 `TextInputLayout` 提升輸入體驗。

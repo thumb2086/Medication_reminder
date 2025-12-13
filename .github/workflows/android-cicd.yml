@@ -87,13 +87,14 @@ jobs:
 
       - name: Build with Gradle
         env:
+          CHANNEL_NAME: ${{ env.CHANNEL_NAME }}
           RELEASE_KEYSTORE_PATH: ./release.keystore
           RELEASE_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           BUILD_NUMBER: ${{ github.run_number }}
           VERSION_CODE_OVERRIDE: ${{ env.TIMESTAMP }}
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleRelease || exit 1
 
       # [優化] 直接尋找 Gradle 生成的帶有版本號的 APK
       - name: Find and Rename APK
