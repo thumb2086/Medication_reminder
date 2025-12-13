@@ -3,6 +3,9 @@
 ## 2025-01-27
 ### DevOps
 *   **CI/CD 修復:**
+    *   **Cleanup Job 邏輯修正:** 修正了 `android-cicd.yml` 中 `cleanup` job 的分支名稱處理邏輯。
+        *   **問題:** 刪除分支時，GitHub Actions 的 `delete` 事件直接使用原始分支名稱 (例如 `fix-nightly-del-bench`)，但 Build 階段產生的 Tag 已將 `-` 替換為 `_` (例如 `nightly-fix_nightly_del_bench`)，導致 Cleanup Job 找不到對應的 Release/Tag 進行刪除。
+        *   **解決:** 在 `cleanup` job 中加入了與 Build 階段一致的 `sed` 替換邏輯 (`s/[\/\-]/\_/g`)，確保產生的 `TAG_NAME` 正確匹配已存在的 Nightly Release。
     *   **Schema Validation 修正:** 修正了 `android-cicd.yml` 中 `on.delete` 觸發器的語法錯誤。原寫法導致 Schema validation 警告 "Validates to more than one variant" (空物件 `{}` 在 YAML 中有時會被誤判)。現改為使用明確的空物件語法 `delete: {}`，或完全依賴預設行為，最終確認寫法正確無誤。
     *   **Cleanup Job 優化:**
         *   棄用 `dev-drprasad/delete-tag-and-release` action，改用 GitHub CLI (`gh release delete`) 原生指令。
