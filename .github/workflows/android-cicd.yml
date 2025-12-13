@@ -1,7 +1,6 @@
 name: Android CI/CD
 
 on:
-  # 1. 自動觸發：推送到開發分支或打正式 Tag
   push:
     branches:
       - "dev"
@@ -9,21 +8,17 @@ on:
       - "feat-*"
     tags:
       - 'v*'
-  
-  # 2. 自動觸發：刪除分支時
   delete: {}
-
-  # 3. 【新功能】手動觸發：專門用來清理殘留的垃圾
   workflow_dispatch:
     inputs:
       target_branch_name:
-        description: '輸入要清理的分支原始名稱 (例如 fix-nightly-del-bench)'
+        description: '手動清理的分支名稱 (例如 feat/new-fun)'
         required: true
         type: string
 
 jobs:
   # ========================================================
-  # Job 1: 建置與發布 (Build & Release)
+  # Job 1: Build & Release
   # ========================================================
   build:
     name: Build and Release
@@ -44,25 +39,28 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      # 核心邏輯：計算 Channel 名稱 (統一邏輯)
+      # ---------------------------------------------------
+      # [核心重構] 命名邏輯：全數轉為減號 (-)
+      # ---------------------------------------------------
       - name: Determine Channel & Tag Name
         id: names
         run: |
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-             echo "Triggered by Official Tag."
              echo "IS_OFFICIAL=true" >> $GITHUB_ENV
           else
-             # 取得分支名稱 (移除 refs/heads/)
+             # 1. 取得原始分支名稱 (去除 refs/heads/)
              RAW_BRANCH=${GITHUB_REF#refs/heads/}
-             
-             # 【統一邏輯點】將 / 和 - 替換為 _
-             SAFE_NAME=$(echo "$RAW_BRANCH" | sed 's/[\/\-]/\_/g')
-             
+          
+             # 2. 【標準化】將 '/' 和 '_' 全部替換為 '-'
+             # 例如: feat/new_fun -> feat-new-fun
+             # 例如: fix_bug      -> fix-bug
+             SAFE_NAME=$(echo "$RAW_BRANCH" | tr '/_' '-')
+          
              echo "CHANNEL_NAME=$SAFE_NAME" >> $GITHUB_ENV
              echo "TAG_NAME=nightly-$SAFE_NAME" >> $GITHUB_ENV
              echo "IS_OFFICIAL=false" >> $GITHUB_ENV
-             
-             echo "Mode: Nightly | Channel: $SAFE_NAME | Tag: nightly-$SAFE_NAME"
+          
+             echo "::notice::Branch processed: $RAW_BRANCH -> $SAFE_NAME (Tag: nightly-$SAFE_NAME)"
           fi
 
       - name: Grant Execute Permission for Gradlew
@@ -70,14 +68,11 @@ jobs:
 
       - name: Decode Secrets
         run: |
-          # Google Services
           if [ ! -z "${{ secrets.GOOGLE_SERVICES_JSON }}" ]; then
             echo "${{ secrets.GOOGLE_SERVICES_JSON }}" > app/google-services.json
           else
             echo "{}" > app/google-services.json
           fi
-          
-          # Keystore (使用 base64 寫入檔案)
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
 
       - name: Generate Version Code
@@ -96,10 +91,10 @@ jobs:
         run: ./gradlew assembleRelease
 
       - name: Rename APK
-        id: rename_apk
         run: |
           VERSION_NAME=$(./gradlew -q app:printVersionName)
-          SAFE_VERSION=$(echo "$VERSION_NAME" | sed 's/ /-/g')
+          # 版本號中的空白也轉成減號
+          SAFE_VERSION=$(echo "$VERSION_NAME" | tr ' ' '-')
           
           SRC_APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
           NEW_FILENAME="MedicationReminder-$SAFE_VERSION.apk"
@@ -108,7 +103,7 @@ jobs:
           echo "APK_FILENAME=$NEW_FILENAME" >> $GITHUB_ENV
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
 
-      # --- 1. 正式版發布 ---
+      # --- Official Release ---
       - name: Create Official Release
         if: env.IS_OFFICIAL == 'true'
         uses: softprops/action-gh-release@v1
@@ -118,11 +113,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # --- 2. Nightly 版發布與 JSON 更新 ---
+      # --- Nightly Release ---
       - name: Generate Channel JSON
         if: env.IS_OFFICIAL == 'false'
         run: |
           mkdir -p public
+          # 檔名統一使用 SAFE_NAME (全減號)
           JSON_FILE="update_${{ env.CHANNEL_NAME }}.json"
           APK_URL="https://github.com/${{ github.repository }}/releases/download/${{ env.TAG_NAME }}/${{ env.APK_FILENAME }}"
           
@@ -134,8 +130,6 @@ jobs:
             "releaseNotes": "Nightly build for ${{ env.CHANNEL_NAME }}"
           }
           EOF
-          
-          # 複製一份到當前目錄給 Release 用
           cp public/$JSON_FILE .
 
       - name: Deploy JSON to GitHub Pages
@@ -144,7 +138,7 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./public
-          keep_files: true # 重要：保留其他頻道的 JSON
+          keep_files: true
 
       - name: Create Nightly Release
         if: env.IS_OFFICIAL == 'false'
@@ -160,11 +154,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ========================================================
-  # Job 2: 清理 (Cleanup) - 支援 自動刪除 與 手動刪除
+  # Job 2: Cleanup (保持邏輯 100% 一致)
   # ========================================================
   cleanup:
     name: Cleanup Release & JSON
-    # 觸發條件：是刪除分支事件 OR 是手動觸發 (workflow_dispatch)
     if: >
       (github.event_name == 'delete' && github.event.ref_type == 'branch') || 
       github.event_name == 'workflow_dispatch'
@@ -176,52 +169,49 @@ jobs:
         id: target
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            # 手動輸入的分支名
             RAW_BRANCH="${{ inputs.target_branch_name }}"
-            echo "Trigger: Manual Dispatch"
+            echo "::notice::Trigger: Manual Dispatch for $RAW_BRANCH"
           else
-            # 刪除事件的分支名
             RAW_BRANCH="${{ github.event.ref }}"
-            echo "Trigger: Branch Deletion"
+            echo "::notice::Trigger: Branch Deletion for $RAW_BRANCH"
           fi
           
-          # 【統一邏輯點】確保與 Build Job 完全一致 (sed 寫法)
-          SAFE_NAME=$(echo "$RAW_BRANCH" | sed 's/[\/\-]/\_/g')
+          # ---------------------------------------------------
+          # [核心重構] 命名邏輯：必須與 Build Job 完全一致
+          # 將 '/' 和 '_' 全部替換為 '-'
+          # ---------------------------------------------------
+          SAFE_NAME=$(echo "$RAW_BRANCH" | tr '/_' '-')
+          
           TAG_NAME="nightly-$SAFE_NAME"
           JSON_FILE="update_${SAFE_NAME}.json"
           
-          echo "Processing Branch: $RAW_BRANCH"
-          echo "Target Tag: $TAG_NAME"
-          echo "Target JSON: $JSON_FILE"
-          
           echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
           echo "JSON_FILE=$JSON_FILE" >> $GITHUB_ENV
+          
+          echo "::notice::Targeting -> Tag: $TAG_NAME | JSON: $JSON_FILE"
 
       - name: Delete GitHub Release and Tag
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Deleting Release/Tag: ${{ env.TAG_NAME }}"
-          # 使用 || true 忽略錯誤 (如果已經手動刪除了也不會報錯)
-          gh release delete "${{ env.TAG_NAME }}" --cleanup-tag --yes || echo "Release/Tag not found or already deleted."
+          gh release delete "${{ env.TAG_NAME }}" --cleanup-tag --yes || echo "::warning::Release/Tag $TAG_NAME not found (might be already deleted)"
 
       - name: Cleanup JSON from gh-pages
         uses: actions/checkout@v4
         with:
           ref: gh-pages
-          
+          fetch-depth: 0
+
       - name: Remove JSON File
         run: |
           TARGET_FILE="${{ env.JSON_FILE }}"
           if [ -f "$TARGET_FILE" ]; then
-            echo "Removing $TARGET_FILE from gh-pages..."
             git config --global user.name 'github-actions[bot]'
             git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-            
-            # 使用 git rm 刪除並提交
             git rm "$TARGET_FILE"
-            git commit -m "Cleanup $TARGET_FILE (triggered by cleanup)"
+            git commit -m "Cleanup $TARGET_FILE"
             git push origin gh-pages
+            echo "::notice::Successfully removed $TARGET_FILE"
           else
-            echo "File $TARGET_FILE does not exist on gh-pages. Skipping."
+            echo "::notice::File $TARGET_FILE not found on gh-pages. Nothing to do."
           fi
