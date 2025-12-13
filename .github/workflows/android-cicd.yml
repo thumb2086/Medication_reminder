@@ -1,30 +1,41 @@
 name: Android CI/CD
 
 on:
+  # 1. 自動觸發：推送到開發分支或打正式 Tag
   push:
     branches:
       - "dev"
       - "fix-*"
       - "feat-*"
     tags:
-      - 'v*' # Trigger on tags starting with v (e.g. v1.0.0)
+      - 'v*'
+  
+  # 2. 自動觸發：刪除分支時
   delete: {}
-    # Trigger when a branch or tag is deleted.
-    # NOTE: This workflow MUST be present in the default branch (main) to handle delete events for other branches.
+
+  # 3. 【新功能】手動觸發：專門用來清理殘留的垃圾
+  workflow_dispatch:
+    inputs:
+      target_branch_name:
+        description: '輸入要清理的分支原始名稱 (例如 fix-nightly-del-bench)'
+        required: true
+        type: string
 
 jobs:
+  # ========================================================
+  # Job 1: 建置與發布 (Build & Release)
+  # ========================================================
   build:
     name: Build and Release
-    if: github.event_name == 'push' # Only run build on push
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Required for git rev-list to work correctly in build.gradle.kts
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -33,158 +44,113 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Extract Branch Name and Channel
-        id: branch_info
+      # 核心邏輯：計算 Channel 名稱 (統一邏輯)
+      - name: Determine Channel & Tag Name
+        id: names
         run: |
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-             echo "Triggered by Tag. Skipping Channel Logic."
-             echo "CHANNEL_NAME=official" >> $GITHUB_ENV
+             echo "Triggered by Official Tag."
+             echo "IS_OFFICIAL=true" >> $GITHUB_ENV
           else
-             # Extract branch name
+             # 取得分支名稱 (移除 refs/heads/)
              RAW_BRANCH=${GITHUB_REF#refs/heads/}
-             # Replace / and - with _ to match Gradle logic
+             
+             # 【統一邏輯點】將 / 和 - 替換為 _
              SAFE_NAME=$(echo "$RAW_BRANCH" | sed 's/[\/\-]/\_/g')
              
              echo "CHANNEL_NAME=$SAFE_NAME" >> $GITHUB_ENV
-             echo "Current Channel: $SAFE_NAME"
+             echo "TAG_NAME=nightly-$SAFE_NAME" >> $GITHUB_ENV
+             echo "IS_OFFICIAL=false" >> $GITHUB_ENV
+             
+             echo "Mode: Nightly | Channel: $SAFE_NAME | Tag: nightly-$SAFE_NAME"
           fi
 
       - name: Grant Execute Permission for Gradlew
         run: chmod +x gradlew
 
-      - name: Decode Google Services JSON
-        env:
-          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+      - name: Decode Secrets
         run: |
-          if [ ! -z "$GOOGLE_SERVICES_JSON" ]; then
-            echo "$GOOGLE_SERVICES_JSON" > app/google-services.json
-            echo "google-services.json created."
+          # Google Services
+          if [ ! -z "${{ secrets.GOOGLE_SERVICES_JSON }}" ]; then
+            echo "${{ secrets.GOOGLE_SERVICES_JSON }}" > app/google-services.json
           else
-            echo "Warning: GOOGLE_SERVICES_JSON secret not found. creating dummy file to prevent build error."
             echo "{}" > app/google-services.json
           fi
-
-      - name: Decode Keystore
-        id: write_file
-        uses: timheuer/base64-to-file@v1.2
-        with:
-          fileName: 'release.keystore'
-          encodedString: ${{ secrets.KEYSTORE_BASE64 }}
+          
+          # Keystore (使用 base64 寫入檔案)
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
 
       - name: Generate Version Code
-        id: version_code
         run: |
-          # Generate a timestamp-based version code (e.g., 25012710)
-          # Format: yyMMddHH (8 digits).
           TIMESTAMP=$(date +'%y%m%d%H')
           echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
-          echo "Generated Version Code: $TIMESTAMP"
 
-      - name: Build with Gradle (Release)
+      - name: Build with Gradle
         env:
-          # Map Secrets to Env Vars used in app/build.gradle.kts
-          RELEASE_KEYSTORE_PATH: ${{ steps.write_file.outputs.filePath }}
+          RELEASE_KEYSTORE_PATH: ./release.keystore
           RELEASE_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          
-          # Inject Versioning Info
           BUILD_NUMBER: ${{ github.run_number }}
-          # Override versionCode with timestamp to ensure strictly increasing versions for Nightly builds across branches
           VERSION_CODE_OVERRIDE: ${{ env.TIMESTAMP }}
-        run: ./gradlew assembleRelease --stacktrace
-
-      - name: Get Version Name
-        id: version
-        run: |
-          VERSION_NAME=$(./gradlew -q app:printVersionName)
-          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_OUTPUT
-          echo "Detected Version: $VERSION_NAME"
+        run: ./gradlew assembleRelease
 
       - name: Rename APK
+        id: rename_apk
         run: |
-          # Handle spaces in VERSION_NAME by replacing them with dashes for the filename
-          SAFE_VERSION_NAME=$(echo "${{ steps.version.outputs.VERSION_NAME }}" | sed 's/ /-/g')
+          VERSION_NAME=$(./gradlew -q app:printVersionName)
+          SAFE_VERSION=$(echo "$VERSION_NAME" | sed 's/ /-/g')
           
-          # Find any APK in the release folder
-          TARGET_APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          SRC_APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          NEW_FILENAME="MedicationReminder-$SAFE_VERSION.apk"
+          
+          mv "$SRC_APK" "app/build/outputs/apk/release/$NEW_FILENAME"
+          echo "APK_FILENAME=$NEW_FILENAME" >> $GITHUB_ENV
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
 
-          if [ ! -z "$TARGET_APK" ]; then
-            mv "$TARGET_APK" app/build/outputs/apk/release/MedicationReminder-$SAFE_VERSION_NAME.apk
-            echo "APK_FILENAME=MedicationReminder-$SAFE_VERSION_NAME.apk" >> $GITHUB_ENV
-            echo "Renamed $TARGET_APK to MedicationReminder-$SAFE_VERSION_NAME.apk"
-          else
-            echo "Error: APK file not found!"
-            exit 1
-          fi
-
-      - name: Upload APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-apk
-          path: app/build/outputs/apk/release/${{ env.APK_FILENAME }}
-          retention-days: 7
-
-      # ------------------------------------------------------------------
-      # 1. Official Release (Stable)
-      # Trigger: Only on v* tags (e.g., v1.0.0)
-      # ------------------------------------------------------------------
+      # --- 1. 正式版發布 ---
       - name: Create Official Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: env.IS_OFFICIAL == 'true'
         uses: softprops/action-gh-release@v1
         with:
-          files: app/build/outputs/apk/release/*.apk
-          prerelease: false
+          files: app/build/outputs/apk/release/${{ env.APK_FILENAME }}
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # ------------------------------------------------------------------
-      # 2. Dynamic Channel Release (Dev & Nightly)
-      # Trigger: Push to supported branches (dev, fix-*, feat-*)
-      # ------------------------------------------------------------------
-      - name: Generate Channel Update JSON
-        if: "!startsWith(github.ref, 'refs/tags/')"
+      # --- 2. Nightly 版發布與 JSON 更新 ---
+      - name: Generate Channel JSON
+        if: env.IS_OFFICIAL == 'false'
         run: |
-          # Create a directory to hold the file for deployment
           mkdir -p public
+          JSON_FILE="update_${{ env.CHANNEL_NAME }}.json"
+          APK_URL="https://github.com/${{ github.repository }}/releases/download/${{ env.TAG_NAME }}/${{ env.APK_FILENAME }}"
           
-          JSON_FILENAME="update_${{ env.CHANNEL_NAME }}.json"
-          TAG_NAME="nightly-${{ env.CHANNEL_NAME }}"
-          APK_URL="https://github.com/thumb2086/Medication_reminder/releases/download/$TAG_NAME/${{ env.APK_FILENAME }}"
-          
-          echo "Generating $JSON_FILENAME..."
-          
-          cat <<EOF > public/$JSON_FILENAME
+          cat <<EOF > public/$JSON_FILE
           {
-            "latestVersion": "${{ steps.version.outputs.VERSION_NAME }}",
+            "latestVersion": "${{ env.VERSION_NAME }}",
             "versionCode": ${{ env.TIMESTAMP }},
             "url": "$APK_URL",
-            "releaseNotes": "Update for ${{ env.CHANNEL_NAME }} channel. Build: ${{ steps.version.outputs.VERSION_NAME }}"
+            "releaseNotes": "Nightly build for ${{ env.CHANNEL_NAME }}"
           }
           EOF
           
-          # Print content for debugging
-          cat public/$JSON_FILENAME
-          
-          # Copy to root workspace for the next step (Create Release) to pick it up easily
-          cp public/$JSON_FILENAME .
+          # 複製一份到當前目錄給 Release 用
+          cp public/$JSON_FILE .
 
       - name: Deploy JSON to GitHub Pages
-        if: "!startsWith(github.ref, 'refs/tags/')"
+        if: env.IS_OFFICIAL == 'false'
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./public
-          keep_files: true  # Essential! Ensures other channel JSONs are preserved
-          user_name: 'github-actions[bot]'
-          user_email: 'github-actions[bot]@users.noreply.github.com'
+          keep_files: true # 重要：保留其他頻道的 JSON
 
-      - name: Create Channel Release
-        if: "!startsWith(github.ref, 'refs/tags/')"
+      - name: Create Nightly Release
+        if: env.IS_OFFICIAL == 'false'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: "nightly-${{ env.CHANNEL_NAME }}"
+          tag_name: ${{ env.TAG_NAME }}
           files: |
             app/build/outputs/apk/release/${{ env.APK_FILENAME }}
             update_${{ env.CHANNEL_NAME }}.json
@@ -193,58 +159,69 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  # ========================================================
+  # Job 2: 清理 (Cleanup) - 支援 自動刪除 與 手動刪除
+  # ========================================================
   cleanup:
-    name: Cleanup Deleted Branch Release
-    if: github.event_name == 'delete' && github.event.ref_type == 'branch'
+    name: Cleanup Release & JSON
+    # 觸發條件：是刪除分支事件 OR 是手動觸發 (workflow_dispatch)
+    if: >
+      (github.event_name == 'delete' && github.event.ref_type == 'branch') || 
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: Delete Channel Release and Tag
+      - name: Determine Target Branch Name
+        id: target
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            # 手動輸入的分支名
+            RAW_BRANCH="${{ inputs.target_branch_name }}"
+            echo "Trigger: Manual Dispatch"
+          else
+            # 刪除事件的分支名
+            RAW_BRANCH="${{ github.event.ref }}"
+            echo "Trigger: Branch Deletion"
+          fi
+          
+          # 【統一邏輯點】確保與 Build Job 完全一致 (sed 寫法)
+          SAFE_NAME=$(echo "$RAW_BRANCH" | sed 's/[\/\-]/\_/g')
+          TAG_NAME="nightly-$SAFE_NAME"
+          JSON_FILE="update_${SAFE_NAME}.json"
+          
+          echo "Processing Branch: $RAW_BRANCH"
+          echo "Target Tag: $TAG_NAME"
+          echo "Target JSON: $JSON_FILE"
+          
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+          echo "JSON_FILE=$JSON_FILE" >> $GITHUB_ENV
+
+      - name: Delete GitHub Release and Tag
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DELETED_BRANCH: ${{ github.event.ref }}
         run: |
-          echo "Deleted Branch: $DELETED_BRANCH"
-          
-          # 1. 將 '-' 與 '/' 替換為 '_' (匹配 Build 邏輯)
-          # 使用 tr 替代 sed 避免轉義問題
-          NORMALIZED_BRANCH=$(echo "$DELETED_BRANCH" | tr '/-' '__')
-          
-          # 3. 組合正確的 Tag 名稱
-          TAG_NAME="nightly-${NORMALIZED_BRANCH}"
-          
-          echo "Target Tag: $TAG_NAME"
-          
-          # 4. Debug: List current releases
-          echo "Listing current releases..."
-          gh release list --limit 5 || true
+          echo "Deleting Release/Tag: ${{ env.TAG_NAME }}"
+          # 使用 || true 忽略錯誤 (如果已經手動刪除了也不會報錯)
+          gh release delete "${{ env.TAG_NAME }}" --cleanup-tag --yes || echo "Release/Tag not found or already deleted."
 
-          echo "Attempting to delete Release and Tag: $TAG_NAME"
-          
-          # 5. 執行刪除
-          gh release delete "$TAG_NAME" --cleanup-tag --yes || echo "Release $TAG_NAME not found or already deleted. Skipping."
-          
-      - name: Checkout gh-pages
+      - name: Cleanup JSON from gh-pages
         uses: actions/checkout@v4
         with:
           ref: gh-pages
           
-      - name: Remove Channel JSON
-        env:
-          DELETED_BRANCH: ${{ github.event.ref }}
+      - name: Remove JSON File
         run: |
-          NORMALIZED_BRANCH=$(echo "$DELETED_BRANCH" | tr '/-' '__')
-          CHANNEL_NAME=$NORMALIZED_BRANCH
-          
-          JSON_FILE="update_${CHANNEL_NAME}.json"
-          if [ -f "$JSON_FILE" ]; then
-            echo "Removing $JSON_FILE..."
+          TARGET_FILE="${{ env.JSON_FILE }}"
+          if [ -f "$TARGET_FILE" ]; then
+            echo "Removing $TARGET_FILE from gh-pages..."
             git config --global user.name 'github-actions[bot]'
             git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-            git rm "$JSON_FILE"
-            git commit -m "Cleanup $JSON_FILE after branch deletion"
+            
+            # 使用 git rm 刪除並提交
+            git rm "$TARGET_FILE"
+            git commit -m "Cleanup $TARGET_FILE (triggered by cleanup)"
             git push origin gh-pages
           else
-            echo "$JSON_FILE not found, nothing to clean."
+            echo "File $TARGET_FILE does not exist on gh-pages. Skipping."
           fi

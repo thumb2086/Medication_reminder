@@ -2,6 +2,12 @@
 
 ## 2025-01-27
 ### DevOps
+*   **CI/CD 重構 (Final Attempt):**
+    *   **手動清理模式 (Manual Cleanup):** 新增 `workflow_dispatch` 觸發器，允許開發者手動輸入分支名稱（例如 `fix-old-bug`），強制執行 Cleanup Job。這解決了已經刪除的分支無法觸發 Workflow 的問題，提供了補救舊帳的手段。
+    *   **命名邏輯統一 (Normalize Name):** 重寫並統一了 Build Job 與 Cleanup Job 的分支名稱轉 Tag 名稱邏輯。
+        *   使用 `sed 's/[\/\-]/\_/g'` 將斜線 `/` 與連字號 `-` 一律替換為底線 `_`，確保生成的 Tag 名稱（如 `nightly-fix_bug`）與刪除時尋找的 Tag 名稱絕對一致，避免因字元處理不一致導致刪除失敗。
+    *   **錯誤容忍:** 在 `gh release delete` 指令後加上 `|| echo ...`，即使 Tag 不存在也不會讓 Job 失敗，確保清理流程能繼續執行後續的 JSON 刪除步驟。
+    *   **Git 操作優化:** Cleanup Job 中的 `git rm` 操作現在包含了使用者設定 (`git config`)，確保 Commit 能順利建立。
 *   **CI/CD 修復 (Third Attempt):**
     *   **Cleanup Job 深度優化:**
         *   **環境變數傳遞:** 發現 `Extract Branch Name` 步驟在 cleanup job 中可能無法正確共享變數，因此將分支名稱處理邏輯直接整合進 `Delete Channel Release and Tag` 步驟。

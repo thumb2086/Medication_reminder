@@ -86,7 +86,7 @@ This project uses GitHub Actions for continuous integration and automated versio
     *   Generates a dedicated update channel for that branch (e.g., `update_feat_login.json`).
     *   Builds an APK with a corresponding version name.
     *   Testers installing the APK from a specific branch will only receive updates for that branch.
-*   **Branch Cleanup:** When a branch is deleted, the corresponding nightly release and tag are automatically removed to keep the release list clean.
+*   **Branch Cleanup:** When a branch is deleted, the corresponding nightly release and tag are automatically removed to keep the release list clean. Manual cleanup is also supported via GitHub Actions workflow dispatch.
 *   **Versioning:** The `versionCode` is generated based on the build timestamp (`yyMMddHH`) to ensure strictly increasing versions across branches, preventing downgrade issues. The `versionName` includes branch and commit information.
 
 ## License

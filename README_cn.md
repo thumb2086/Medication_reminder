@@ -103,7 +103,7 @@ App 與 ESP32 智慧藥盒之間的通訊是基於 BLE UART 服務的自定義�
     *   自動產生該分支專屬的更新頻道 (例如 `update_feat_login.json`)。
     *   建置包含對應分支資訊的 APK。
     *   安裝特定分支 APK 的測試人員將只會收到該分支的後續更新。
-*   **分支清理:** 當分支被刪除時，會自動移除對應的 Nightly Release 與 Tag，保持列表整潔。
+*   **分支清理:** 當分支被刪除時，會自動移除對應的 Nightly Release 與 Tag，保持列表整潔。亦可透過 GitHub Actions workflow dispatch 手動執行清理。
 *   **版本號碼:** `versionCode` 根據建置時間戳 (`yyMMddHH`) 產生，確保跨分支的版本號皆為單調遞增，避免降級安裝問題。
 
 ## 授權
