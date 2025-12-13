@@ -6,6 +6,10 @@
     *   **邏輯更新:** 修改 `UpdateManager.kt` 中的 `checkForUpdates` 邏輯。現在，當使用者在設定頁面切換頻道 (例如從 `Stable` 切換到 `Dev`) 時，系統會識別這是一個頻道切換操作 (`isChannelSwitch = true`)，並強制允許下載該頻道的最新版本，即使該版本的 VersionCode 可能低於或等於當前安裝的版本。
     *   這解決了使用者無法從較新的 `Dev` 版本回退到 `Stable` 版本，或在不同開發分支間切換的問題 (需注意：降級安裝可能仍需手動解除安裝舊版，視 Android 系統限制而定，但現在 App 內會正確跳出更新提示)。
 *   **CI/CD 重構 (Final Attempt):**
+    *   **APK 命名優化:**
+        *   棄用了不穩定的 `grep` 方式來解析 `versionName`。
+        *   改用 Gradle 內建指令 `./gradlew -q app:properties | grep '^versionName:'` 準確獲取真實版本號（包含動態生成的後綴）。
+        *   這解決了因為版本號是動態計算 (Kotlin Script) 而無法從靜態檔案讀取正確版本名稱的問題。
     *   **手動清理模式 (Manual Cleanup):** 新增 `workflow_dispatch` 觸發器，允許開發者手動輸入分支名稱（例如 `fix-old-bug`），強制執行 Cleanup Job。這解決了已經刪除的分支無法觸發 Workflow 的問題，提供了補救舊帳的手段。
     *   **命名邏輯統一 (Normalize Name):** 重寫並統一了 Build Job 與 Cleanup Job 的分支名稱轉 Tag 名稱邏輯。
         *   使用 `sed 's/[\/\-]/\_/g'` 將斜線 `/` 與連字號 `-` 一律替換為底線 `_`，確保生成的 Tag 名稱（如 `nightly-fix_bug`）與刪除時尋找的 Tag 名稱絕對一致，避免因字元處理不一致導致刪除失敗。

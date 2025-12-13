@@ -87,23 +87,35 @@ jobs:
           VERSION_CODE_OVERRIDE: ${{ env.TIMESTAMP }}
         run: ./gradlew assembleRelease
 
-      # [優化] 不依賴 Gradle Task，直接解析檔案抓版本號 (支援 build.gradle 和 .kts)
+      # [優化] 改用 Gradle 內建 properties 指令抓取版本，不再用 grep 原始碼
       - name: Rename APK
         run: |
-          # 嘗試從 Gradle 檔抓取 versionName "1.x.x" 或 versionName = "1.x.x"
-          VERSION_NAME=$(grep -m 1 'versionName' app/build.gradle* | sed -E 's/.*"([^"]+)".*/\1/')
+          # 使用 ./gradlew app:properties 取得真實版本號 (會自動解析變數)
+          VERSION_NAME=$(./gradlew -q app:properties | grep '^versionName:' | awk '{print $2}')
           
-          # 如果抓不到，給一個預設值防止報錯
-          if [ -z "$VERSION_NAME" ]; then VERSION_NAME="nightly"; fi
+          # 防呆：如果真的抓不到，就叫 nightly
+          if [ -z "$VERSION_NAME" ]; then 
+            echo "::warning::Could not detect versionName from gradle properties, defaulting to 'nightly'."
+            VERSION_NAME="nightly"
+          fi
           
+          echo "Detected Version Name: $VERSION_NAME"
+          
+          # 處理檔名 (空白轉減號)
           SAFE_VERSION=$(echo "$VERSION_NAME" | tr ' ' '-')
           
           SRC_APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
           NEW_FILENAME="MedicationReminder-$SAFE_VERSION.apk"
           
-          mv "$SRC_APK" "app/build/outputs/apk/release/$NEW_FILENAME"
-          echo "APK_FILENAME=$NEW_FILENAME" >> $GITHUB_ENV
-          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+          if [ ! -z "$SRC_APK" ]; then
+            mv "$SRC_APK" "app/build/outputs/apk/release/$NEW_FILENAME"
+            echo "APK_FILENAME=$NEW_FILENAME" >> $GITHUB_ENV
+            echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+            echo "::notice::Renamed APK to $NEW_FILENAME"
+          else
+             echo "::error::No APK found in app/build/outputs/apk/release"
+             exit 1
+          fi
 
       # --- Official Release ---
       - name: Create Official Release
