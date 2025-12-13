@@ -47,7 +47,8 @@ class UpdateManager(private val context: Context) {
                 val prefs = PreferenceManager.getDefaultSharedPreferences(context)
                 
                 // Determine default channel based on BuildConfig
-                val defaultChannel = if (BuildConfig.UPDATE_CHANNEL.isNullOrEmpty()) "main" else BuildConfig.UPDATE_CHANNEL
+                // BuildConfig.UPDATE_CHANNEL is generated as a non-null String, so use isEmpty() instead of isNullOrEmpty()
+                val defaultChannel = if (BuildConfig.UPDATE_CHANNEL.isEmpty()) "main" else BuildConfig.UPDATE_CHANNEL
                 
                 // Get user selected channel, fallback to the build's channel
                 val selectedChannel = prefs.getString("update_channel", defaultChannel) ?: defaultChannel
