@@ -1,5 +1,6 @@
 package com.example.medicationreminderapp
 
+import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.util.TypedValue
@@ -7,6 +8,7 @@ import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.net.toUri
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
@@ -86,7 +88,28 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                 checkForUpdates()
                 true
             }
+            "app_author" -> {
+                openUrl("https://github.com/thumb2086")
+                true
+            }
+            "app_project" -> {
+                openUrl("https://github.com/thumb2086/Medication_reminder")
+                true
+            }
+            "app_version" -> {
+                openUrl("https://github.com/thumb2086/Medication_reminder/releases")
+                true
+            }
             else -> super.onPreferenceTreeClick(preference)
+        }
+    }
+
+    private fun openUrl(url: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, url.toUri())
+            startActivity(intent)
+        } catch (_: Exception) {
+            Toast.makeText(requireContext(), "無法開啟連結", Toast.LENGTH_SHORT).show()
         }
     }
 

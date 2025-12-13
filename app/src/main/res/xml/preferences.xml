@@ -70,14 +70,18 @@
             app:key="app_author"
             app:title="@string/about_author"
             app:summary="Thumb2086"
-            app:selectable="false"
             app:icon="@drawable/ic_face" />
+
+        <Preference
+            app:key="app_project"
+            app:title="@string/about_project"
+            app:summary="GitHub"
+            app:icon="@drawable/ic_developer_mode" />
 
         <Preference
             app:key="app_version"
             app:title="@string/about_version"
             app:summary="1.0.0"
-            app:selectable="false"
             app:icon="@drawable/ic_update" />
     </PreferenceCategory>
 

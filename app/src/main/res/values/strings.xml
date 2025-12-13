@@ -255,6 +255,7 @@
     <!-- About -->
     <string name="about_category">關於</string>
     <string name="about_author">作者</string>
+    <string name="about_project">專案</string>
     <string name="about_version">版本</string>
 
 </resources>

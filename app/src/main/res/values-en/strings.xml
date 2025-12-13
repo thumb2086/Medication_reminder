@@ -255,6 +255,7 @@
     <!-- About -->
     <string name="about_category">About</string>
     <string name="about_author">Author</string>
+    <string name="about_project">Project</string>
     <string name="about_version">Version</string>
 
 </resources>

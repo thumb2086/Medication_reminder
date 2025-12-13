@@ -1,5 +1,20 @@
 # 更新日誌
 
+## Code Quality
+*   **0127:** **修復 SettingsFragment 中的未使用導入警告。**
+    *   **Import Cleanup:** 移除了 `android.net.Uri` 的導入，因為使用了 KTX 擴充 `androidx.core.net.toUri`，不再直接依賴原始 Uri 類別解析字串。
+*   **0127:** **修復 SettingsFragment 中的代碼警告。**
+    *   **KTX 擴充:** 將 `Uri.parse(url)` 替換為 `url.toUri()`，使代碼更符合 Kotlin 風格。
+    *   **未使用的參數:** 將 `catch` 區塊中的 `e` 參數重命名為 `_`，以表明該變數未被使用。
+
+## UI/UX
+*   **0127:** **實作設定頁面「關於」區塊連結跳轉。**
+    *   **SettingsFragment:** 在 `onPreferenceTreeClick` 中實作了 URL 開啟邏輯。
+        *   點擊「作者」會開啟 GitHub Profile (https://github.com/thumb2086)。
+        *   點擊「專案」會開啟 GitHub Repo (https://github.com/thumb2086/Medication_reminder)。
+        *   點擊「版本」會開啟 GitHub Releases 頁面 (https://github.com/thumb2086/Medication_reminder/releases)。
+    *   **UI:** 在 `preferences.xml` 中新增了 `app_project` 偏好設定項，並將相關字串資源 (`about_project`) 加入 `strings.xml` (中/英)。
+
 ## Bug Fixes
 *   **0127:** **修復設定頁面「關於」區塊無英文翻譯問題。**
     *   **國際化 (i18n):** 將 `preferences.xml` 中硬編碼的中文標題 ("關於", "作者", "版本") 提取至 `strings.xml` 資源檔 (`about_category`, `about_author`, `about_version`)。
