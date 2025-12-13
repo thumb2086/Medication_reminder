@@ -8,7 +8,9 @@ on:
       - "feat-*"
     tags:
       - 'v*' # Trigger on tags starting with v (e.g. v1.0.0)
-  delete: # Trigger when a branch or tag is deleted
+  delete: 
+    # Trigger when a branch or tag is deleted.
+    # NOTE: This workflow MUST be present in the default branch (main) to handle delete events for other branches.
 
 jobs:
   build:
