@@ -71,12 +71,16 @@ class ReminderSettingsFragment : Fragment() {
         setupListeners()
     }
 
-    private fun updateCharacterImage() {
+    private fun getCharacterImageRes(): Int {
         val character = sharedPreferences.getString("character", "kuromi")
-        val imageRes = when (character) {
+        return when (character) {
             "chibi_maruko_chan" -> R.drawable.chibi_maruko_chan
             else -> R.drawable.kuromi
         }
+    }
+
+    private fun updateCharacterImage() {
+        val imageRes = getCharacterImageRes()
         
         // Hide image if medication cards are being displayed (i.e., user is adding/editing)
         // Check if medication cards are visible/present
@@ -86,6 +90,11 @@ class ReminderSettingsFragment : Fragment() {
              binding.kuromiImage.visibility = View.VISIBLE
         }
         binding.kuromiImage.setImageResource(imageRes)
+
+        // Update images in dynamic forms
+        medicationCards.forEach { (cardBinding, _) ->
+             cardBinding.kuromiImageView.setImageResource(imageRes)
+        }
     }
 
     private fun setupObservers() {
@@ -287,6 +296,9 @@ class ReminderSettingsFragment : Fragment() {
         cardBinding.dosageSlider.addOnChangeListener { _, value, _ ->
             cardBinding.dosageLabelTextView.text = getString(R.string.dosage_pills, value.toInt())
         }
+
+        // Initialize character image for the new card
+        cardBinding.kuromiImageView.setImageResource(getCharacterImageRes())
     }
 
     private fun updateAllSlotSpinners() {

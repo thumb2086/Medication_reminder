@@ -1,6 +1,12 @@
 # 更新日誌
 
 ## 2025-01-27
+### UI/UX
+*   **動態表單角色圖示修復:**
+    *   修復在 `ReminderSettingsFragment` 中，動態生成的藥物輸入表單 (`medication_input_item.xml`) 內的圖片固定顯示為酷洛米的問題。
+    *   現在新增或編輯藥物時，表單內的圖片會正確跟隨設定頁面的角色選擇 (酷洛米/櫻桃小丸子) 進行切換。
+    *   實作 `updateCharacterImage()` 同步更新所有已存在的動態卡片圖片。
+
 ### Code Quality
 *   **SettingsFragment 警告修復:**
     *   **未使用導入:** 移除了 `SettingsFragment.kt` 中未使用的 `android.content.Context`。
@@ -31,11 +37,19 @@
     *   **設定頁面「關於」區塊:** 實作連結跳轉 (GitHub Profile, Repo, Releases)。
     *   **UI 遮擋修復:** 加入 `OnApplyWindowInsetsListener` 防止底部內容被系統手勢導航條遮擋。
     *   **底部導航列修復:** 修復從設定頁面返回時，底部主分頁按鈕顯示異常的問題。
+### UI/UX (Previous)
+*   **設定頁面「關於」區塊:**
+    *   在 `SettingsFragment` 中實作了「關於」區塊的連結跳轉。
+    *   點擊「作者」、「專案」、「版本」可分別開啟 GitHub Profile, Repo 與 Releases 頁面。
+    *   在 `preferences.xml` 新增 `app_project` 設定項。
+*   **UI 遮擋修復:** 在 `SettingsFragment` 加入 `OnApplyWindowInsetsListener`，防止底部內容被系統手勢導航條遮擋。
+*   **底部導航列修復:** 修復從設定頁面返回時，底部主分頁按鈕顯示異常的問題。
 
 ### Bug Fixes
 *   **國際化 (i18n):** 修復設定頁面「關於」區塊無英文翻譯問題 (`values-en/strings.xml`)。
 *   **UpdateManager 清理:** 移除重複變數宣告與無效的空值檢查。
 *   **BuildConfig 類型錯誤:** 修正 `build.gradle.kts` 中 `UPDATE_CHANNEL` 的定義。
+*   **SettingsFragment 優化:** 修復 `ListPreference` 動態新增頻道的邏輯錯誤。
 
 ## 2025-01-26
 ### Bug Fixes
