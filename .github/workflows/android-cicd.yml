@@ -45,6 +45,8 @@ jobs:
         run: |
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
              echo "IS_OFFICIAL=true" >> $GITHUB_ENV
+             # For official release, we can default channel to 'main' or just use the tag as version
+             echo "CHANNEL_NAME=main" >> $GITHUB_ENV
           else
              RAW_BRANCH=${GITHUB_REF#refs/heads/}
              # feat/new_fun -> feat-new-fun
@@ -156,11 +158,42 @@ jobs:
           echo "::notice::Final APK: $APK_FILENAME (Version: $FINAL_VERSION_NAME)"
 
       # --- Official Release ---
+      # Need to generate JSON for main channel as well if we want Nightly builds to be able to "update" to stable
+      - name: Generate Main Channel JSON (Official)
+        if: env.IS_OFFICIAL == 'true'
+        run: |
+          mkdir -p public
+          # Use "update_main.json" for stable releases so other channels can find it
+          JSON_FILE="update_main.json" 
+          # Assuming the tag is the release tag
+          TAG_NAME="${{ github.ref_name }}"
+          APK_URL="https://github.com/${{ github.repository }}/releases/download/$TAG_NAME/${{ env.APK_FILENAME }}"
+          
+          cat <<EOF > public/$JSON_FILE
+          {
+            "latestVersion": "${{ env.VERSION_NAME }}",
+            "versionCode": ${{ env.TIMESTAMP }},
+            "url": "$APK_URL",
+            "releaseNotes": "Stable release $TAG_NAME"
+          }
+          EOF
+          cp public/$JSON_FILE .
+          
+      - name: Deploy Main JSON to GitHub Pages
+        if: env.IS_OFFICIAL == 'true'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+          keep_files: true
+
       - name: Create Official Release
         if: env.IS_OFFICIAL == 'true'
         uses: softprops/action-gh-release@v1
         with:
-          files: app/build/outputs/apk/release/${{ env.APK_FILENAME }}
+          files: |
+            app/build/outputs/apk/release/${{ env.APK_FILENAME }}
+            update_main.json
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

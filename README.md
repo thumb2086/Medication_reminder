@@ -17,8 +17,13 @@ A smart medication reminder application integrated with an ESP32-based smart pil
 *   **Interactive Charts:** View temperature and humidity trends with interactive line charts, supporting pan, zoom, and data point inspection.
 *   **In-App Updates:** Automatically checks for updates from GitHub Releases.
     *   **Selectable Channels:** Users can choose between **Stable**, **Dev**, or browse **Active Development Branches** directly in the App Settings.
-    *   **Cross-Channel Switching:** Freely switch between channels (e.g., from Dev to Stable) to install the latest build of that branch, even if it has a lower version code.
+    *   **Cross-Channel Switching:** Freely switch between channels (e.g., from Dev to Stable) to install the latest build of that branch.
+    *   **Smart Default Channel:** The app automatically sets the default update channel based on the installed build's type.
+        *   **Stable Builds:** Default to `Main` channel.
+        *   **Dev Builds:** Default to `Dev` channel.
+        *   **Feature Builds:** Default to the specific feature branch channel (e.g., `feat-new-ui`).
     *   **Dynamic Update Checks:** The app intelligently fetches the latest build for the selected channel (e.g., `update_dev.json`, `update_nightly.json`).
+        *   **Dev Channel Logic:** Users on the Dev channel will receive updates from both the Dev channel AND the Stable channel if a newer Stable version is released, ensuring they don't miss official releases.
     *   **Stable:** Official releases from the `main` branch.
     *   **Dev:** Cutting-edge builds from the `dev` branch.
     *   **Dynamic Branch Discovery:** The app queries GitHub Releases to find available active branches (tagged as `nightly-<branch>`), allowing you to test specific feature branches easily.
@@ -82,7 +87,7 @@ To ensure compatibility between the App and the ESP32 firmware as features evolv
 
 This project uses GitHub Actions for continuous integration and automated version management.
 
-*   **Stable Releases:** Triggered by pushing a tag starting with `v` (e.g., `v1.1.8`). Creates a permanent release on the `stable` channel.
+*   **Stable Releases:** Triggered by pushing a tag starting with `v` (e.g., `v1.1.8`). Creates a permanent release on the `main` channel.
 *   **Feature/Dev Releases:** Triggered by pushing to `dev`, `fix-*`, or `feat-*` branches.
     *   Generates a dedicated update channel for that branch (e.g., `update_feat_login.json`).
     *   Builds an APK with a corresponding version name.

@@ -17,7 +17,13 @@
 *   **互動圖表:** 透過互動式折線圖檢視溫濕度趨勢，支援縮放、拖移與數據點查看。
 *   **App 內更新:** 自動檢查 GitHub Releases 上的新版本。
     *   **可選頻道:** 使用者可選擇 **正式版 (Stable)**、**開發版 (Dev)**，或直接瀏覽**活躍開發分支**。
+    *   **跨頻道切換:** 支援自由切換頻道 (例如從 Dev 切換回 Stable) 以安裝該分支的最新版本。
+    *   **智慧預設頻道:** App 會根據安裝的版本類型自動設定預設更新頻道。
+        *   **Stable 版本:** 預設為 `Main` 頻道。
+        *   **Dev 版本:** 預設為 `Dev` 頻道。
+        *   **Feature 版本:** 預設為該功能分支的頻道 (例如 `feat-new-ui`)。
     *   **動態檢查:** App 會智慧地抓取所選頻道的最新建置設定檔 (例如 `update_dev.json`, `update_nightly.json`)。
+        *   **Dev 頻道邏輯:** 開發版使用者除了接收 Dev 頻道的更新外，若有更新的 Stable 版本發布，也會收到通知，確保不錯過正式版。
     *   **正式版 (Stable):** 來自 `main` 分支的官方發布。
     *   **開發版 (Dev):** 來自 `dev` 分支的最新建置。
     *   **動態分支發現 (Dynamic Discovery):** App 會自動查詢 GitHub Releases API，列出所有活躍的開發分支 (標記為 `nightly-<branch>`)，讓您輕鬆測試特定功能分支。
@@ -98,7 +104,7 @@ App 與 ESP32 智慧藥盒之間的通訊是基於 BLE UART 服務的自定義�
 
 本專案使用 GitHub Actions 進行持續整合與版本自動管理。
 
-*   **正式發布 (Stable Releases):** 推送以 `v` 開頭的標籤 (例如 `v1.1.8`) 會觸發，建立永久 Release 至 `stable` 頻道。
+*   **正式發布 (Stable Releases):** 推送以 `v` 開頭的標籤 (例如 `v1.1.8`) 會觸發，建立永久 Release 至 `main` 頻道。
 *   **功能/開發發布:** 推送至 `dev`, `fix-*`, 或 `feat-*` 分支時觸發。
     *   自動產生該分支專屬的更新頻道 (例如 `update_feat_login.json`)。
     *   建置包含對應分支資訊的 APK。

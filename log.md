@@ -1,35 +1,21 @@
 # 更新日誌
 
 ## 2025-01-27
+### DevOps
+*   **APK 命名修復:** 優化 CI/CD 腳本 (`android-cicd.yml`)，使其能正確解析 Gradle 動態生成的版本號，解決 APK 檔名顯示為 `MedicationReminder-nightly.apk` 的問題。
+*   **Stable Channel JSON 生成:** CI/CD 流程中，Stable Release 現在也會生成 `update_main.json`，供其他頻道檢查是否有正式版更新。
+
 ### Configuration & Build Logic
-*   **版本號獲取優化:** 修正 `getGitTagVersion` 邏輯，加入 `--exact-match` 參數。現在只有當 Commit 剛好打上 Tag 時才會使用 Tag 的版本號 (Release)。其餘情況下 (Nightly/Dev)，會忽略舊 Tag，強制使用 `config.gradle.kts` 中的 `baseVersionName` (目前為 1.2.1) 進行拼接，解決了 Nightly 版本號停留在舊 Tag (1.2.0) 的問題。
+*   **版本號獲取邏輯優化:** 修正 `getGitTagVersion`，加入 `--exact-match` 參數。只有當 Commit 完全對應到 Tag 時才會使用 Tag 版本號，否則 (Dev/Nightly) 會強制使用 `config.gradle.kts` 中的 `baseVersionName` 並拼接後綴，解決版本號停滯問題。
 
-### DevOps (Previous)
-*   **APK 命名修復:** 解決 CI/CD 生成的 APK 檔名為 `-v1.2.0-nightly-246.apk` 的問題。
-    *   **Fallback 機制:** 在 `build.gradle.kts` 中為 `appName` 等變數加入預設值。
-    *   **檔案前綴:** 強制設定 APK 檔名前綴為 "MedicationReminder"，避免中文亂碼或變數遺失。
-*   **CI/CD 腳本:** `android-cicd.yml` 改為直接尋找 Gradle 生成的 APK。
+### App Logic
+*   **更新頻道預設值優化:** `SettingsFragment` 現在會根據 `BuildConfig.UPDATE_CHANNEL` 自動設定預設頻道。
+    *   Dev 建置預設使用 Dev 頻道。
+    *   Stable 建置預設使用 Main 頻道。
+*   **跨頻道更新檢查:** `UpdateManager` 邏輯增強。非 Stable 頻道的用戶 (例如 Dev 用戶) 現在會同時檢查當前頻道與 Stable 頻道的更新。若發現更新的 Stable 版本，會主動提示更新，確保不錯過正式發布。
 
-### Code Quality (Previous)
-*   **SettingsFragment 優化:** 移除多餘的 Suppress 警告，重構 `updateChannelList` 參數傳遞，新增 ViewModel 輔助方法繞過 Lint 檢查。
-
-### Configuration (Previous)
-*   **Application ID 三軌並行:** 區分 Main, Dev, Nightly 的 Application ID，支援同時安裝。
-
-### Configuration & Build Logic (Previous)
-*   **版本號策略優化:**
-    *   **Git Tag 優先:** 修改 `app/build.gradle.kts`，優先讀取 Git Tag。
-    *   **Base Version 升級:** 更新為 `1.2.1`。
-
-### UI/UX (Previous)
-*   **SettingsFragment 預設頻道優化:** 修正 Nightly 版的預設更新頻道。
-*   **Accessibility 修復:** 修復無障礙標籤。
-*   **動態表單角色圖示修復:** 修復表單圖片未切換問題。
-
-### DevOps (Previous)
-*   **Release 命名格式修正:** Nightly Release Title 優化為 `<Branch> | <VersionName>`。
-*   **跨頻道更新支援:** 允許使用者強制切換頻道並下載更新。
-*   **CI/CD 重構:** APK 命名優化、手動清理模式、命名邏輯統一。
+### Documentation
+*   **README 更新:** 更新中英文文件，說明新的更新頻道策略與跨頻道檢查功能。
 
 ## 2025-01-26
 ### Bug Fixes
