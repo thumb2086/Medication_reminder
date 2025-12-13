@@ -3,14 +3,14 @@
 ## 2025-01-27
 ### DevOps
 *   **CI/CD 修復:**
-    *   **Cleanup Job 邏輯修正:** 修正了 `android-cicd.yml` 中 `cleanup` job 的分支名稱處理邏輯。
-        *   **問題:** 刪除分支時，GitHub Actions 的 `delete` 事件直接使用原始分支名稱 (例如 `fix-nightly-del-bench`)，但 Build 階段產生的 Tag 已將 `-` 替換為 `_` (例如 `nightly-fix_nightly_del_bench`)，導致 Cleanup Job 找不到對應的 Release/Tag 進行刪除。
-        *   **解決:** 在 `cleanup` job 中加入了與 Build 階段一致的 `sed` 替換邏輯 (`s/[\/\-]/\_/g`)，確保產生的 `TAG_NAME` 正確匹配已存在的 Nightly Release。
-    *   **Schema Validation 修正:** 修正了 `android-cicd.yml` 中 `on.delete` 觸發器的語法錯誤。原寫法導致 Schema validation 警告 "Validates to more than one variant" (空物件 `{}` 在 YAML 中有時會被誤判)。現改為使用明確的空物件語法 `delete: {}`，或完全依賴預設行為，最終確認寫法正確無誤。
+    *   **Cleanup Job 邏輯修正 (二次修正):**
+        *   之前的修正並未完全生效，原因是 `cleanup` job 中包含了重複的 `Extract Branch Name` 步驟，且該步驟的邏輯與 Build job 不完全一致（或者是變數傳遞順序問題）。
+        *   **解決:** 移除了 `cleanup` job 中冗餘的 `Extract Branch Name` 步驟。現在直接在 `Delete Channel Release and Tag` 步驟中進行分支名稱的解析與正規化 (`sed 's/[\/\-]/\_/g'`)，確保邏輯單一且正確。
+        *   **結果:** 現在刪除分支時（例如 `fix-nightly-del-bench`），CI/CD 能正確計算出 Tag 名稱 (`nightly-fix_nightly_del_bench`) 並執行刪除。
+    *   **Schema Validation 修正:** 修正了 `android-cicd.yml` 中 `on.delete` 觸發器的語法錯誤 (`delete: {}`)。
     *   **Cleanup Job 優化:**
-        *   棄用 `dev-drprasad/delete-tag-and-release` action，改用 GitHub CLI (`gh release delete`) 原生指令。
-        *   新增 `|| echo "..."` 錯誤處理機制，確保當 Release 或 Tag 已經不存在時，Cleanup Job 不會被標記為失敗 (Fail)，而是優雅地略過並記錄日誌。這解決了重複刪除分支或手動清理後 CI 報錯的問題。
-    *   **Cleanup Job 參數修正 (Previous):** 移除了 `android-cicd.yml` 中 `dev-drprasad/delete-tag-and-release` action 的無效參數 `delete_tag`，解決了 "Unexpected input(s)" 錯誤。
+        *   使用 GitHub CLI (`gh release delete`) 替代第三方 Action。
+        *   加入 `|| echo ...` 錯誤處理，避免因 Release 不存在而報錯。
 *   **Documentation**
     *   **README 更新:**
         *   將 `README.md` 與 `README_cn.md` 中的 GitHub 專案連結從 `CPXru/Medication_reminder` 更新為 `thumb2086/Medication_reminder`，以反映正確的 Releases 位置。
