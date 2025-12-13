@@ -1,6 +1,27 @@
 # 更新日誌
 
 ## 2025-01-27
+### UI/UX
+*   **動態表單角色圖示修復:**
+    *   修復在 `ReminderSettingsFragment` 中，動態生成的藥物輸入表單 (`medication_input_item.xml`) 內的圖片固定顯示為酷洛米的問題。
+    *   現在新增或編輯藥物時，表單內的圖片會正確跟隨設定頁面的角色選擇 (酷洛米/櫻桃小丸子) 進行切換。
+    *   實作 `updateCharacterImage()` 同步更新所有已存在的動態卡片圖片。
+*   **動態更新頻道列表 (SettingsFragment):**
+    *   **GitHub Releases 整合:** 移除了手動「自訂頻道」輸入功能，改為自動從 GitHub API 獲取所有 Release Tags。
+    *   **智能解析:** 自動過濾出以 `nightly-` 開頭的標籤，並解析出分支名稱 (例如 `nightly-feat-ui` -> `feat-ui`)，動態填充至更新頻道列表供使用者選擇。
+    *   **列表排序:** 優先顯示 `Stable (Main)` 與 `Current`，接著顯示自動抓取的其他開發分支。
+*   **SettingsFragment 優化:**
+    *   **設定頁面「關於」區塊:** 實作連結跳轉 (GitHub Profile, Repo, Releases)。
+    *   **UI 遮擋修復:** 加入 `OnApplyWindowInsetsListener` 防止底部內容被系統手勢導航條遮擋。
+    *   **底部導航列修復:** 修復從設定頁面返回時，底部主分頁按鈕顯示異常的問題。
+
+### Code Quality
+*   **SettingsFragment 警告修復:**
+    *   **未使用導入:** 移除了 `SettingsFragment.kt` 中未使用的 `android.content.Context`。
+    *   **多餘條件:** 移除了 `setupUpdateChannelPreference` 中 `if (currentChannel != "main")` 與 `currentChannel.isNotEmpty()` 的多餘檢查，簡化了列表構建邏輯，直接判斷 `entryValues` 是否包含當前頻道。
+    *   **資源清理:** 移除了 `strings.xml` 中未使用的 `add_custom_channel_title`, `add_custom_channel_hint` 資源，解決了翻譯遺失的 Error。
+    *   **排版修正:** 將 `update_channel_summary` 中的省略號從 `...` 替換為標準的 Unicode 省略號 `…` (&#8230;)。
+
 ### DevOps
 *   **CI/CD 修復:**
     *   **Cleanup Job 升級:** 將 `dev-drprasad/delete-tag-and-release` 升級至 `v1.1`，並修正 Token 傳遞方式，解決刪除分支後 Release 未能正確移除的問題。

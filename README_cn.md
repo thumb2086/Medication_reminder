@@ -39,9 +39,8 @@
 我們持續致力於提升應用程式的品質與功能，目前的優化規劃包括：
 
 *   **架構層面:**
-    *   導入 Hilt 依賴注入 (Dependency Injection)，提升模組化程度。(已完成)
-    *   將 `LiveData` 全面遷移至 `StateFlow`，以獲得更好的協程支援與線程安全性。(已完成)
-    *   實作 Repository 模式，將資料存取邏輯從 ViewModel 中抽離。(已完成)
+    *   持續優化 Hilt 依賴注入 (Dependency Injection) 的使用。
+    *   進一步完善 `StateFlow` 在資料流中的應用。
 *   **程式碼品質:**
     *   持續進行 Linter 檢查，修復潛在的警告與排版問題。
     *   增加單元測試 (Unit Test) 與 UI 測試覆蓋率。
