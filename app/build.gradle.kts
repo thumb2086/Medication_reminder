@@ -86,14 +86,18 @@ android {
     val envVersionCodeOverride = System.getenv("VERSION_CODE_OVERRIDE")?.toIntOrNull()
     val envVersionName = System.getenv("VERSION_NAME")
 
-    val finalVersionCode = envVersionCodeOverride ?: envBuildNumber ?: commitCount
+    // 🔥 優先使用 CI 傳入的 VERSION_CODE_OVERRIDE (即 GitHub Run Number)
+    val finalVersionCode = envVersionCodeOverride ?: commitCount
 
     // [Unified Naming] Always use hyphens '-' as separators. No spaces.
     // Format: X.Y.Z (Production) or X.Y.Z-channel-COUNT
+    // 如果是 CI 環境，使用 BUILD_NUMBER (Run Number) 作為後綴，否則使用 commitCount
+    val versionSuffix = envBuildNumber ?: commitCount
+    
     val localVersionName = when {
         isProduction -> baseVersionName
-        isDev -> "$baseVersionName-dev-$commitCount"
-        else -> "$baseVersionName-nightly-$commitCount"
+        isDev -> "$baseVersionName-dev-$versionSuffix"
+        else -> "$baseVersionName-nightly-$versionSuffix"
     }
     
     val finalVersionName = envVersionName ?: localVersionName
@@ -124,6 +128,8 @@ android {
         targetSdk = 36
         versionCode = if (finalVersionCode > 0) finalVersionCode else 1
         versionName = finalVersionName
+        
+        println("✅ Final VersionCode: $versionCode (Source: ${if (envVersionCodeOverride != null) "CI/CD" else "Git Commit Count"})")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -134,11 +140,6 @@ android {
         buildConfigField("boolean", "ENABLE_LOGGING", enableLogging.toString())
         buildConfigField("String", "UPDATE_CHANNEL", "\"$updateChannel\"")
 
-        // 1. 如果 CI 有傳 VersionCode 就用 CI 的，不然用預設的
-        if (envVersionCodeOverride != null) {
-            versionCode = envVersionCodeOverride
-        }
-        
         // 3. 設定 Application ID 和 Update URL (這部分部分與上方邏輯重複，但為了確保完整性，我們重新梳理)
         // 注意：上方已經設定了 applicationId = finalApplicationId
         // 這裡主要處理 Application ID Suffix (如果需要進一步區分) 和 resValue / buildConfigField

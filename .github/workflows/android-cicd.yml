@@ -81,14 +81,8 @@ jobs:
           fi
 
       # 1. 修改 Version Code 生成邏輯 (改用 GitHub Run Number 確保唯一且遞增)
-      - name: Generate Version Code
-        run: |
-          # 使用 run_number (例如 258) 直接當作 VersionCode，保證每次都比上次大
-          echo "VERSION_CODE=${{ github.run_number }}" >> $GITHUB_ENV
-          
-          # Version Name 保持原樣或加上時間戳記方便辨識
-          # 這裡不需要特別改，因為 Gradle 那邊已經有根據 commitCount 生成邏輯
-          # 但我們確保 VERSION_CODE 被匯出
+      # 刪除或註解掉舊的 Generate Version Code 步驟
+      # - name: Generate Version Code ...
 
       - name: Build with Gradle
         env:
@@ -100,7 +94,8 @@ jobs:
           RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           BUILD_NUMBER: ${{ github.run_number }}
           # 🔥 關鍵：使用新的 Version Code (GitHub Run Number)
-          VERSION_CODE_OVERRIDE: ${{ env.VERSION_CODE }}
+          # 不要在這裡用 date，也不要留空讓 Gradle 自己算
+          VERSION_CODE_OVERRIDE: ${{ github.run_number }}
         run: ./gradlew assembleRelease
 
       # [優化] 直接尋找 Gradle 生成的帶有版本號的 APK
@@ -150,10 +145,11 @@ jobs:
           TAG_NAME="${{ github.ref_name }}"
           APK_URL="https://github.com/${{ github.repository }}/releases/download/$TAG_NAME/${{ env.APK_FILENAME }}"
           
+          # 🔥 使用 github.run_number
           cat <<EOF > public/$JSON_FILE
           {
             "latestVersion": "${{ env.VERSION_NAME }}",
-            "versionCode": ${{ env.VERSION_CODE }},
+            "versionCode": ${{ github.run_number }},
             "url": "$APK_URL",
             "releaseNotes": "Stable release $TAG_NAME"
           }
@@ -187,10 +183,11 @@ jobs:
           JSON_FILE="update_${{ env.CHANNEL_NAME }}.json"
           APK_URL="https://github.com/${{ github.repository }}/releases/download/${{ env.TAG_NAME }}/${{ env.APK_FILENAME }}"
           
+          # 🔥 使用 github.run_number
           cat <<EOF > public/$JSON_FILE
           {
             "latestVersion": "${{ env.VERSION_NAME }}",
-            "versionCode": ${{ env.VERSION_CODE }},
+            "versionCode": ${{ github.run_number }},
             "url": "$APK_URL",
             "releaseNotes": "Nightly build for ${{ env.CHANNEL_NAME }}"
           }
