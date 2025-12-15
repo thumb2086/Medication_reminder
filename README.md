@@ -94,7 +94,7 @@ This project uses GitHub Actions for continuous integration and automated versio
     *   Testers installing the APK from a specific branch will only receive updates for that branch.
 *   **Unified Naming:** All artifacts (APK) and version names now strictly follow the `X.Y.Z-channel-count` format (e.g., `1.2.1-dev-255`) to eliminate spaces and special characters, ensuring consistent behavior across different environments.
 *   **Branch Cleanup:** When a branch is deleted, the corresponding nightly release and tag are automatically removed to keep the release list clean. Manual cleanup is also supported via GitHub Actions workflow dispatch.
-*   **Versioning:** The `versionCode` now uses the GitHub Actions Run Number (e.g., 260) to ensure strict incrementation across all builds. The `versionName` follows the `1.2.1-dev-260` format.
+*   **Versioning:** The `versionCode` corresponds to the **Git Commit Count** to ensure strict consistency between the Android Build and CI Artifacts. The `versionName` follows the `1.2.1-dev-260` format.
 *   **Release Naming:** Nightly releases now use a clearer title format: `<Branch> | <VersionName>` (e.g., `feat-ui | 1.2.0-nightly-205`) to easily identify the source branch and version details.
 
 ## License

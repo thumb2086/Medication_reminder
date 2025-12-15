@@ -94,7 +94,7 @@ App 與 ESP32 智慧藥盒之間的通訊基於自訂的二進位協定，透過
     *   安裝特定分支 APK 的測試人員將只會收到該分支的更新。
 *   **統一命名：** 所有產出物 (APK) 與版本名稱嚴格遵循 `X.Y.Z-channel-count` 格式 (例如 `1.2.1-dev-255`)，移除空格與特殊字元，確保跨環境行為一致。
 *   **分支清理：** 當分支被刪除時，對應的 Nightly Release 與 Tag 也會自動移除，保持發布列表整潔。亦支援透過 GitHub Actions workflow dispatch 手動清理。
-*   **版本控制：** `versionCode` 現在改用 GitHub Actions Run Number (例如 260)，確保所有建置的版本號皆嚴格遞增，防止降級問題。`versionName` 則採用 `1.2.1-dev-260` 格式。
+*   **版本控制：** `versionCode` 採用 **Git Commit Count** 以確保 Android Build 與 CI Artifacts 的嚴格一致性。`versionName` 則採用 `1.2.1-dev-260` 格式。
 *   **發布命名：** Nightly Release 現在使用更清晰的標題格式：`<分支> | <版本名稱>` (例如 `feat-ui | 1.2.0-nightly-205`)，方便識別來源分支與版本細節。
 
 ## 授權條款
