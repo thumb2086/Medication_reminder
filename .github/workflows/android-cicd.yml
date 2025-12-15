@@ -39,26 +39,23 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      # [邏輯統一] 命名標準化：全數轉為減號 (-)
-      - name: Determine Channel & Tag Name
-        id: names
+      - name: Determine Version & Channel
+        id: versioning
         run: |
+          # 1. 計算 Git Commit Count (這就是我們要的 VersionCode)
+          COMMIT_COUNT=$(git rev-list --count HEAD)
+          echo "COMMIT_COUNT=$COMMIT_COUNT" >> $GITHUB_ENV
+          echo "Calculated Commit Count: $COMMIT_COUNT"
+
+          # 2. 決定 Channel Name
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
              echo "IS_OFFICIAL=true" >> $GITHUB_ENV
-             # For official release, we can default channel to 'main' or just use the tag as version
              echo "CHANNEL_NAME=main" >> $GITHUB_ENV
+             echo "TAG_NAME=${{ github.ref_name }}" >> $GITHUB_ENV
           else
              RAW_BRANCH=${GITHUB_REF#refs/heads/}
-             # feat/new_fun -> feat-new-fun
              SAFE_NAME=$(echo "$RAW_BRANCH" | tr '/_' '-')
-          
              echo "CHANNEL_NAME=$SAFE_NAME" >> $GITHUB_ENV
-             
-             # 改動：不再只使用 nightly-<branch>，改為 nightly-<branch>-<build_number> 或其他後綴
-             # 但 Release Tag 必須是固定的 (mutable tag) 才能覆蓋發布，
-             # 或是採用 immutable tag 策略 (每次發布新 Tag)。
-             # 此專案採用 mutable release 策略 (更新同一個 Release)。
-             # 所以 Tag Name 維持不變，但 Release Title 會在後面的步驟動態設定。
              echo "TAG_NAME=nightly-$SAFE_NAME" >> $GITHUB_ENV
              echo "IS_OFFICIAL=false" >> $GITHUB_ENV
           fi
@@ -66,93 +63,64 @@ jobs:
       - name: Grant Execute Permission for Gradlew
         run: chmod +x gradlew
 
-      # [防呆] 產生 google-services.json，防止 Build 失敗
       - name: Decode Secrets
         run: |
           if [ ! -z "${{ secrets.GOOGLE_SERVICES_JSON }}" ]; then
             echo "${{ secrets.GOOGLE_SERVICES_JSON }}" > app/google-services.json
           else
             echo '{"project_info":{"project_number":"000000000000","project_id":"dummy-project","storage_bucket":"dummy.appspot.com"},"client":[{"client_info":{"mobilesdk_app_id":"1:000000000000:android:0000000000000000","android_client_info":{"package_name":"com.example.dummy"}},"api_key":[{"current_key":"dummy_key"}]}]}' > app/google-services.json
-            echo "::warning::Generated dummy google-services.json because secret is empty."
           fi
           
           if [ ! -z "${{ secrets.KEYSTORE_BASE64 }}" ]; then
              echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
           fi
 
-      # 1. 修改 Version Code 生成邏輯 (改用 GitHub Run Number 確保唯一且遞增)
-      # 刪除或註解掉舊的 Generate Version Code 步驟
-      # - name: Generate Version Code ...
-
       - name: Build with Gradle
         env:
-          # 🔥 關鍵：把 YAML 算出來的 safe name (例如 fix-app-update) 傳進去
-          CHANNEL_NAME: ${{ env.CHANNEL_NAME }} 
           RELEASE_KEYSTORE_PATH: ./release.keystore
           RELEASE_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          BUILD_NUMBER: ${{ github.run_number }}
-          # 🔥 關鍵：使用新的 Version Code (GitHub Run Number)
-          # 不要在這裡用 date，也不要留空讓 Gradle 自己算
-          # VERSION_CODE_OVERRIDE: ${{ github.run_number }}
-        
-        # 🔥 修改這裡：直接用 -P 強制注入變數 (Version Code & Channel Name)
-        run: ./gradlew assembleRelease -PciVersionCode=${{ github.run_number }} -PciChannelName=${{ env.CHANNEL_NAME }} || exit 1
+        # 🔥 修改：傳入 git rev-list 算出來的 COMMIT_COUNT，而不是 run_number
+        run: ./gradlew assembleRelease -PciVersionCode=${{ env.COMMIT_COUNT }} -PciChannelName=${{ env.CHANNEL_NAME }} || exit 1
 
-      # [優化] 直接尋找 Gradle 生成的帶有版本號的 APK
       - name: Find and Rename APK
         run: |
-          # 取得 Gradle 計算出的完整版本名稱 (e.g., 1.2.1-dev-255)
-          # 注意：要傳入相同的參數以確保版本名稱一致
-          GRADLE_VERSION_NAME=$(./gradlew -q app:printVersionName -PciVersionCode=${{ github.run_number }} -PciChannelName=${{ env.CHANNEL_NAME }} | tail -n 1)
+          # 同樣傳入 COMMIT_COUNT 讓 Gradle print 出正確的版本名
+          GRADLE_VERSION_NAME=$(./gradlew -q app:printVersionName -PciVersionCode=${{ env.COMMIT_COUNT }} -PciChannelName=${{ env.CHANNEL_NAME }} | tail -n 1)
           echo "Gradle reported versionName: $GRADLE_VERSION_NAME"
 
-          # 尋找 release 目錄下的 APK
-          # Gradle output: MedicationReminder-v1.2.1-dev-255-release.apk
           SRC_APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
           
           if [ -z "$SRC_APK" ]; then
-             echo "::error::No APK found in app/build/outputs/apk/release"
+             echo "::error::No APK found"
              exit 1
           fi
           
-          echo "Found APK: $SRC_APK"
-          
-          # 將檔名中的 "-release" 移除，保持簡潔
-          # MedicationReminder-v1.2.1-dev-255-release.apk -> MedicationReminder-v1.2.1-dev-255.apk
           FILENAME=$(basename "$SRC_APK")
           NEW_FILENAME=${FILENAME//-release/}
           
           if [ "$FILENAME" != "$NEW_FILENAME" ]; then
               mv "$SRC_APK" "app/build/outputs/apk/release/$NEW_FILENAME"
-              echo "Renamed to: $NEW_FILENAME"
           fi
           
-          APK_FILENAME="$NEW_FILENAME"
-          FINAL_VERSION_NAME="$GRADLE_VERSION_NAME"
-          
-          echo "APK_FILENAME=$APK_FILENAME" >> $GITHUB_ENV
-          echo "VERSION_NAME=$FINAL_VERSION_NAME" >> $GITHUB_ENV
-          echo "::notice::Final APK: $APK_FILENAME (Version: $FINAL_VERSION_NAME)"
+          echo "APK_FILENAME=$NEW_FILENAME" >> $GITHUB_ENV
+          echo "VERSION_NAME=$GRADLE_VERSION_NAME" >> $GITHUB_ENV
 
       # --- Official Release ---
-      # Need to generate JSON for main channel as well if we want Nightly builds to be able to "update" to stable
       - name: Generate Main Channel JSON (Official)
         if: env.IS_OFFICIAL == 'true'
         run: |
           mkdir -p public
-          # Use "update_main.json" for stable releases so other channels can find it
           JSON_FILE="update_main.json" 
-          # Assuming the tag is the release tag
           TAG_NAME="${{ github.ref_name }}"
           APK_URL="https://github.com/${{ github.repository }}/releases/download/$TAG_NAME/${{ env.APK_FILENAME }}"
           
-          # 🔥 使用 github.run_number
+          # 🔥 關鍵修正：JSON 裡面的 VersionCode 必須是 Commit Count
           cat <<EOF > public/$JSON_FILE
           {
             "latestVersion": "${{ env.VERSION_NAME }}",
-            "versionCode": ${{ github.run_number }},
+            "versionCode": ${{ env.COMMIT_COUNT }},
             "url": "$APK_URL",
             "releaseNotes": "Stable release $TAG_NAME"
           }
@@ -186,11 +154,11 @@ jobs:
           JSON_FILE="update_${{ env.CHANNEL_NAME }}.json"
           APK_URL="https://github.com/${{ github.repository }}/releases/download/${{ env.TAG_NAME }}/${{ env.APK_FILENAME }}"
           
-          # 🔥 使用 github.run_number
+          # 🔥 關鍵修正：JSON 裡面的 VersionCode 必須是 Commit Count
           cat <<EOF > public/$JSON_FILE
           {
             "latestVersion": "${{ env.VERSION_NAME }}",
-            "versionCode": ${{ github.run_number }},
+            "versionCode": ${{ env.COMMIT_COUNT }},
             "url": "$APK_URL",
             "releaseNotes": "Nightly build for ${{ env.CHANNEL_NAME }}"
           }
@@ -210,19 +178,18 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ env.TAG_NAME }}
-          # [命名修正] Release Title 優化: <Branch> | <VersionName>
           name: "${{ env.CHANNEL_NAME }} | ${{ env.VERSION_NAME }}"
-          target_commitish: ${{ github.sha }} # [優化] 確保 Tag 指向最新 Commit
+          target_commitish: ${{ github.sha }}
           files: |
             app/build/outputs/apk/release/${{ env.APK_FILENAME }}
             update_${{ env.CHANNEL_NAME }}.json
           prerelease: true
-          body: "Auto-generated nightly build for channel ${{ env.CHANNEL_NAME }}.\nVersion: ${{ env.VERSION_NAME }}\nCommit: ${{ github.sha }}"
+          body: "Nightly build for ${{ env.CHANNEL_NAME }}.\nVersion: ${{ env.VERSION_NAME }}\nVersionCode: ${{ env.COMMIT_COUNT }}\nCommit: ${{ github.sha }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ========================================================
-  # Job 2: Cleanup (暴力刪除 + 並發保護)
+  # Job 2: Cleanup
   # ========================================================
   cleanup:
     name: Cleanup Release & JSON
@@ -234,51 +201,26 @@ jobs:
       contents: write
     steps:
       - name: Determine Target
-        id: target
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             RAW_BRANCH="${{ inputs.target_branch_name }}"
-            echo "::notice::Trigger: Manual Dispatch for $RAW_BRANCH"
           else
             RAW_BRANCH="${{ github.event.ref }}"
-            echo "::notice::Trigger: Branch Deletion for $RAW_BRANCH"
           fi
-          
-          # [邏輯統一] 必須與 Build Job 完全一致 (tr '/_' '-')
           SAFE_NAME=$(echo "$RAW_BRANCH" | tr '/_' '-')
-          
-          TAG_NAME="nightly-$SAFE_NAME"
-          JSON_FILE="update_${SAFE_NAME}.json"
-          
-          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
-          echo "JSON_FILE=$JSON_FILE" >> $GITHUB_ENV
-          
-          echo "::notice::Targeting -> Tag: $TAG_NAME | JSON: $JSON_FILE"
+          echo "TAG_NAME=nightly-$SAFE_NAME" >> $GITHUB_ENV
+          echo "JSON_FILE="update_${SAFE_NAME}.json"" >> $GITHUB_ENV
 
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Debug - List Releases
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "=== Current Releases (Top 5) ==="
-          gh release list --limit 5 || echo "Failed to list releases"
-          echo "================================"
-
-      # 1. 第一刀：嘗試刪除 Release (溫和)
       - name: Delete GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release delete "${{ env.TAG_NAME }}" --cleanup-tag --yes || echo "::warning::Release not found via API."
+          gh release delete "${{ env.TAG_NAME }}" --cleanup-tag --yes || echo "Release not found"
 
-      # 2. 第二刀：Git 強制刪除 Tag (暴力)
       - name: Force Delete Git Tag
         run: |
-          git push origin --delete "refs/tags/${{ env.TAG_NAME }}" || echo "::notice::Git Tag already gone."
+          git push origin --delete "refs/tags/${{ env.TAG_NAME }}" || echo "Git Tag gone"
 
-      # 3. 清理 JSON (含並發保護)
       - name: Cleanup JSON from gh-pages
         uses: actions/checkout@v4
         with:
@@ -287,18 +229,11 @@ jobs:
 
       - name: Remove JSON File
         run: |
-          TARGET_FILE="${{ env.JSON_FILE }}"
-          
-          # [優化] 並發保護：先拉取最新變更，避免 Push Rejected
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git pull origin gh-pages --rebase
-          
-          if [ -f "$TARGET_FILE" ]; then
-            git rm "$TARGET_FILE"
-            git commit -m "Cleanup $TARGET_FILE"
+          if [ -f "${{ env.JSON_FILE }}" ]; then
+            git rm "${{ env.JSON_FILE }}"
+            git commit -m "Cleanup ${{ env.JSON_FILE }}"
             git push origin gh-pages
-            echo "::notice::Successfully removed $TARGET_FILE"
-          else
-            echo "::notice::File $TARGET_FILE not found on gh-pages. Nothing to do."
           fi
