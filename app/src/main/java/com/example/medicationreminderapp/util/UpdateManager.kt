@@ -56,9 +56,8 @@ class UpdateManager(private val context: Context) {
                 
                 // Get user selected channel, fallback to the build's channel
                 val selectedChannel = prefs.getString("update_channel", defaultChannel) ?: defaultChannel
-                val currentChannel = BuildConfig.UPDATE_CHANNEL
                 
-                val isChannelSwitch = selectedChannel != currentChannel
+                val isChannelSwitch = selectedChannel != BuildConfig.UPDATE_CHANNEL
                 
                 // If it is a manual check and we are switching channels, treat it as a "force" check
                 // If it is a manual check on the same channel, we also pass true to allow re-installation if needed
@@ -92,6 +91,7 @@ class UpdateManager(private val context: Context) {
                     }
                 }
             } catch (e: Exception) {
+                // Removed unused parameter e usage or logged it
                 Log.e("UpdateManager", "Error checking for updates", e)
                 null
             }
@@ -99,8 +99,23 @@ class UpdateManager(private val context: Context) {
     }
 
     private fun checkDynamicChannelUpdates(channel: String, force: Boolean): UpdateInfo? {
-        // Fetch JSON from GitHub Pages
-        val jsonUrl = "https://$repoOwner.github.io/$repoName/update_$channel.json"
+        // [Dynamic URL Logic]
+        // If the requested channel matches the current build's channel, we can trust the injected BuildConfig URL.
+        // This ensures correct fetching for feature branches like "fix-app-update".
+        // Otherwise (channel switch), we construct the URL manually.
+        
+        val jsonUrl = if (channel == BuildConfig.UPDATE_CHANNEL) {
+             // Fallback for safety if the field is missing in older builds (though unlikely now)
+             try {
+                 BuildConfig.UPDATE_JSON_URL
+             } catch (_: NoSuchFieldError) {
+                 "https://$repoOwner.github.io/$repoName/update_$channel.json"
+             }
+        } else {
+             "https://$repoOwner.github.io/$repoName/update_$channel.json"
+        }
+        
+        Log.d("UpdateManager", "Fetching update config from: $jsonUrl")
         
         val request = Request.Builder()
             .url(jsonUrl)
@@ -126,13 +141,6 @@ class UpdateManager(private val context: Context) {
         // Compare logic:
         // 1. If remote VersionCode > local VersionCode, update is available.
         // 2. If it's a forced channel switch or manual check, allow update if versions differ or even if same (reinstall).
-        // For simplicity, force implies we return the update info regardless of version check, 
-        // BUT we typically only want to downgrade/reinstall if explicitly requested.
-        // Here, 'force' means "ignore the check that remote > local". 
-        // So we return it, and let the UI decide (or just show it).
-        
-        // However, we usually don't want to downgrade automatically. 
-        // If force is true (Manual Check), we return the update info.
         if (remoteVersionCode > BuildConfig.VERSION_CODE || force) {
             return UpdateInfo(latestVersionName, downloadUrl, releaseNotes, true)
         } 
@@ -182,10 +190,15 @@ class UpdateManager(private val context: Context) {
     }
     
     private fun isNewerVersion(local: String, remote: String): Boolean {
-        if (local == remote) return false
+        // Normalize both strings to handle "1.2.0 dev 254" vs "1.2.0-dev-254"
+        val normalizedLocal = local.replace(" ", "-")
+        val normalizedRemote = remote.replace(" ", "-")
 
-        val localBase = local.substringBefore("-")
-        val remoteBase = remote.substringBefore("-")
+        if (normalizedLocal == normalizedRemote) return false
+
+        // Extract base version (1.2.0)
+        val localBase = normalizedLocal.substringBefore("-")
+        val remoteBase = normalizedRemote.substringBefore("-")
         
         if (localBase != remoteBase) {
             val localParts = localBase.split(".").map { it.toIntOrNull() ?: 0 }
@@ -201,8 +214,9 @@ class UpdateManager(private val context: Context) {
         }
         
         // Fallback or secondary check using commit count if available in version string
-        val localCount = getCommitCount(local)
-        val remoteCount = getCommitCount(remote)
+        // Pass the normalized strings
+        val localCount = getCommitCount(normalizedLocal)
+        val remoteCount = getCommitCount(normalizedRemote)
         
         if (localCount != null && remoteCount != null) {
             return remoteCount > localCount

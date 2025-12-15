@@ -134,6 +134,32 @@ android {
         buildConfigField("boolean", "ENABLE_LOGGING", enableLogging.toString())
         buildConfigField("String", "UPDATE_CHANNEL", "\"$updateChannel\"")
 
+        // 1. 如果 CI 有傳 VersionCode 就用 CI 的，不然用預設的
+        if (envVersionCodeOverride != null) {
+            versionCode = envVersionCodeOverride
+        }
+        
+        // 3. 設定 Application ID 和 Update URL (這部分部分與上方邏輯重複，但為了確保完整性，我們重新梳理)
+        // 注意：上方已經設定了 applicationId = finalApplicationId
+        // 這裡主要處理 Application ID Suffix (如果需要進一步區分) 和 resValue / buildConfigField
+
+        if (isProduction) {
+            buildConfigField("String", "UPDATE_JSON_URL", "\"https://thumb2086.github.io/Medication_reminder/update_main.json\"")
+        } else {
+             // A. 給包名加上後綴 (讓 fix 版、dev 版可以共存，也可以跟正式版共存)
+            // 由於上方 finalApplicationId 已經處理了 dev 和 nightly 的後綴
+            // 這裡我們針對 nightly 做更細的區分，如果我們希望每個 feature branch 都獨立
+            // 目前邏輯是 nightly 共用一個 ID，如果想要獨立，可以這樣改：
+            // 若希望每個 feature branch 獨立，可以使用以下邏輯，但目前維持三軌並行
+            // applicationIdSuffix = ".$safeBranchName" 
+            
+            // B. App 名稱加上分支名 (已在上方 finalAppName 處理)
+
+            // C. 🔥 更新網址必須對應 CI 產生的 JSON 檔名
+            // 這樣 fix-app-update 版就會去抓 update_fix-app-update.json
+            buildConfigField("String", "UPDATE_JSON_URL", "\"https://thumb2086.github.io/Medication_reminder/update_${updateChannel}.json\"")
+        }
+
         resValue("string", "app_name", finalAppName)
     }
 

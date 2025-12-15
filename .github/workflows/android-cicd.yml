@@ -80,19 +80,27 @@ jobs:
              echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
           fi
 
+      # 1. 修改 Version Code 生成邏輯 (改用 GitHub Run Number 確保唯一且遞增)
       - name: Generate Version Code
         run: |
-          TIMESTAMP=$(date +'%y%m%d%H')
-          echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
+          # 使用 run_number (例如 258) 直接當作 VersionCode，保證每次都比上次大
+          echo "VERSION_CODE=${{ github.run_number }}" >> $GITHUB_ENV
+          
+          # Version Name 保持原樣或加上時間戳記方便辨識
+          # 這裡不需要特別改，因為 Gradle 那邊已經有根據 commitCount 生成邏輯
+          # 但我們確保 VERSION_CODE 被匯出
 
       - name: Build with Gradle
         env:
+          # 🔥 關鍵：把 YAML 算出來的 safe name (例如 fix-app-update) 傳進去
+          CHANNEL_NAME: ${{ env.CHANNEL_NAME }} 
           RELEASE_KEYSTORE_PATH: ./release.keystore
           RELEASE_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           BUILD_NUMBER: ${{ github.run_number }}
-          VERSION_CODE_OVERRIDE: ${{ env.TIMESTAMP }}
+          # 🔥 關鍵：使用新的 Version Code (GitHub Run Number)
+          VERSION_CODE_OVERRIDE: ${{ env.VERSION_CODE }}
         run: ./gradlew assembleRelease
 
       # [優化] 直接尋找 Gradle 生成的帶有版本號的 APK
@@ -145,7 +153,7 @@ jobs:
           cat <<EOF > public/$JSON_FILE
           {
             "latestVersion": "${{ env.VERSION_NAME }}",
-            "versionCode": ${{ env.TIMESTAMP }},
+            "versionCode": ${{ env.VERSION_CODE }},
             "url": "$APK_URL",
             "releaseNotes": "Stable release $TAG_NAME"
           }
@@ -182,7 +190,7 @@ jobs:
           cat <<EOF > public/$JSON_FILE
           {
             "latestVersion": "${{ env.VERSION_NAME }}",
-            "versionCode": ${{ env.TIMESTAMP }},
+            "versionCode": ${{ env.VERSION_CODE }},
             "url": "$APK_URL",
             "releaseNotes": "Nightly build for ${{ env.CHANNEL_NAME }}"
           }
