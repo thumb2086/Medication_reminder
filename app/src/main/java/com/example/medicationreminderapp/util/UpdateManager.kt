@@ -41,7 +41,11 @@ class UpdateManager(private val context: Context) {
         val isNightly: Boolean
     )
 
-    suspend fun checkForUpdates(): UpdateInfo? {
+    /**
+     * Checks for updates.
+     * @param isManualCheck If true, it allows reinstalling the current version or switching channels even if versions are same.
+     */
+    suspend fun checkForUpdates(isManualCheck: Boolean = false): UpdateInfo? {
         return withContext(Dispatchers.IO) {
             try {
                 val prefs = PreferenceManager.getDefaultSharedPreferences(context)
@@ -55,16 +59,21 @@ class UpdateManager(private val context: Context) {
                 val currentChannel = BuildConfig.UPDATE_CHANNEL
                 
                 val isChannelSwitch = selectedChannel != currentChannel
-                Log.d("UpdateManager", "Checking for updates on channel: $selectedChannel (Switch: $isChannelSwitch)")
+                
+                // If it is a manual check and we are switching channels, treat it as a "force" check
+                // If it is a manual check on the same channel, we also pass true to allow re-installation if needed
+                val forceUpdate = isManualCheck
+                
+                Log.d("UpdateManager", "Checking for updates on channel: $selectedChannel (Switch: $isChannelSwitch, Manual: $isManualCheck)")
 
                 val isStable = selectedChannel == "main" || selectedChannel == "master" || selectedChannel == "stable"
 
                 if (isStable) {
-                    checkStableUpdates(isChannelSwitch)
+                    checkStableUpdates(forceUpdate)
                 } else {
                     // Check both Dynamic (Dev/Nightly) and Stable channels
-                    val devUpdate = checkDynamicChannelUpdates(selectedChannel, isChannelSwitch)
-                    val stableUpdate = checkStableUpdates(false) // Don't force, just check for newer stable
+                    val devUpdate = checkDynamicChannelUpdates(selectedChannel, forceUpdate)
+                    val stableUpdate = checkStableUpdates(false) // Don't force stable unless explicitly selected (logic handled above)
 
                     // Logic to pick the best update:
                     // 1. If both exist, pick the newer one.
@@ -116,7 +125,14 @@ class UpdateManager(private val context: Context) {
 
         // Compare logic:
         // 1. If remote VersionCode > local VersionCode, update is available.
-        // 2. If it's a forced channel switch, allow update.
+        // 2. If it's a forced channel switch or manual check, allow update if versions differ or even if same (reinstall).
+        // For simplicity, force implies we return the update info regardless of version check, 
+        // BUT we typically only want to downgrade/reinstall if explicitly requested.
+        // Here, 'force' means "ignore the check that remote > local". 
+        // So we return it, and let the UI decide (or just show it).
+        
+        // However, we usually don't want to downgrade automatically. 
+        // If force is true (Manual Check), we return the update info.
         if (remoteVersionCode > BuildConfig.VERSION_CODE || force) {
             return UpdateInfo(latestVersionName, downloadUrl, releaseNotes, true)
         } 
