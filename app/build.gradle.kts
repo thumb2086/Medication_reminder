@@ -48,11 +48,13 @@ android {
     val commitCount = getGitCommandOutput("git", "rev-list", "--count", "HEAD").toIntOrNull() ?: 1
     
     // [Fix] In CI/CD (Detached HEAD), git rev-parse returns "HEAD", causing the branch to default to "main".
-    // We must prioritize the environment variable passed from CI/CD.
+    // We prioritize the command-line project property -PciChannelName, then environment variable.
     val envChannelName = System.getenv("CHANNEL_NAME")
+    val projectChannelName = if (project.hasProperty("ciChannelName")) project.property("ciChannelName") as String else null
     val gitBranchName = getGitCommandOutput("git", "rev-parse", "--abbrev-ref", "HEAD")
     
     val branchName = when {
+        !projectChannelName.isNullOrBlank() -> projectChannelName
         !envChannelName.isNullOrBlank() -> envChannelName
         gitBranchName.isNotBlank() && gitBranchName != "HEAD" && gitBranchName != "git-error" -> gitBranchName
         else -> "main"
@@ -81,18 +83,20 @@ android {
     val isProduction = safeBranchName == "main" || safeBranchName == "master"
     val isDev = safeBranchName == "dev"
     
-    // Logic: Use environment variables from CI/CD if available, otherwise fallback to local logic
+    // Logic: Use properties (-P) from CI/CD if available, otherwise fallback to local logic
+    val projectCiVersionCode = if (project.hasProperty("ciVersionCode")) project.property("ciVersionCode")?.toString()?.toIntOrNull() else null
     val envBuildNumber = System.getenv("BUILD_NUMBER")?.toIntOrNull()
     val envVersionCodeOverride = System.getenv("VERSION_CODE_OVERRIDE")?.toIntOrNull()
     val envVersionName = System.getenv("VERSION_NAME")
 
-    // 🔥 優先使用 CI 傳入的 VERSION_CODE_OVERRIDE (即 GitHub Run Number)
-    val finalVersionCode = envVersionCodeOverride ?: commitCount
+    // 🔥 優先使用 CI 傳入的 ciVersionCode (即 GitHub Run Number)，其次是 env，最後是 commitCount
+    val finalVersionCode = projectCiVersionCode ?: envVersionCodeOverride ?: commitCount
 
     // [Unified Naming] Always use hyphens '-' as separators. No spaces.
     // Format: X.Y.Z (Production) or X.Y.Z-channel-COUNT
     // 如果是 CI 環境，使用 BUILD_NUMBER (Run Number) 作為後綴，否則使用 commitCount
-    val versionSuffix = envBuildNumber ?: commitCount
+    // 注意: projectCiVersionCode 就是 run number
+    val versionSuffix = projectCiVersionCode ?: envBuildNumber ?: commitCount
     
     val localVersionName = when {
         isProduction -> baseVersionName
@@ -129,7 +133,8 @@ android {
         versionCode = if (finalVersionCode > 0) finalVersionCode else 1
         versionName = finalVersionName
         
-        println("✅ Final VersionCode: $versionCode (Source: ${if (envVersionCodeOverride != null) "CI/CD" else "Git Commit Count"})")
+        println("✅ Final VersionCode: $versionCode (Source: ${if (projectCiVersionCode != null) "CI/CD (-P)" else if (envVersionCodeOverride != null) "CI/CD (Env)" else "Git Commit Count"})")
+        println("✅ Final Channel: $updateChannel")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

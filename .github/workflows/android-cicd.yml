@@ -95,14 +95,17 @@ jobs:
           BUILD_NUMBER: ${{ github.run_number }}
           # 🔥 關鍵：使用新的 Version Code (GitHub Run Number)
           # 不要在這裡用 date，也不要留空讓 Gradle 自己算
-          VERSION_CODE_OVERRIDE: ${{ github.run_number }}
-        run: ./gradlew assembleRelease
+          # VERSION_CODE_OVERRIDE: ${{ github.run_number }}
+        
+        # 🔥 修改這裡：直接用 -P 強制注入變數 (Version Code & Channel Name)
+        run: ./gradlew assembleRelease -PciVersionCode=${{ github.run_number }} -PciChannelName=${{ env.CHANNEL_NAME }} || exit 1
 
       # [優化] 直接尋找 Gradle 生成的帶有版本號的 APK
       - name: Find and Rename APK
         run: |
           # 取得 Gradle 計算出的完整版本名稱 (e.g., 1.2.1-dev-255)
-          GRADLE_VERSION_NAME=$(./gradlew -q app:printVersionName | tail -n 1)
+          # 注意：要傳入相同的參數以確保版本名稱一致
+          GRADLE_VERSION_NAME=$(./gradlew -q app:printVersionName -PciVersionCode=${{ github.run_number }} -PciChannelName=${{ env.CHANNEL_NAME }} | tail -n 1)
           echo "Gradle reported versionName: $GRADLE_VERSION_NAME"
 
           # 尋找 release 目錄下的 APK
