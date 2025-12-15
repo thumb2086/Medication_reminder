@@ -46,8 +46,16 @@ android {
 
     // Get Git info
     val commitCount = getGitCommandOutput("git", "rev-list", "--count", "HEAD").toIntOrNull() ?: 1
-    val branchName = getGitCommandOutput("git", "rev-parse", "--abbrev-ref", "HEAD").let {
-        if (it.isBlank() || it == "HEAD" || it == "git-error") "main" else it // Default to main if detached HEAD or error
+    
+    // [Fix] In CI/CD (Detached HEAD), git rev-parse returns "HEAD", causing the branch to default to "main".
+    // We must prioritize the environment variable passed from CI/CD.
+    val envChannelName = System.getenv("CHANNEL_NAME")
+    val gitBranchName = getGitCommandOutput("git", "rev-parse", "--abbrev-ref", "HEAD")
+    
+    val branchName = when {
+        !envChannelName.isNullOrBlank() -> envChannelName
+        gitBranchName.isNotBlank() && gitBranchName != "HEAD" && gitBranchName != "git-error" -> gitBranchName
+        else -> "main"
     }
 
     // Get base config values with fallback
@@ -62,10 +70,15 @@ android {
     val devApiUrl = appConfig["devApiUrl"] as? String ?: "https://api.dev.com"
 
     // Determine branch-specific configuration
-    val safeBranchName = branchName.replace("/", "_").replace("-", "_").replace(Regex("[^a-zA-Z0-9_]"), "")
+    // [Critical Fix] CI/CD uses `tr '/_' '-'` to sanitize branch names.
+    // We MUST match this behavior in Gradle so `BuildConfig.UPDATE_CHANNEL` matches the JSON filename.
+    // Old logic: replaced - with _ (Mismatch!)
+    // New logic: replace / and _ with - (Match!)
+    val normalizedBranchName = branchName.replace("/", "-").replace("_", "-")
+    val safeBranchName = normalizedBranchName.replace(Regex("[^a-zA-Z0-9-]"), "")
 
     // Treat main, master, and unknown as production/default
-    val isProduction = safeBranchName == "main" || safeBranchName == "master" || safeBranchName == "unknown"
+    val isProduction = safeBranchName == "main" || safeBranchName == "master"
     val isDev = safeBranchName == "dev"
     
     // Logic: Use environment variables from CI/CD if available, otherwise fallback to local logic
@@ -76,7 +89,7 @@ android {
     val finalVersionCode = envVersionCodeOverride ?: envBuildNumber ?: commitCount
 
     // [Unified Naming] Always use hyphens '-' as separators. No spaces.
-    // Format: X.Y.Z (Production) or X.Y.Z-dev-COUNT or X.Y.Z-nightly-COUNT
+    // Format: X.Y.Z (Production) or X.Y.Z-channel-COUNT
     val localVersionName = when {
         isProduction -> baseVersionName
         isDev -> "$baseVersionName-dev-$commitCount"
@@ -99,6 +112,9 @@ android {
     val finalAppName = if (isProduction) appName else "$appName ($branchName)"
     val finalApiUrl = if (isProduction) prodApiUrl else devApiUrl
     val enableLogging = !isProduction
+    
+    // Update Channel: strictly use the sanitized name matching CI/CD
+    val updateChannel = if (isProduction) "main" else safeBranchName
 
     // --- Dynamic versioning and configuration logic ends ---
 
@@ -116,7 +132,7 @@ android {
 
         buildConfigField("String", "API_URL", "\"$finalApiUrl\"")
         buildConfigField("boolean", "ENABLE_LOGGING", enableLogging.toString())
-        buildConfigField("String", "UPDATE_CHANNEL", "\"$safeBranchName\"")
+        buildConfigField("String", "UPDATE_CHANNEL", "\"$updateChannel\"")
 
         resValue("string", "app_name", finalAppName)
     }
