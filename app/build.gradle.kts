@@ -75,21 +75,20 @@ android {
 
     val finalVersionCode = envVersionCodeOverride ?: envBuildNumber ?: commitCount
 
+    // [Unified Naming] Always use hyphens '-' as separators. No spaces.
+    // Format: X.Y.Z (Production) or X.Y.Z-dev-COUNT or X.Y.Z-nightly-COUNT
     val localVersionName = when {
         isProduction -> baseVersionName
-        isDev -> "$baseVersionName dev $commitCount"
-        else -> "$baseVersionName nightly $commitCount"
+        isDev -> "$baseVersionName-dev-$commitCount"
+        else -> "$baseVersionName-nightly-$commitCount"
     }
     
     val finalVersionName = envVersionName ?: localVersionName
     
-    // Ensure filename doesn't have spaces
-    val safeVersionName = finalVersionName.replace(" ", "-")
-    
-    // Use a hardcoded prefix "MedicationReminder" for file naming to avoid issues with Chinese characters or missing config
+    // Use a hardcoded prefix "MedicationReminder" for file naming
     // The display name (app_name) can still use the Chinese name.
     val filePrefix = "MedicationReminder"
-    val finalArchivesBaseName = "$filePrefix-v$safeVersionName"
+    val finalArchivesBaseName = "$filePrefix-v$finalVersionName"
     
     val finalApplicationId = when {
         isProduction -> baseApplicationId
@@ -112,6 +111,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
+        // This sets the output APK name prefix: MedicationReminder-v1.2.1-nightly-255
         setProperty("archivesBaseName", finalArchivesBaseName)
 
         buildConfigField("String", "API_URL", "\"$finalApiUrl\"")

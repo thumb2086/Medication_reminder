@@ -98,17 +98,12 @@ jobs:
       # [優化] 直接尋找 Gradle 生成的帶有版本號的 APK
       - name: Find and Rename APK
         run: |
-          # 嘗試從 Gradle properties 取得 versionName 作為備用 (不依賴它做主要判斷)
+          # 取得 Gradle 計算出的完整版本名稱 (e.g., 1.2.1-dev-255)
           GRADLE_VERSION_NAME=$(./gradlew -q app:printVersionName | tail -n 1)
           echo "Gradle reported versionName: $GRADLE_VERSION_NAME"
 
-          # 尋找 release 目錄下的 APK (Gradle 設定已經會生成 MedicationReminder-*.apk)
-          # find app/build/outputs/apk/release -name "*.apk"
-          
-          # 我們預期 Gradle 已經生成了類似 "藥到叮嚀 (dev)-v1.2.1-dev-205.apk" 或 "MedicationReminder-v1.2.1.apk"
-          # 但因為 archivesBaseName 設定為 "MedicationReminder-v...", 實際檔案應該是 "MedicationReminder-v...-release.apk"
-          
-          # 找出最新的 APK
+          # 尋找 release 目錄下的 APK
+          # Gradle output: MedicationReminder-v1.2.1-dev-255-release.apk
           SRC_APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
           
           if [ -z "$SRC_APK" ]; then
@@ -118,40 +113,18 @@ jobs:
           
           echo "Found APK: $SRC_APK"
           
-          # 如果檔案名稱看起來像預設的 "app-release.apk" (代表 archivesBaseName 沒生效)，我們手動改名
-          if [[ "$SRC_APK" == *"app-release.apk" ]]; then
-              echo "::warning::APK name is default. Renaming manually based on detected version."
-              if [ -z "$GRADLE_VERSION_NAME" ] || [ "$GRADLE_VERSION_NAME" == "unknown" ]; then
-                  VERSION_NAME="nightly-${{ env.TIMESTAMP }}"
-              else
-                  VERSION_NAME="$GRADLE_VERSION_NAME"
-              fi
-              SAFE_VERSION=$(echo "$VERSION_NAME" | tr ' ' '-')
-              NEW_FILENAME="MedicationReminder-$SAFE_VERSION.apk"
+          # 將檔名中的 "-release" 移除，保持簡潔
+          # MedicationReminder-v1.2.1-dev-255-release.apk -> MedicationReminder-v1.2.1-dev-255.apk
+          FILENAME=$(basename "$SRC_APK")
+          NEW_FILENAME=${FILENAME//-release/}
+          
+          if [ "$FILENAME" != "$NEW_FILENAME" ]; then
               mv "$SRC_APK" "app/build/outputs/apk/release/$NEW_FILENAME"
-              APK_FILENAME="$NEW_FILENAME"
-              FINAL_VERSION_NAME="$VERSION_NAME"
-          else
-              # 如果 Gradle 已經生成了正確名稱 (例如包含版本號)，我們就用它
-              # 但為了確保一致性，我們把 "-release" 拿掉 (如果有的話)
-              FILENAME=$(basename "$SRC_APK")
-              NEW_FILENAME=${FILENAME//-release/} # Remove -release
-              
-              if [ "$FILENAME" != "$NEW_FILENAME" ]; then
-                  mv "$SRC_APK" "app/build/outputs/apk/release/$NEW_FILENAME"
-              fi
-              
-              APK_FILENAME="$NEW_FILENAME"
-              
-              # 嘗試從檔名反推版本號 (MedicationReminder-v1.2.1-dev-205.apk -> 1.2.1 dev 205)
-              # 這只是一個顯示用的字串
-              if [ ! -z "$GRADLE_VERSION_NAME" ] && [ "$GRADLE_VERSION_NAME" != "unknown" ]; then
-                  FINAL_VERSION_NAME="$GRADLE_VERSION_NAME"
-              else
-                  # Fallback
-                  FINAL_VERSION_NAME="nightly"
-              fi
+              echo "Renamed to: $NEW_FILENAME"
           fi
+          
+          APK_FILENAME="$NEW_FILENAME"
+          FINAL_VERSION_NAME="$GRADLE_VERSION_NAME"
           
           echo "APK_FILENAME=$APK_FILENAME" >> $GITHUB_ENV
           echo "VERSION_NAME=$FINAL_VERSION_NAME" >> $GITHUB_ENV

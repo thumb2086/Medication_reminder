@@ -156,7 +156,8 @@ class UpdateManager(private val context: Context) {
         if (apkUrl.isEmpty()) return null
 
         val remoteVersion = tagName.removePrefix("v")
-        val currentVersionNormalized = BuildConfig.VERSION_NAME.replace(" ", "-")
+        // Normalized version string check (ensure no spaces)
+        val currentVersionNormalized = BuildConfig.VERSION_NAME
 
         if (isNewerVersion(currentVersionNormalized, remoteVersion) || force) {
              return UpdateInfo(remoteVersion, apkUrl, releaseNotes, false)
@@ -195,7 +196,9 @@ class UpdateManager(private val context: Context) {
     }
 
     private fun getCommitCount(version: String): Int? {
-        val parts = version.split("-", " ")
+        // Format: 1.2.1-dev-255 or 1.2.1-nightly-255
+        // We split by "-" and take the last part
+        val parts = version.split("-")
         val lastPart = parts.lastOrNull()
         return lastPart?.toIntOrNull()
     }
