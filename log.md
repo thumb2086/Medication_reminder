@@ -2,6 +2,12 @@
 
 ## 2025-01-27
 ### DevOps
+*   **防止版本堆積 (Release Pile-up):**
+    *   **問題:** 每次 Push 都會產生一個新的 Nightly Release，導致 Release 頁面被同分支的歷史版本塞滿 (例如 `287`, `288`, `289`)，舊版不會自動清除。
+    *   **修正:** 在 `android-cicd.yml` 的建置流程中，**在建立新 Release 之前**，插入「自動清理舊版」步驟。該步驟會搜尋包含目前分支名稱的所有舊 Tag，並將其 Release 與 Git Tag 一併刪除，確保每個分支永遠只保留最新的一個 Nightly Build。
+*   **部署並發控制 (Concurrency Control):**
+    *   **問題:** 頻繁推送導致 GitHub Actions 多個 Workflow 同時執行，爭搶 `gh-pages` 部署鎖，造成 "Deployment Concurrency" 錯誤。
+    *   **修正:** 在 `android-cicd.yml` 中新增 `concurrency` 設定 (`group: ${{ github.workflow }}-${{ github.ref }}` 與 `cancel-in-progress: true`)。當同一分支有新 Commit 推送時，自動取消正在執行的舊 Workflow，確保資源不衝突且節省 Actions 額度。
 *   **Cleanup 腳本修復:**
     *   **問題:** 舊版 Cleanup 腳本直接使用分支名稱 (如 `fix-wifi`) 刪除 Tag，但實際 Tag 為動態生成 (如 `1.2.1-nightly-fix-wifi-287`)，導致刪除失敗。
     *   **修正:** 改寫 `android-cicd.yml`，使用 `gh release list --json tagName` 抓取所有 Tag，並透過 `grep` 篩選出包含關鍵字的所有 Tag 進行刪除。同時增加 `git push origin --delete` 作為雙重保險。

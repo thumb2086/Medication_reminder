@@ -97,6 +97,7 @@ This project uses GitHub Actions for continuous integration and automated versio
 *   **Versioning:** The `versionCode` corresponds to the **Git Commit Count** to ensure strict consistency between the Android Build and CI Artifacts. The `versionName` follows the `1.2.1-dev-260` format.
 *   **Release Naming:** Nightly releases now use a clearer title format: `<Branch> | <VersionName>` (e.g., `feat-ui | 1.2.0-nightly-205`) to easily identify the source branch and version details.
 *   **Dynamic Base Version:** CI/CD automatically detects the latest Git Tag (e.g., `v1.2.1`) as the base version for all subsequent nightly builds, ensuring the version name always reflects the latest stable milestone (e.g., `1.2.1-nightly-xxx`).
+*   **Deployment Concurrency:** Implemented concurrency control to prevent conflicting deployments on `gh-pages` by automatically cancelling outdated workflows on the same branch.
 
 ## License
 
