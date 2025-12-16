@@ -147,6 +147,37 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Sync Version to Config (Official)
+        if: env.IS_OFFICIAL == 'true'
+        run: |
+          NEW_VERSION="${{ env.TAG_NAME }}"
+          NEW_VERSION=${NEW_VERSION#v} # Remove 'v' prefix
+          
+          echo "Bumping baseVersionName to $NEW_VERSION in config.gradle.kts"
+          
+          # Setup Git
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          
+          # Fetch and Checkout Main (robustly)
+          git fetch origin main
+          git checkout -B main origin/main
+          
+          # Update File using sed with robust regex
+          sed -i "s/\"baseVersionName\"[[:space:]]*to[[:space:]]*\"[^\"]*\"/\"baseVersionName\" to \"$NEW_VERSION\"/" config.gradle.kts
+          
+          # Verify change
+          grep "baseVersionName" config.gradle.kts
+          
+          # Commit and Push if changed
+          if git diff --quiet config.gradle.kts; then
+             echo "Config already up to date."
+          else
+             git add config.gradle.kts
+             git commit -m "chore: bump baseVersionName to $NEW_VERSION [skip ci]"
+             git push origin main
+          fi
+
       # --- Nightly Release ---
       - name: Generate Channel JSON
         if: env.IS_OFFICIAL == 'false'
