@@ -2,6 +2,22 @@
 
 ## 2025-01-27
 ### DevOps
+*   **版本號完全動態化 (Refactor):**
+    *   **CI/CD (YAML):** 
+        *   移除「修改 `config.gradle.kts` 並 Commit 回 Git」的步驟，改採完全動態計算。
+        *   新增 `git describe --tags --abbrev=0` 步驟，自動從 Git 歷史中抓取最近的一個 Tag (例如 `v1.2.1`)。
+        *   將抓到的版本號透過 Gradle 參數 `-PciBaseVersion` 傳遞給建置腳本。
+    *   **Gradle:** 
+        *   修改 `app/build.gradle.kts`，新增讀取 `-PciBaseVersion` 屬性的邏輯。
+        *   優先順序調整為：`Git Tag (Local)` > `-PciBaseVersion (CI)` > `config.gradle.kts`。這確保了 CI 環境下永遠使用從 Git 歷史計算出的正確基礎版本，而無需修改檔案。
+    *   **效果:** 
+        *   只要您在 Git 打上 `v1.2.1` Tag，之後所有的 Nightly Build (`dev`, `feature`) 都會自動變成 `1.2.1-nightly-xxx`。
+        *   發布新版只需 `git tag v1.3.0` 並推送，後續自動切換為 `1.3.0` 基底。
+*   **Nightly Release 修復:**
+    *   **問題:** Nightly 版本發布失敗，原因在於 GitHub Actions 嘗試建立一個已存在的 Tag (例如 `nightly-fix-app-update`)，但預設行為不會覆蓋或移動 Tag。
+    *   **修正:** 在 `android-cicd.yml` 的建置流程中，新增 `Cleanup Old Nightly Release` 步驟。在建立新 Release 前，先執行 `gh release delete <TAG> --cleanup-tag` 刪除舊的 Release 與 Tag，確保 Nightly 標籤永遠指向最新的 Commit。
+
+### DevOps (Previous)
 *   **自動化版本號同步 (New):**
     *   **CI/CD (YAML):** 在 `android-cicd.yml` 新增 `Sync Version to Config` 步驟。當發布正式版 Tag (如 `v1.2.1`) 時，CI 會自動解析版本號，並使用 `sed` 更新 `config.gradle.kts` 中的 `baseVersionName`。
     *   **自動提交:** 更新後的 `config.gradle.kts` 會由 GitHub Actions Bot 自動 commit 並 push 回 `main` 分支。這確保了後續的 Nightly/Dev 建置會自動基於新的版本號 (例如 `1.2.1-dev-xxx`) 進行版號遞增，無需人工介入。
