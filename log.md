@@ -2,11 +2,16 @@
 
 ## 2025-01-27
 ### DevOps
+*   **簽章衝突修復 (Root Cause: 相對路徑陷阱):**
+    *   **問題:** 雖然 Secret 設定正確，但 Gradle 建置時因路徑問題找不到解碼後的 `release.keystore`，導致 Silent Fallback 至 Debug Key。這造成了不同版本間的簽章不一致，手機拒絕更新。
+    *   **解決方案:**
+        *   **CI/CD (YAML):** 在 `android-cicd.yml` 中，將傳遞給 Gradle 的 `RELEASE_KEYSTORE_PATH` 改為絕對路徑 (`${{ github.workspace }}/release.keystore`)，確保 Gradle 一定能找到檔案。
+        *   **Gradle 防呆:** 修改 `app/build.gradle.kts`，在 Release Config 中增加檢查邏輯。若指定了 `RELEASE_KEYSTORE_PATH` 但檔案不存在，直接拋出 `FileNotFoundException` 中斷建置，避免再次發生 Silent Fallback。
 *   **Version Code 策略大修 (Fix Root Cause):**
     *   **問題:** 之前使用「日期」格式 (如 `241215xx`) 作為 `versionCode`，切換到 Commit Count (如 `129`) 後，因數值驟降 (241215xx > 129)，導致 Android 系統認定新版為「舊版」，拒絕安裝/更新。
     *   **解決方案:**
-        *   **CI/CD (YAML):** 強制使用 GitHub Actions 的 `run_number` (例如 `260`，且會持續遞增) 作為 `VERSION_CODE`。這確保了版本號永遠比前一次 Build 大 (只要我們接受重置一次)。
-        *   **Gradle:** 修改 `build.gradle.kts`，優先讀取環境變數 `VERSION_CODE_OVERRIDE` (即 `run_number`)。若無環境變數 (本地開發)，才回退到 Commit Count。
+        *   **CI/CD (YAML):** 強制使用 GitHub Actions 計算出的 `git rev-list --count HEAD` (Commit Count) 作為 `VERSION_CODE`。
+        *   **Gradle:** 修改 `build.gradle.kts`，優先讀取環境變數 `VERSION_CODE_OVERRIDE` (即 Commit Count)。若無環境變數 (本地開發)，才回退到本地計算的 Commit Count。
         *   **用戶端操作:** 由於版本號體系變更 (日期 -> 次數)，舊版 App (日期版) 必須手動移除，才能安裝新版 (次數版)。之後的更新將恢復正常。
 *   **API 網址修復:** 確認 `update_${updateChannel}.json` 的生成與讀取邏輯一致。
 
