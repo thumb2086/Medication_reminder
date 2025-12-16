@@ -11,3 +11,4 @@
 - [ ] 解決 `Nightly` 版本無法更新 `Dev` 版本的權限/路徑問題
     - [ ] 確認 `isManualCheck` 是否正確傳遞並繞過版本號檢查。
     - [ ] 檢查是否因 Application ID 不同 (nightly vs dev) 導致無法直接 "更新" (其實是安裝另一個 App)。提示使用者這會安裝另一個 App，而非原位更新。
+    - 測試中
