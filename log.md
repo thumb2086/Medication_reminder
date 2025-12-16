@@ -11,6 +11,15 @@
     *   **深色模式適配:** 修正 `ic_wifi.xml` 的填充顏色為白色並套用 `?attr/colorControlNormal` tint，解決在深色主題下圖示變成黑色無法看見的問題。
 
 ### DevOps
+*   **防止版本堆積 (Release Pile-up):**
+    *   **問題:** 每次 Push 都會產生一個新的 Nightly Release，導致 Release 頁面被同分支的歷史版本塞滿 (例如 `287`, `288`, `289`)，舊版不會自動清除。
+    *   **修正:** 在 `android-cicd.yml` 的建置流程中，**在建立新 Release 之前**，插入「自動清理舊版」步驟。該步驟會搜尋包含目前分支名稱的所有舊 Tag，並將其 Release 與 Git Tag 一併刪除，確保每個分支永遠只保留最新的一個 Nightly Build。
+*   **部署並發控制 (Concurrency Control):**
+    *   **問題:** 頻繁推送導致 GitHub Actions 多個 Workflow 同時執行，爭搶 `gh-pages` 部署鎖，造成 "Deployment Concurrency" 錯誤。
+    *   **修正:** 在 `android-cicd.yml` 中新增 `concurrency` 設定 (`group: ${{ github.workflow }}-${{ github.ref }}` 與 `cancel-in-progress: true`)。當同一分支有新 Commit 推送時，自動取消正在執行的舊 Workflow，確保資源不衝突且節省 Actions 額度。
+*   **Cleanup 腳本修復:**
+    *   **問題:** 舊版 Cleanup 腳本直接使用分支名稱 (如 `fix-wifi`) 刪除 Tag，但實際 Tag 為動態生成 (如 `1.2.1-nightly-fix-wifi-287`)，導致刪除失敗。
+    *   **修正:** 改寫 `android-cicd.yml`，使用 `gh release list --json tagName` 抓取所有 Tag，並透過 `grep` 篩選出包含關鍵字的所有 Tag 進行刪除。同時增加 `git push origin --delete` 作為雙重保險。
 *   **版本號完全動態化 (Refactor):**
     *   **CI/CD (YAML):** 
         *   移除「修改 `config.gradle.kts` 並 Commit 回 Git」的步驟，改採完全動態計算。
@@ -25,6 +34,9 @@
 *   **Nightly Release 修復:**
     *   **問題:** Nightly 版本發布失敗，原因在於 GitHub Actions 嘗試建立一個已存在的 Tag (例如 `nightly-fix-app-update`)，但預設行為不會覆蓋或移動 Tag。
     *   **修正:** 在 `android-cicd.yml` 的建置流程中，新增 `Cleanup Old Nightly Release` 步驟。在建立新 Release 前，先執行 `gh release delete <TAG> --cleanup-tag` 刪除舊的 Release 與 Tag，確保 Nightly 標籤永遠指向最新的 Commit。
+*   **清理機制升級:**
+    *   **問題:** 舊的清理邏輯只能刪除固定名稱的 Tag (如 `nightly-fix-app-update`)，但新的動態版號機制產生了不固定的 Tag (如 `1.2.1-nightly-fix-app-update-284`)，導致無法正確清理舊版本。
+    *   **修正:** 將 `android-cicd.yml` 中的 Cleanup Job 升級為「關鍵字搜尋模式」。現在它會列出所有 Release，並使用 `grep` 搜尋包含分支名稱 (如 `fix-app-update`) 的所有 Tag，然後逐一刪除。這確保了無論版號如何變動，舊的 Nightly 版本都能被乾淨移除。
 
 ### DevOps (Previous)
 *   **自動化版本號同步 (New):**
