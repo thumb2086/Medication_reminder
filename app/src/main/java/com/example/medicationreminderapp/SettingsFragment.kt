@@ -239,16 +239,34 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         
         lifecycleScope.launch {
             Toast.makeText(requireContext(), "正在檢查更新...", Toast.LENGTH_SHORT).show()
-            val updateInfo = updateManager.checkForUpdates()
+            // Pass isManualCheck = true since this is a manual click
+            val updateInfo = updateManager.checkForUpdates(isManualCheck = true)
+            
             if (updateInfo != null) {
-                AlertDialog.Builder(requireContext())
-                    .setTitle(getString(R.string.update_available_title))
-                    .setMessage(getString(R.string.update_available_message, updateInfo.version, updateInfo.releaseNotes))
-                    .setPositiveButton(R.string.update_now) { _, _ ->
-                        updateManager.downloadAndInstall(updateInfo.downloadUrl, "MedicationReminderApp-${updateInfo.version}.apk")
-                    }
-                    .setNegativeButton(R.string.update_later, null)
-                    .show()
+                // Determine UI based on whether it's strictly newer or just a reinstall offer
+                if (updateInfo.isNewer) {
+                     AlertDialog.Builder(requireContext())
+                        .setTitle(getString(R.string.update_available_title))
+                        .setMessage(getString(R.string.update_available_message, updateInfo.version, updateInfo.releaseNotes))
+                        .setPositiveButton(R.string.update_now) { _, _ ->
+                            updateManager.downloadAndInstall(updateInfo.downloadUrl, "MedicationReminderApp-${updateInfo.version}.apk")
+                        }
+                        .setNegativeButton(R.string.update_later, null)
+                        .show()
+                } else {
+                    // It's the same version (or older, theoretically, but logic usually filters older unless channel switch)
+                    // Show a Toast and offer reinstall
+                    Toast.makeText(requireContext(), "已是最新版本 (${updateInfo.version})", Toast.LENGTH_SHORT).show()
+                    
+                    AlertDialog.Builder(requireContext())
+                        .setTitle("重新安裝？")
+                        .setMessage("目前已是最新版本。您要重新下載並安裝此版本嗎？\n\n版本：${updateInfo.version}")
+                        .setPositiveButton("重新安裝") { _, _ ->
+                             updateManager.downloadAndInstall(updateInfo.downloadUrl, "MedicationReminderApp-${updateInfo.version}.apk")
+                        }
+                        .setNegativeButton("取消", null)
+                        .show()
+                }
             } else {
                 Toast.makeText(requireContext(), R.string.no_updates_available, Toast.LENGTH_SHORT).show()
             }

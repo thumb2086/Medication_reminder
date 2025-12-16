@@ -222,9 +222,12 @@
     <string name="connection_settings">Connection Settings</string>
     <string name="wifi_settings">Wi-Fi Settings</string>
     <string name="wifi_settings_summary">Configure Wi-Fi connection for the pillbox</string>
+    <string name="wifi_config_title">Setup Pillbox Connection</string>
+    <string name="wifi_config_instruction">Please enter your home Wi-Fi SSID and password to allow the smart pillbox to sync time and reminders online.</string>
     <string name="wifi_ssid">Wi-Fi Name (SSID)</string>
     <string name="wifi_password">Wi-Fi Password</string>
     <string name="send_wifi_credentials">Send Wi-Fi Credentials</string>
+    <string name="wifi_credentials_sent">Wi-Fi credentials sent</string>
 
     <!-- Update -->
     <string name="update_settings">Update Settings</string>
@@ -232,12 +235,10 @@
     <string-array name="update_channel_entries">
         <item>Stable (Main)</item>
         <item>Development (Dev)</item>
-        <item>Nightly</item>
     </string-array>
     <string-array name="update_channel_values">
         <item>main</item>
         <item>dev</item>
-        <item>nightly</item>
     </string-array>
     <string name="update_channel_summary">Current Channel: %s</string>
     <string name="check_for_updates">Check for Updates</string>

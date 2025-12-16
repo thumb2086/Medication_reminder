@@ -12,13 +12,18 @@ A smart medication reminder application integrated with an ESP32-based smart pil
 *   **Adherence Tracking:** records medication intake history and generates visual charts for compliance analysis.
 *   **Character Themes:** Choose between "Kuromi" and "Chibi Maruko-chan" themes for a personalized experience.
 *   **Engineering Mode:** toggle hardware engineering mode directly from the app for diagnostics.
-*   **Wi-Fi Configuration:** Configure the ESP32's Wi-Fi credentials directly from the app via BLE, now conveniently located within the App Settings.
+*   **Wi-Fi Configuration:** Configure the ESP32's Wi-Fi credentials directly from the app via BLE. The interface is now enhanced with Material Design visuals, input validation, and clear instructions.
 *   **Alarm System:** Set up to 4 alarms on the ESP32 pillbox for standalone reminders.
 *   **Interactive Charts:** View temperature and humidity trends with interactive line charts, supporting pan, zoom, and data point inspection.
 *   **In-App Updates:** Automatically checks for updates from GitHub Releases.
     *   **Selectable Channels:** Users can choose between **Stable**, **Dev**, or browse **Active Development Branches** directly in the App Settings.
-    *   **Cross-Channel Switching:** Freely switch between channels (e.g., from Dev to Stable) to install the latest build of that branch, even if it has a lower version code.
+    *   **Cross-Channel Switching:** Freely switch between channels (e.g., from Dev to Stable) to install the latest build of that branch.
+    *   **Smart Default Channel:** The app automatically sets the default update channel based on the installed build's type.
+        *   **Stable Builds:** Default to `Main` channel.
+        *   **Dev Builds:** Default to `Dev` channel.
+        *   **Feature Builds:** Default to the specific feature branch channel (e.g., `feat-new-ui`).
     *   **Dynamic Update Checks:** The app intelligently fetches the latest build for the selected channel (e.g., `update_dev.json`, `update_nightly.json`).
+        *   **Dev Channel Logic:** Users on the Dev channel will receive updates from both the Dev channel AND the Stable channel if a newer Stable version is released, ensuring they don't miss official releases.
     *   **Stable:** Official releases from the `main` branch.
     *   **Dev:** Cutting-edge builds from the `dev` branch.
     *   **Dynamic Branch Discovery:** The app queries GitHub Releases to find available active branches (tagged as `nightly-<branch>`), allowing you to test specific feature branches easily.
@@ -82,14 +87,15 @@ To ensure compatibility between the App and the ESP32 firmware as features evolv
 
 This project uses GitHub Actions for continuous integration and automated version management.
 
-*   **Stable Releases:** Triggered by pushing a tag starting with `v` (e.g., `v1.1.8`). Creates a permanent release on the `stable` channel.
+*   **Stable Releases:** Triggered by pushing a tag starting with `v` (e.g., `v1.1.8`). Creates a permanent release on the `main` channel.
 *   **Feature/Dev Releases:** Triggered by pushing to `dev`, `fix-*`, or `feat-*` branches.
     *   Generates a dedicated update channel for that branch (e.g., `update_feat_login.json`).
     *   Builds an APK with a corresponding version name.
     *   Testers installing the APK from a specific branch will only receive updates for that branch.
+*   **Unified Naming:** All artifacts (APK) and version names now strictly follow the `X.Y.Z-channel-count` format (e.g., `1.2.1-dev-255`) to eliminate spaces and special characters, ensuring consistent behavior across different environments.
 *   **Branch Cleanup:** When a branch is deleted, the corresponding nightly release and tag are automatically removed to keep the release list clean. Manual cleanup is also supported via GitHub Actions workflow dispatch.
-*   **Versioning:** The `versionCode` is generated based on the build timestamp (`yyMMddHH`) to ensure strictly increasing versions across branches, preventing downgrade issues. The `versionName` includes branch and commit information.
-*   **Release Naming:** Nightly releases now use a clearer title format: `<Branch> | <VersionName>` (e.g., `feat-ui | 1.2.0 nightly 205`) to easily identify the source branch and version details.
+*   **Versioning:** The `versionCode` corresponds to the **Git Commit Count** to ensure strict consistency between the Android Build and CI Artifacts. The `versionName` follows the `1.2.1-dev-260` format.
+*   **Release Naming:** Nightly releases now use a clearer title format: `<Branch> | <VersionName>` (e.g., `feat-ui | 1.2.0-nightly-205`) to easily identify the source branch and version details.
 
 ## License
 

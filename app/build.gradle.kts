@@ -1,6 +1,7 @@
 // app/build.gradle.kts
 import java.io.FileInputStream
 import java.util.Properties
+import java.io.FileNotFoundException
 
 // Apply the external configuration file
 apply(from = "../config.gradle.kts")
@@ -43,13 +44,7 @@ android {
     // Safe casting for appConfig
     @Suppress("UNCHECKED_CAST")
     val appConfig = extra["appConfig"] as? Map<String, Any> ?: emptyMap()
-
-    // Get Git info
-    val commitCount = getGitCommandOutput("git", "rev-list", "--count", "HEAD").toIntOrNull() ?: 1
-    val branchName = getGitCommandOutput("git", "rev-parse", "--abbrev-ref", "HEAD").let {
-        if (it.isBlank() || it == "HEAD" || it == "git-error") "main" else it // Default to main if detached HEAD or error
-    }
-
+    
     // Get base config values with fallback
     val gitTagVersion = getGitTagVersion()
     val configVersionName = appConfig["baseVersionName"] as? String ?: "1.0.0"
@@ -61,35 +56,70 @@ android {
     val prodApiUrl = appConfig["prodApiUrl"] as? String ?: "https://api.production.com"
     val devApiUrl = appConfig["devApiUrl"] as? String ?: "https://api.dev.com"
 
+    // [Step 1] Force Version Code logic
+    // Priority: -PciVersionCode > System.getenv("VERSION_CODE_OVERRIDE") > git rev-list
+    var finalVersionCode = 1
+    val projectCiVersionCode = if (project.hasProperty("ciVersionCode")) project.property("ciVersionCode")?.toString()?.toIntOrNull() else null
+    val envVersionCodeOverride = System.getenv("VERSION_CODE_OVERRIDE")?.toIntOrNull()
+    val envBuildNumber = System.getenv("BUILD_NUMBER")?.toIntOrNull()
+    
+    if (projectCiVersionCode != null) {
+        finalVersionCode = projectCiVersionCode
+        println("✅ [Gradle] Force using -PciVersionCode: $finalVersionCode")
+    } else if (envVersionCodeOverride != null) {
+        finalVersionCode = envVersionCodeOverride
+        println("✅ [Gradle] Force using ENV variable: $finalVersionCode")
+    } else {
+        // Fallback to git commit count
+         val commitCount = getGitCommandOutput("git", "rev-list", "--count", "HEAD").toIntOrNull() ?: 1
+         finalVersionCode = commitCount
+         println("⚠️ [Gradle] Fallback to Git Commit Count: $finalVersionCode")
+    }
+
+    // [Step 2] Force Channel Name Logic
+    // Priority: -PciChannelName > System.getenv("CHANNEL_NAME") > git branch
+    val projectChannelName = if (project.hasProperty("ciChannelName")) project.property("ciChannelName") as String else null
+    val envChannelName = System.getenv("CHANNEL_NAME")
+    val gitBranchName = getGitCommandOutput("git", "rev-parse", "--abbrev-ref", "HEAD")
+    
+    val branchName = when {
+        !projectChannelName.isNullOrBlank() -> projectChannelName
+        !envChannelName.isNullOrBlank() -> envChannelName
+        gitBranchName.isNotBlank() && gitBranchName != "HEAD" && gitBranchName != "git-error" -> gitBranchName
+        else -> "main"
+    }
+
     // Determine branch-specific configuration
-    val safeBranchName = branchName.replace("/", "_").replace("-", "_").replace(Regex("[^a-zA-Z0-9_]"), "")
+    // [Critical Fix] CI/CD uses `tr '/_' '-'` to sanitize branch names.
+    // We MUST match this behavior in Gradle so `BuildConfig.UPDATE_CHANNEL` matches the JSON filename.
+    // Old logic: replaced - with _ (Mismatch!)
+    // New logic: replace / and _ with - (Match!)
+    val normalizedBranchName = branchName.replace("/", "-").replace("_", "-")
+    val safeBranchName = normalizedBranchName.replace(Regex("[^a-zA-Z0-9-]"), "")
 
     // Treat main, master, and unknown as production/default
-    val isProduction = safeBranchName == "main" || safeBranchName == "master" || safeBranchName == "unknown"
+    val isProduction = safeBranchName == "main" || safeBranchName == "master"
     val isDev = safeBranchName == "dev"
-    
-    // Logic: Use environment variables from CI/CD if available, otherwise fallback to local logic
-    val envBuildNumber = System.getenv("BUILD_NUMBER")?.toIntOrNull()
-    val envVersionCodeOverride = System.getenv("VERSION_CODE_OVERRIDE")?.toIntOrNull()
+
     val envVersionName = System.getenv("VERSION_NAME")
 
-    val finalVersionCode = envVersionCodeOverride ?: envBuildNumber ?: commitCount
-
+    // [Unified Naming] Always use hyphens '-' as separators. No spaces.
+    // Format: X.Y.Z (Production) or X.Y.Z-channel-COUNT
+    // 如果是 CI 環境，使用 BUILD_NUMBER (Run Number) 作為後綴，否則使用 commitCount
+    val versionSuffix = projectCiVersionCode ?: envBuildNumber ?: finalVersionCode
+    
     val localVersionName = when {
         isProduction -> baseVersionName
-        isDev -> "$baseVersionName dev $commitCount"
-        else -> "$baseVersionName nightly $commitCount"
+        isDev -> "$baseVersionName-dev-$versionSuffix"
+        else -> "$baseVersionName-nightly-$versionSuffix"
     }
     
     val finalVersionName = envVersionName ?: localVersionName
     
-    // Ensure filename doesn't have spaces
-    val safeVersionName = finalVersionName.replace(" ", "-")
-    
-    // Use a hardcoded prefix "MedicationReminder" for file naming to avoid issues with Chinese characters or missing config
+    // Use a hardcoded prefix "MedicationReminder" for file naming
     // The display name (app_name) can still use the Chinese name.
     val filePrefix = "MedicationReminder"
-    val finalArchivesBaseName = "$filePrefix-v$safeVersionName"
+    val finalArchivesBaseName = "$filePrefix-v$finalVersionName"
     
     val finalApplicationId = when {
         isProduction -> baseApplicationId
@@ -100,6 +130,9 @@ android {
     val finalAppName = if (isProduction) appName else "$appName ($branchName)"
     val finalApiUrl = if (isProduction) prodApiUrl else devApiUrl
     val enableLogging = !isProduction
+    
+    // Update Channel: strictly use the sanitized name matching CI/CD
+    val updateChannel = if (isProduction) "main" else safeBranchName
 
     // --- Dynamic versioning and configuration logic ends ---
 
@@ -107,16 +140,41 @@ android {
         applicationId = finalApplicationId
         minSdk = 29
         targetSdk = 36
-        versionCode = if (finalVersionCode > 0) finalVersionCode else 1
+        versionCode = finalVersionCode
         versionName = finalVersionName
+        
+        println("✅ Final VersionCode: $versionCode (Source: ${if (projectCiVersionCode != null) "CI/CD (-P)" else if (envVersionCodeOverride != null) "CI/CD (Env)" else "Git Commit Count"})")
+        println("✅ Final Channel: $updateChannel")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
+        // This sets the output APK name prefix: MedicationReminder-v1.2.1-nightly-255
         setProperty("archivesBaseName", finalArchivesBaseName)
 
         buildConfigField("String", "API_URL", "\"$finalApiUrl\"")
         buildConfigField("boolean", "ENABLE_LOGGING", enableLogging.toString())
-        buildConfigField("String", "UPDATE_CHANNEL", "\"$safeBranchName\"")
+        buildConfigField("String", "UPDATE_CHANNEL", "\"$updateChannel\"")
+
+        // 3. 設定 Application ID 和 Update URL (這部分部分與上方邏輯重複，但為了確保完整性，我們重新梳理)
+        // 注意：上方已經設定了 applicationId = finalApplicationId
+        // 這裡主要處理 Application ID Suffix (如果需要進一步區分) 和 resValue / buildConfigField
+
+        if (isProduction) {
+            buildConfigField("String", "UPDATE_JSON_URL", "\"https://thumb2086.github.io/Medication_reminder/update_main.json\"")
+        } else {
+             // A. 給包名加上後綴 (讓 fix 版、dev 版可以共存，也可以跟正式版共存)
+            // 由於上方 finalApplicationId 已經處理了 dev 和 nightly 的後綴
+            // 這裡我們針對 nightly 做更細的區分，如果我們希望每個 feature branch 都獨立
+            // 目前邏輯是 nightly 共用一個 ID，如果想要獨立，可以這樣改：
+            // 若希望每個 feature branch 獨立，可以使用以下邏輯，但目前維持三軌並行
+            // applicationIdSuffix = ".$safeBranchName" 
+            
+            // B. App 名稱加上分支名 (已在上方 finalAppName 處理)
+
+            // C. 🔥 更新網址必須對應 CI 產生的 JSON 檔名
+            // 這樣 fix-app-update 版就會去抓 update_fix-app-update.json
+            buildConfigField("String", "UPDATE_JSON_URL", "\"https://thumb2086.github.io/Medication_reminder/update_${updateChannel}.json\"")
+        }
 
         resValue("string", "app_name", finalAppName)
     }
@@ -142,7 +200,12 @@ android {
             val localKeystorePath = keystoreProperties["store.file"] as String?
 
             if (!cloudKeystorePath.isNullOrEmpty()) {
-                storeFile = file(cloudKeystorePath)
+                val keyFile = file(cloudKeystorePath)
+                // 🔥 如果路徑指不到檔案，直接讓 Build 失敗！不要讓它偷跑！
+                if (!keyFile.exists()) {
+                     throw FileNotFoundException("CI Error: Keystore file not found at: $cloudKeystorePath")
+                }
+                storeFile = keyFile
             } else if (!localKeystorePath.isNullOrEmpty()) {
                 storeFile = file(localKeystorePath)
             } else {
@@ -157,9 +220,13 @@ android {
     buildTypes {
         getByName("release") {
             val releaseConfig = signingConfigs.getByName("release")
-            if (releaseConfig.storePassword != null && releaseConfig.storeFile?.exists() == true) {
+            // Check if we have a valid storeFile to sign with
+            if (releaseConfig.storeFile?.exists() == true) {
                 signingConfig = releaseConfig
             } else {
+                // If we are here, it means we didn't throw an exception earlier,
+                // but we also don't have a keystore. This might happen in local builds without keys.
+                // However, for CI with RELEASE_KEYSTORE_PATH set, we would have crashed already.
                 logger.warn("Release keystore not found or configuration incomplete. Falling back to debug signing.")
                 signingConfig = signingConfigs.getByName("debug")
             }

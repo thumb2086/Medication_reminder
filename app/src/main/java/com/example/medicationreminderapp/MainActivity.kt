@@ -98,8 +98,9 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
 
     private fun checkForUpdates() {
         // Automatically checks based on the channel defined in BuildConfig
+        // Pass isManualCheck = false for auto check at startup
         lifecycleScope.launch {
-            val updateInfo = updateManager.checkForUpdates()
+            val updateInfo = updateManager.checkForUpdates(isManualCheck = false)
             if (updateInfo != null) {
                 showUpdateDialog(updateInfo)
             }
