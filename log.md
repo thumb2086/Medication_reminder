@@ -2,25 +2,57 @@
 
 ## 2025-01-27
 ### DevOps
-*   **簽章衝突修復 (Root Cause: 相對路徑陷阱):**
-    *   **問題:** 雖然 Secret 設定正確，但 Gradle 建置時因路徑問題找不到解碼後的 `release.keystore`，導致 Silent Fallback 至 Debug Key。這造成了不同版本間的簽章不一致，手機拒絕更新。
-    *   **解決方案:**
-        *   **CI/CD (YAML):** 在 `android-cicd.yml` 中，將傳遞給 Gradle 的 `RELEASE_KEYSTORE_PATH` 改為絕對路徑 (`${{ github.workspace }}/release.keystore`)，確保 Gradle 一定能找到檔案。
-        *   **Gradle 防呆:** 修改 `app/build.gradle.kts`，在 Release Config 中增加檢查邏輯。若指定了 `RELEASE_KEYSTORE_PATH` 但檔案不存在，直接拋出 `FileNotFoundException` 中斷建置，避免再次發生 Silent Fallback。
+*   **版本號完全動態化 (Refactor):**
+    *   **CI/CD (YAML):** 
+        *   移除「修改 `config.gradle.kts` 並 Commit 回 Git」的步驟，改採完全動態計算。
+        *   新增 `git describe --tags --abbrev=0` 步驟，自動從 Git 歷史中抓取最近的一個 Tag (例如 `v1.2.1`)。
+        *   將抓到的版本號透過 Gradle 參數 `-PciBaseVersion` 傳遞給建置腳本。
+    *   **Gradle:** 
+        *   修改 `app/build.gradle.kts`，新增讀取 `-PciBaseVersion` 屬性的邏輯。
+        *   優先順序調整為：`Git Tag (Local)` > `-PciBaseVersion (CI)` > `config.gradle.kts`。這確保了 CI 環境下永遠使用從 Git 歷史計算出的正確基礎版本，而無需修改檔案。
+    *   **效果:** 
+        *   只要您在 Git 打上 `v1.2.1` Tag，之後所有的 Nightly Build (`dev`, `feature`) 都會自動變成 `1.2.1-nightly-xxx`。
+        *   發布新版只需 `git tag v1.3.0` 並推送，後續自動切換為 `1.3.0` 基底。
+*   **Nightly Release 修復:**
+    *   **問題:** Nightly 版本發布失敗，原因在於 GitHub Actions 嘗試建立一個已存在的 Tag (例如 `nightly-fix-app-update`)，但預設行為不會覆蓋或移動 Tag。
+    *   **修正:** 在 `android-cicd.yml` 的建置流程中，新增 `Cleanup Old Nightly Release` 步驟。在建立新 Release 前，先執行 `gh release delete <TAG> --cleanup-tag` 刪除舊的 Release 與 Tag，確保 Nightly 標籤永遠指向最新的 Commit。
+
+### DevOps (Previous)
+*   **自動化版本號同步 (New):**
+    *   **CI/CD (YAML):** 在 `android-cicd.yml` 新增 `Sync Version to Config` 步驟。當發布正式版 Tag (如 `v1.2.1`) 時，CI 會自動解析版本號，並使用 `sed` 更新 `config.gradle.kts` 中的 `baseVersionName`。
+    *   **自動提交:** 更新後的 `config.gradle.kts` 會由 GitHub Actions Bot 自動 commit 並 push 回 `main` 分支。這確保了後續的 Nightly/Dev 建置會自動基於新的版本號 (例如 `1.2.1-dev-xxx`) 進行版號遞增，無需人工介入。
+*   **Version Code 策略修正 (Final):**
+    *   **回歸 Commit Count:** 確認 CI 環境的 `run_number` 與 APK 內部的 `versionCode` (Git Commit Count) 不一致導致更新循環問題。決定棄用 `run_number`，全面回歸 **Git Commit Count**。
+    *   **YAML 修正:** `android-cicd.yml` 新增步驟計算 `git rev-list --count HEAD`，並將此數值透過 `-PciVersionCode` 傳遞給 Gradle，同時寫入 JSON。
+    *   **Gradle 修正:** `app/build.gradle.kts` 邏輯簡化，強制優先讀取 `-PciVersionCode`。
+    *   **結果:** APK VersionCode、JSON VersionCode、GitHub Release Tag 邏輯完全一致 (皆為 ~250+)，且大於舊版 (132)，確保更新正常。
+*   **更新邏輯優化 (Cross-Channel):**
+    *   **App ID 差異檢測:** 針對不同頻道 (Dev/Nightly) 可能擁有不同 Application ID (如 `.dev`, `.nightly`) 的情況，`UpdateManager` 新增檢測邏輯。若偵測到更新版本的 App ID 與目前不同，會明確提示使用者「這將安裝另一個應用程式」而非直接更新。
+    *   **版本號參數修復:** 修復 `UpdateManager.kt` 中 `isNewerVersion` 呼叫時 `local` 參數被寫死的問題，確保版本比對正確使用當前 App 版本。
+    *   **手動更新增強:** `SettingsFragment` 與 `UpdateManager` 整合 `isManualCheck` 參數，允許使用者在版本相同時選擇「重新安裝」，或在切換頻道時強制更新。
+    *   **UI 提示:** 在設定頁面中，若更新涉及 App ID 變更，彈出的對話框會顯示警告訊息。
+
+### App Logic
+*   **更新檢查邏輯簡化:**
+    *   **移除跨頻道干擾:** 修改 `UpdateManager.kt`，徹底移除 Nightly/Dev 版本「順便檢查 Stable」的邏輯。
+    *   **行為變更:** 
+        *   **自動/手動檢查:** 永遠只檢查 **當前選定頻道** 的更新。
+        *   **效果:** Nightly 版不會再跳出 Stable 版的更新提示。若使用者想切換至 Stable，需手動在設定頁面切換頻道，此時 App 會抓取 Stable 的 JSON 並提示安裝 (允許並存)。
+
+### DevOps (Previous)
 *   **Version Code 策略大修 (Fix Root Cause):**
     *   **問題:** 之前使用「日期」格式 (如 `241215xx`) 作為 `versionCode`，切換到 Commit Count (如 `129`) 後，因數值驟降 (241215xx > 129)，導致 Android 系統認定新版為「舊版」，拒絕安裝/更新。
     *   **解決方案:**
-        *   **CI/CD (YAML):** 強制使用 GitHub Actions 計算出的 `git rev-list --count HEAD` (Commit Count) 作為 `VERSION_CODE`。
-        *   **Gradle:** 修改 `build.gradle.kts`，優先讀取環境變數 `VERSION_CODE_OVERRIDE` (即 Commit Count)。若無環境變數 (本地開發)，才回退到本地計算的 Commit Count。
+        *   **CI/CD (YAML):** 強制使用 GitHub Actions 的 `run_number` (例如 `260`，且會持續遞增) 作為 `VERSION_CODE`。這確保了版本號永遠比前一次 Build 大 (只要我們接受重置一次)。
+        *   **Gradle:** 修改 `build.gradle.kts`，優先讀取環境變數 `VERSION_CODE_OVERRIDE` (即 `run_number`)。若無環境變數 (本地開發)，才回退到 Commit Count。
         *   **用戶端操作:** 由於版本號體系變更 (日期 -> 次數)，舊版 App (日期版) 必須手動移除，才能安裝新版 (次數版)。之後的更新將恢復正常。
 *   **API 網址修復:** 確認 `update_${updateChannel}.json` 的生成與讀取邏輯一致。
 
-### App Logic
+### App Logic (Previous)
 *   **更新檢查邏輯增強:**
-    *   **自我更新循環修復:** 修改 `UpdateManager.kt`，將版本號比對邏輯從 `>=` 改為 `>` (Strictly Greater)，徹底解決同版本無限自我更新的 Bug。
     *   **手動更新覆蓋:** 修改 `UpdateManager.kt`，新增 `isManualCheck` 參數。當使用者在設定頁面手動點擊「檢查更新」時，會強制允許更新 (即使版本號相同或更舊)，方便使用者重裝或切換頻道。
     *   **邏輯優化:** `checkForUpdates` 方法現在接受 `isManualCheck`，若為真，則將 `force` 標誌傳遞給底層檢查邏輯，繞過 `isNewerVersion` 的嚴格限制。
-    *   **UI 整合:** `SettingsFragment.kt` 中的 `checkForUpdates` 方法已更新，呼叫時傳入 `isManualCheck = true`。`MainActivity.kt` 啟動時自動檢查則傳入 `isManualCheck = false`。
+    *   **UI 整合:** `SettingsFragment.kt` 中的 `checkForUpdates` 方法已更新，呼叫時傳入 `isManualCheck = true`。
 
 ### DevOps (Previous)
 *   **修復更新頻道名稱不匹配 (Root Cause):**

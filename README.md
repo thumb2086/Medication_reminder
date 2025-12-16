@@ -23,7 +23,7 @@ A smart medication reminder application integrated with an ESP32-based smart pil
         *   **Dev Builds:** Default to `Dev` channel.
         *   **Feature Builds:** Default to the specific feature branch channel (e.g., `feat-new-ui`).
     *   **Dynamic Update Checks:** The app intelligently fetches the latest build for the selected channel (e.g., `update_dev.json`, `update_nightly.json`).
-        *   **Dev Channel Logic:** Users on the Dev channel will receive updates from both the Dev channel AND the Stable channel if a newer Stable version is released, ensuring they don't miss official releases.
+    *   **Safety Checks:** Detects if an update belongs to a different channel (Application ID) and warns the user that a separate app instance will be installed instead of an in-place update.
     *   **Stable:** Official releases from the `main` branch.
     *   **Dev:** Cutting-edge builds from the `dev` branch.
     *   **Dynamic Branch Discovery:** The app queries GitHub Releases to find available active branches (tagged as `nightly-<branch>`), allowing you to test specific feature branches easily.
@@ -96,6 +96,7 @@ This project uses GitHub Actions for continuous integration and automated versio
 *   **Branch Cleanup:** When a branch is deleted, the corresponding nightly release and tag are automatically removed to keep the release list clean. Manual cleanup is also supported via GitHub Actions workflow dispatch.
 *   **Versioning:** The `versionCode` corresponds to the **Git Commit Count** to ensure strict consistency between the Android Build and CI Artifacts. The `versionName` follows the `1.2.1-dev-260` format.
 *   **Release Naming:** Nightly releases now use a clearer title format: `<Branch> | <VersionName>` (e.g., `feat-ui | 1.2.0-nightly-205`) to easily identify the source branch and version details.
+*   **Dynamic Base Version:** CI/CD automatically detects the latest Git Tag (e.g., `v1.2.1`) as the base version for all subsequent nightly builds, ensuring the version name always reflects the latest stable milestone (e.g., `1.2.1-nightly-xxx`).
 
 ## License
 

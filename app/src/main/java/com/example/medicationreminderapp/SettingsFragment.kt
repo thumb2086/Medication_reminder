@@ -243,30 +243,34 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
             val updateInfo = updateManager.checkForUpdates(isManualCheck = true)
             
             if (updateInfo != null) {
-                // Determine UI based on whether it's strictly newer or just a reinstall offer
-                if (updateInfo.isNewer) {
-                     AlertDialog.Builder(requireContext())
-                        .setTitle(getString(R.string.update_available_title))
-                        .setMessage(getString(R.string.update_available_message, updateInfo.version, updateInfo.releaseNotes))
-                        .setPositiveButton(R.string.update_now) { _, _ ->
-                            updateManager.downloadAndInstall(updateInfo.downloadUrl, "MedicationReminderApp-${updateInfo.version}.apk")
-                        }
-                        .setNegativeButton(R.string.update_later, null)
-                        .show()
+                val sb = StringBuilder()
+                val title: String // Removed redundant initializer
+                
+                if (updateInfo.isDifferentAppId) {
+                    title = "安裝不同版本？"
+                    sb.append("注意：此更新版本屬於不同的頻道 (Application ID 不同)。\n")
+                    sb.append("安裝後將會產生另一個應用程式，與目前版本並存。\n\n")
+                } else if (updateInfo.isNewer) {
+                    title = getString(R.string.update_available_title)
                 } else {
-                    // It's the same version (or older, theoretically, but logic usually filters older unless channel switch)
-                    // Show a Toast and offer reinstall
-                    Toast.makeText(requireContext(), "已是最新版本 (${updateInfo.version})", Toast.LENGTH_SHORT).show()
-                    
-                    AlertDialog.Builder(requireContext())
-                        .setTitle("重新安裝？")
-                        .setMessage("目前已是最新版本。您要重新下載並安裝此版本嗎？\n\n版本：${updateInfo.version}")
-                        .setPositiveButton("重新安裝") { _, _ ->
-                             updateManager.downloadAndInstall(updateInfo.downloadUrl, "MedicationReminderApp-${updateInfo.version}.apk")
-                        }
-                        .setNegativeButton("取消", null)
-                        .show()
+                    title = "重新安裝？"
+                    sb.append("目前已是最新版本。\n\n")
                 }
+                
+                sb.append("版本：${updateInfo.version}\n")
+                if (updateInfo.releaseNotes.isNotEmpty()) {
+                    sb.append("\n更新內容：\n${updateInfo.releaseNotes}")
+                }
+                
+                AlertDialog.Builder(requireContext())
+                    .setTitle(title)
+                    .setMessage(sb.toString())
+                    .setPositiveButton(if (updateInfo.isNewer || updateInfo.isDifferentAppId) R.string.update_now else R.string.ok) { _, _ ->
+                        updateManager.downloadAndInstall(updateInfo.downloadUrl, "MedicationReminderApp-${updateInfo.version}.apk")
+                    }
+                    .setNegativeButton(R.string.cancel, null)
+                    .show()
+
             } else {
                 Toast.makeText(requireContext(), R.string.no_updates_available, Toast.LENGTH_SHORT).show()
             }
