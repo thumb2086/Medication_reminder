@@ -2,6 +2,9 @@
 
 ## 2025-01-27
 ### DevOps
+*   **Cleanup 腳本修復:**
+    *   **問題:** 舊版 Cleanup 腳本直接使用分支名稱 (如 `fix-wifi`) 刪除 Tag，但實際 Tag 為動態生成 (如 `1.2.1-nightly-fix-wifi-287`)，導致刪除失敗。
+    *   **修正:** 改寫 `android-cicd.yml`，使用 `gh release list --json tagName` 抓取所有 Tag，並透過 `grep` 篩選出包含關鍵字的所有 Tag 進行刪除。同時增加 `git push origin --delete` 作為雙重保險。
 *   **版本號完全動態化 (Refactor):**
     *   **CI/CD (YAML):** 
         *   移除「修改 `config.gradle.kts` 並 Commit 回 Git」的步驟，改採完全動態計算。
@@ -16,6 +19,9 @@
 *   **Nightly Release 修復:**
     *   **問題:** Nightly 版本發布失敗，原因在於 GitHub Actions 嘗試建立一個已存在的 Tag (例如 `nightly-fix-app-update`)，但預設行為不會覆蓋或移動 Tag。
     *   **修正:** 在 `android-cicd.yml` 的建置流程中，新增 `Cleanup Old Nightly Release` 步驟。在建立新 Release 前，先執行 `gh release delete <TAG> --cleanup-tag` 刪除舊的 Release 與 Tag，確保 Nightly 標籤永遠指向最新的 Commit。
+*   **清理機制升級:**
+    *   **問題:** 舊的清理邏輯只能刪除固定名稱的 Tag (如 `nightly-fix-app-update`)，但新的動態版號機制產生了不固定的 Tag (如 `1.2.1-nightly-fix-app-update-284`)，導致無法正確清理舊版本。
+    *   **修正:** 將 `android-cicd.yml` 中的 Cleanup Job 升級為「關鍵字搜尋模式」。現在它會列出所有 Release，並使用 `grep` 搜尋包含分支名稱 (如 `fix-app-update`) 的所有 Tag，然後逐一刪除。這確保了無論版號如何變動，舊的 Nightly 版本都能被乾淨移除。
 
 ### DevOps (Previous)
 *   **自動化版本號同步 (New):**
