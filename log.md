@@ -1,6 +1,15 @@
 # 更新日誌
 
 ## 2025-01-27
+### Configuration
+*   **Baseline Profile 安裝修復:** 
+    *   **問題:** 安裝 Release APK 時出現 `INSTALL_BASELINE_PROFILE_FAILED` 錯誤。
+    *   **修正:** 目前在 `app/build.gradle.kts` 中並未顯式啟用 Baseline Profile 插件，但為避免此類錯誤阻礙安裝測試，暫無須額外動作，該錯誤通常發生在嘗試安裝帶有 Baseline Profile 的 APK 但系統或 ADB 處理失敗時。若持續發生，可考慮在 `buildTypes` 中明確禁用。
+
+### UI/UX
+*   **WiFi 圖示修復:**
+    *   **深色模式適配:** 修正 `ic_wifi.xml` 的填充顏色為白色並套用 `?attr/colorControlNormal` tint，解決在深色主題下圖示變成黑色無法看見的問題。
+
 ### DevOps
 *   **防止版本堆積 (Release Pile-up):**
     *   **問題:** 每次 Push 都會產生一個新的 Nightly Release，導致 Release 頁面被同分支的歷史版本塞滿 (例如 `287`, `288`, `289`)，舊版不會自動清除。
