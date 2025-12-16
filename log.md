@@ -1,7 +1,33 @@
 # 更新日誌
 
 ## 2025-01-27
-### UI/UX
+### DevOps
+*   **Version Code 策略大修 (Fix Root Cause):**
+    *   **問題:** 之前使用「日期」格式 (如 `241215xx`) 作為 `versionCode`，切換到 Commit Count (如 `129`) 後，因數值驟降 (241215xx > 129)，導致 Android 系統認定新版為「舊版」，拒絕安裝/更新。
+    *   **解決方案:**
+        *   **CI/CD (YAML):** 強制使用 GitHub Actions 的 `run_number` (例如 `260`，且會持續遞增) 作為 `VERSION_CODE`。這確保了版本號永遠比前一次 Build 大 (只要我們接受重置一次)。
+        *   **Gradle:** 修改 `build.gradle.kts`，優先讀取環境變數 `VERSION_CODE_OVERRIDE` (即 `run_number`)。若無環境變數 (本地開發)，才回退到 Commit Count。
+        *   **用戶端操作:** 由於版本號體系變更 (日期 -> 次數)，舊版 App (日期版) 必須手動移除，才能安裝新版 (次數版)。之後的更新將恢復正常。
+*   **API 網址修復:** 確認 `update_${updateChannel}.json` 的生成與讀取邏輯一致。
+
+### App Logic
+*   **更新檢查邏輯增強:**
+    *   **手動更新覆蓋:** 修改 `UpdateManager.kt`，新增 `isManualCheck` 參數。當使用者在設定頁面手動點擊「檢查更新」時，會強制允許更新 (即使版本號相同或更舊)，方便使用者重裝或切換頻道。
+    *   **邏輯優化:** `checkForUpdates` 方法現在接受 `isManualCheck`，若為真，則將 `force` 標誌傳遞給底層檢查邏輯，繞過 `isNewerVersion` 的嚴格限制。
+    *   **UI 整合:** `SettingsFragment.kt` 中的 `checkForUpdates` 方法已更新，呼叫時傳入 `isManualCheck = true`。
+
+### DevOps (Previous)
+*   **修復更新頻道名稱不匹配 (Root Cause):**
+    *   **問題:** Gradle 建置腳本與 CI/CD 流程對分支名稱的處理邏輯不一致。Gradle 將 `/` 替換為 `_` (例如 `feat_ui`)，而 CI/CD 將 `/` 與 `_` 皆替換為 `-` (例如 `feat-ui`)。這導致 App 嘗試從錯誤的 URL (例如 `update_feat_ui.json`) 檢查更新，造成 404 錯誤。
+    *   **修正:** 修改 `app/build.gradle.kts`，使其分支名稱處理邏輯與 CI/CD (`tr '/_' '-'`) 完全一致，確保 `BuildConfig.UPDATE_CHANNEL` 與生成的 JSON 檔名匹配。
+*   **CI/CD 環境變數優先:** 在 Gradle 中優先使用 `System.getenv("CHANNEL_NAME")`，確保在 CI/CD 的 Detached HEAD 狀態下能正確獲取分支名稱，而非預設回 `main`。
+*   **APK 命名與版本識別統一:** 
+    *   **命名規範:** 統一將 APK 檔名與版本號格式改為 `X.Y.Z-channel-count` (例如 `1.2.1-dev-255`)，移除空格，避免 URL 編碼或檔案系統相容性問題。
+    *   **Gradle 設定:** `build.gradle.kts` 中強制設定 `archivesBaseName` 為 `MedicationReminder-v...`，確保本地建置與 CI/CD 產出檔名一致。
+    *   **CI/CD 優化:** `android-cicd.yml` 改為直接使用 Gradle 產出的 APK，僅移除 `-release` 後綴，不再進行複雜的重新命名，減少錯誤。
+    *   **更新檢查邏輯:** `UpdateManager.kt` 適配新的連字符版本號格式，移除舊的空格替換邏輯，並確保版本比對準確。
+
+### UI/UX (Previous)
 *   **WiFi 設定頁面優化:** 
     *   **介面翻新:** 引入 Material Design 風格，新增 `TextInputLayout` 提升輸入體驗。
     *   **視覺增強:** 加入 Wi-Fi 圖示、標題與詳細說明文字，使介面更加直觀。
@@ -10,37 +36,16 @@
 
 ### Configuration & Build Logic (Previous)
 *   **版本號獲取優化:** 修正 `getGitTagVersion` 邏輯，加入 `--exact-match` 參數。現在只有當 Commit 剛好打上 Tag 時才會使用 Tag 的版本號 (Release)。其餘情況下 (Nightly/Dev)，會忽略舊 Tag，強制使用 `config.gradle.kts` 中的 `baseVersionName` (目前為 1.2.1) 進行拼接，解決了 Nightly 版本號停留在舊 Tag (1.2.0) 的問題。
-
-### DevOps (Previous)
-*   **APK 命名修復:** 解決 CI/CD 生成的 APK 檔名為 `-v1.2.0-nightly-246.apk` 的問題。
-    *   **Fallback 機制:** 在 `build.gradle.kts` 中為 `appName` 等變數加入預設值。
-    *   **檔案前綴:** 強制設定 APK 檔名前綴為 "MedicationReminder"，避免中文亂碼或變數遺失。
-*   **CI/CD 腳本:** `android-cicd.yml` 改為直接尋找 Gradle 生成的 APK。
-
-### Code Quality (Previous)
-*   **SettingsFragment 優化:** 移除多餘的 Suppress 警告，重構 `updateChannelList` 參數傳遞，新增 ViewModel 輔助方法繞過 Lint 檢查。
-
-### Configuration (Previous)
-*   **Application ID 三軌並行:** 區分 Main, Dev, Nightly 的 Application ID，支援同時安裝。
-### Configuration
 *   **版本號回滾:** 專案基礎版本號還原為 `1.2.0`。
-*   **APK 命名修復:** 優化 CI/CD 腳本 (`android-cicd.yml`)，使其能正確解析 Gradle 動態生成的版本號，解決 APK 檔名顯示為 `MedicationReminder-nightly.apk` 的問題。
 *   **Stable Channel JSON 生成:** CI/CD 流程中，Stable Release 現在也會生成 `update_main.json`，供其他頻道檢查是否有正式版更新。
 
-### Code Quality
+### Code Quality (Previous)
 *   **UpdateManager 優化:** 修復 `UpdateManager.kt` 中不必要的非空斷言 (Safe Call reduction)，移除 `response.body` 的可空性檢查，因為 `isSuccessful` 為真時 `response.body` 通常不為空。
+*   **SettingsFragment 優化:** 移除多餘的 Suppress 警告，重構 `updateChannelList` 參數傳遞，新增 ViewModel 輔助方法繞過 Lint 檢查。
 
-### Configuration & Build Logic
-*   **版本號獲取邏輯優化:** 修正 `getGitTagVersion`，加入 `--exact-match` 參數。只有當 Commit 完全對應到 Tag 時才會使用 Tag 版本號，否則 (Dev/Nightly) 會強制使用 `config.gradle.kts` 中的 `baseVersionName` 並拼接後綴，解決版本號停滯問題。
-
-### App Logic
+### App Logic (Previous)
 *   **更新頻道預設值優化:** `SettingsFragment` 現在會根據 `BuildConfig.UPDATE_CHANNEL` 自動設定預設頻道。
-    *   Dev 建置預設使用 Dev 頻道。
-    *   Stable 建置預設使用 Main 頻道。
-*   **跨頻道更新檢查:** `UpdateManager` 邏輯增強。非 Stable 頻道的用戶 (例如 Dev 用戶) 現在會同時檢查當前頻道與 Stable 頻道的更新。若發現更新的 Stable 版本，會主動提示更新，確保不錯過正式發布。
-
-### Documentation
-*   **README 更新:** 更新中英文文件，說明新的更新頻道策略與跨頻道檢查功能。
+*   **跨頻道更新檢查:** `UpdateManager` 邏輯增強。非 Stable 頻道的用戶 (例如 Dev 用戶) 現在會同時檢查當前頻道與 Stable 頻道的更新。
 
 ## 2025-01-26
 ### Bug Fixes

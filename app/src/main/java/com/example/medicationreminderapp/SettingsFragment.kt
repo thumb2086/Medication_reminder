@@ -239,7 +239,8 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         
         lifecycleScope.launch {
             Toast.makeText(requireContext(), "正在檢查更新...", Toast.LENGTH_SHORT).show()
-            val updateInfo = updateManager.checkForUpdates()
+            // Pass isManualCheck = true since this is a manual click
+            val updateInfo = updateManager.checkForUpdates(isManualCheck = true)
             if (updateInfo != null) {
                 AlertDialog.Builder(requireContext())
                     .setTitle(getString(R.string.update_available_title))
