@@ -77,7 +77,8 @@ jobs:
 
       - name: Build with Gradle
         env:
-          RELEASE_KEYSTORE_PATH: ./release.keystore
+          # 🔥 修改：使用絕對路徑，確保 Gradle 一定找得到檔案
+          RELEASE_KEYSTORE_PATH: ${{ github.workspace }}/release.keystore
           RELEASE_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}

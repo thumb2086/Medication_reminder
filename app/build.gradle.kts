@@ -1,6 +1,7 @@
 // app/build.gradle.kts
 import java.io.FileInputStream
 import java.util.Properties
+import java.io.FileNotFoundException
 
 // Apply the external configuration file
 apply(from = "../config.gradle.kts")
@@ -199,7 +200,12 @@ android {
             val localKeystorePath = keystoreProperties["store.file"] as String?
 
             if (!cloudKeystorePath.isNullOrEmpty()) {
-                storeFile = file(cloudKeystorePath)
+                val keyFile = file(cloudKeystorePath)
+                // 🔥 如果路徑指不到檔案，直接讓 Build 失敗！不要讓它偷跑！
+                if (!keyFile.exists()) {
+                     throw FileNotFoundException("CI Error: Keystore file not found at: $cloudKeystorePath")
+                }
+                storeFile = keyFile
             } else if (!localKeystorePath.isNullOrEmpty()) {
                 storeFile = file(localKeystorePath)
             } else {
@@ -214,9 +220,13 @@ android {
     buildTypes {
         getByName("release") {
             val releaseConfig = signingConfigs.getByName("release")
-            if (releaseConfig.storePassword != null && releaseConfig.storeFile?.exists() == true) {
+            // Check if we have a valid storeFile to sign with
+            if (releaseConfig.storeFile?.exists() == true) {
                 signingConfig = releaseConfig
             } else {
+                // If we are here, it means we didn't throw an exception earlier,
+                // but we also don't have a keystore. This might happen in local builds without keys.
+                // However, for CI with RELEASE_KEYSTORE_PATH set, we would have crashed already.
                 logger.warn("Release keystore not found or configuration incomplete. Falling back to debug signing.")
                 signingConfig = signingConfigs.getByName("debug")
             }
