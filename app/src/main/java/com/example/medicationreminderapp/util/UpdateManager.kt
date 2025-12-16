@@ -219,6 +219,8 @@ class UpdateManager(private val context: Context) {
         val remoteCount = getCommitCount(normalizedRemote)
         
         if (localCount != null && remoteCount != null) {
+            // 🔥 CRITICAL FIX: Only update if remote is STRICTLY GREATER than local.
+            // Previously: return remoteCount >= localCount (this caused loop updates on same version)
             return remoteCount > localCount
         }
         
