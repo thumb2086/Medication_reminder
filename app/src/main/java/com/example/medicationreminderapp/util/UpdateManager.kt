@@ -38,7 +38,8 @@ class UpdateManager(private val context: Context) {
         val version: String,
         val downloadUrl: String,
         val releaseNotes: String,
-        val isNightly: Boolean
+        val isNightly: Boolean,
+        val isNewer: Boolean // Added field to indicate if it is a strictly newer version
     )
 
     /**
@@ -59,11 +60,12 @@ class UpdateManager(private val context: Context) {
                 
                 val isChannelSwitch = selectedChannel != BuildConfig.UPDATE_CHANNEL
                 
-                // If it is a manual check and we are switching channels, treat it as a "force" check
-                // If it is a manual check on the same channel, we also pass true to allow re-installation if needed
-                val forceUpdate = isManualCheck
+                // If it's a manual check, we want to fetch the update info even if it's the same version
+                // so we can offer a re-install option.
+                // If it's an auto check (isManualCheck=false), we strictly only want newer versions.
+                val forceUpdate = isManualCheck || isChannelSwitch
                 
-                Log.d("UpdateManager", "Checking for updates on channel: $selectedChannel (Switch: $isChannelSwitch, Manual: $isManualCheck)")
+                Log.d("UpdateManager", "Checking for updates on channel: $selectedChannel (Switch: $isChannelSwitch, Manual: $isManualCheck, Force: $forceUpdate)")
 
                 val isStable = selectedChannel == "main" || selectedChannel == "master" || selectedChannel == "stable"
 
@@ -138,11 +140,11 @@ class UpdateManager(private val context: Context) {
         val downloadUrl = json.get("url").asString
         val releaseNotes = json.get("releaseNotes").asString
 
-        // Compare logic:
-        // 1. If remote VersionCode > local VersionCode, update is available.
-        // 2. If it's a forced channel switch or manual check, allow update if versions differ or even if same (reinstall).
-        if (remoteVersionCode > BuildConfig.VERSION_CODE || force) {
-            return UpdateInfo(latestVersionName, downloadUrl, releaseNotes, true)
+        val isStrictlyNewer = remoteVersionCode > BuildConfig.VERSION_CODE
+        
+        // Return info if it's newer OR forced
+        if (isStrictlyNewer || force) {
+            return UpdateInfo(latestVersionName, downloadUrl, releaseNotes, true, isStrictlyNewer)
         } 
         
         return null
@@ -183,8 +185,10 @@ class UpdateManager(private val context: Context) {
         // Normalized version string check (ensure no spaces)
         val currentVersionNormalized = BuildConfig.VERSION_NAME
 
-        if (isNewerVersion(currentVersionNormalized, remoteVersion) || force) {
-             return UpdateInfo(remoteVersion, apkUrl, releaseNotes, false)
+        val isStrictlyNewer = isNewerVersion(currentVersionNormalized, remoteVersion)
+
+        if (isStrictlyNewer || force) {
+             return UpdateInfo(remoteVersion, apkUrl, releaseNotes, false, isStrictlyNewer)
         }
         return null
     }

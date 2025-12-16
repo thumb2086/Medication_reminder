@@ -17,9 +17,10 @@
 
 ### App Logic
 *   **更新檢查邏輯增強:**
+    *   **自我更新循環修復:** 修改 `UpdateManager.kt`，將版本號比對邏輯從 `>=` 改為 `>` (Strictly Greater)，徹底解決同版本無限自我更新的 Bug。
     *   **手動更新覆蓋:** 修改 `UpdateManager.kt`，新增 `isManualCheck` 參數。當使用者在設定頁面手動點擊「檢查更新」時，會強制允許更新 (即使版本號相同或更舊)，方便使用者重裝或切換頻道。
     *   **邏輯優化:** `checkForUpdates` 方法現在接受 `isManualCheck`，若為真，則將 `force` 標誌傳遞給底層檢查邏輯，繞過 `isNewerVersion` 的嚴格限制。
-    *   **UI 整合:** `SettingsFragment.kt` 中的 `checkForUpdates` 方法已更新，呼叫時傳入 `isManualCheck = true`。
+    *   **UI 整合:** `SettingsFragment.kt` 中的 `checkForUpdates` 方法已更新，呼叫時傳入 `isManualCheck = true`。`MainActivity.kt` 啟動時自動檢查則傳入 `isManualCheck = false`。
 
 ### DevOps (Previous)
 *   **修復更新頻道名稱不匹配 (Root Cause):**
