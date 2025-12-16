@@ -23,7 +23,7 @@ A smart medication reminder application integrated with an ESP32-based smart pil
         *   **Dev Builds:** Default to `Dev` channel.
         *   **Feature Builds:** Default to the specific feature branch channel (e.g., `feat-new-ui`).
     *   **Dynamic Update Checks:** The app intelligently fetches the latest build for the selected channel (e.g., `update_dev.json`, `update_nightly.json`).
-        *   **Dev Channel Logic:** Users on the Dev channel will receive updates from both the Dev channel AND the Stable channel if a newer Stable version is released, ensuring they don't miss official releases.
+    *   **Safety Checks:** Detects if an update belongs to a different channel (Application ID) and warns the user that a separate app instance will be installed instead of an in-place update.
     *   **Stable:** Official releases from the `main` branch.
     *   **Dev:** Cutting-edge builds from the `dev` branch.
     *   **Dynamic Branch Discovery:** The app queries GitHub Releases to find available active branches (tagged as `nightly-<branch>`), allowing you to test specific feature branches easily.
