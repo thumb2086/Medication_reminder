@@ -204,6 +204,14 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./public
           keep_files: true
+      
+      - name: Cleanup Old Nightly Release
+        if: env.IS_OFFICIAL == 'false'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Deleting old release and tag: ${{ env.TAG_NAME }}"
+          gh release delete "${{ env.TAG_NAME }}" --cleanup-tag --yes || echo "No existing release to delete"
 
       - name: Create Nightly Release
         if: env.IS_OFFICIAL == 'false'
