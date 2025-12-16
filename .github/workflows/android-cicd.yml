@@ -47,12 +47,25 @@ jobs:
           echo "COMMIT_COUNT=$COMMIT_COUNT" >> $GITHUB_ENV
           echo "Calculated Commit Count: $COMMIT_COUNT"
 
-          # 2. 決定 Channel Name
+          # 2. 自動抓取全域最新的 Git Tag (不管有無 Merge)
+          # --sort=-v:refname 會將 v1.2.1 排在 v1.2.0 前面
+          # head -n 1 取出第一行
+          LATEST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -n 1 || echo "v1.0.0")
+          # 去掉 'v' 前綴 (e.g. v1.2.1 -> 1.2.1)
+          BASE_VERSION=${LATEST_TAG#v}
+          echo "Calculated Base Version from Global Tags: $BASE_VERSION"
+          
+          # 將抓到的 Base Version 寫入環境變數，之後傳給 Gradle
+          echo "BASE_VERSION_OVERRIDE=$BASE_VERSION" >> $GITHUB_ENV
+
+          # 3. 決定 Channel Name & Tag Name
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+             # --- 情境 A：正式發布 (Tag Push) ---
              echo "IS_OFFICIAL=true" >> $GITHUB_ENV
              echo "CHANNEL_NAME=main" >> $GITHUB_ENV
              echo "TAG_NAME=${{ github.ref_name }}" >> $GITHUB_ENV
           else
+             # --- 情境 B：分支開發 (Nightly/Dev) ---
              RAW_BRANCH=${GITHUB_REF#refs/heads/}
              SAFE_NAME=$(echo "$RAW_BRANCH" | tr '/_' '-')
              echo "CHANNEL_NAME=$SAFE_NAME" >> $GITHUB_ENV
@@ -83,12 +96,13 @@ jobs:
           RELEASE_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         # 🔥 修改：傳入 git rev-list 算出來的 COMMIT_COUNT，而不是 run_number
-        run: ./gradlew assembleRelease -PciVersionCode=${{ env.COMMIT_COUNT }} -PciChannelName=${{ env.CHANNEL_NAME }} || exit 1
+        # 🔥 修改：傳入 BASE_VERSION_OVERRIDE 覆寫 Gradle 裡的設定
+        run: ./gradlew assembleRelease -PciVersionCode=${{ env.COMMIT_COUNT }} -PciChannelName=${{ env.CHANNEL_NAME }} -PciBaseVersion=${{ env.BASE_VERSION_OVERRIDE }} || exit 1
 
       - name: Find and Rename APK
         run: |
-          # 同樣傳入 COMMIT_COUNT 讓 Gradle print 出正確的版本名
-          GRADLE_VERSION_NAME=$(./gradlew -q app:printVersionName -PciVersionCode=${{ env.COMMIT_COUNT }} -PciChannelName=${{ env.CHANNEL_NAME }} | tail -n 1)
+          # 同樣傳入 COMMIT_COUNT 和 BaseVersion 讓 Gradle print 出正確的版本名
+          GRADLE_VERSION_NAME=$(./gradlew -q app:printVersionName -PciVersionCode=${{ env.COMMIT_COUNT }} -PciChannelName=${{ env.CHANNEL_NAME }} -PciBaseVersion=${{ env.BASE_VERSION_OVERRIDE }} | tail -n 1)
           echo "Gradle reported versionName: $GRADLE_VERSION_NAME"
 
           SRC_APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
@@ -146,37 +160,6 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Sync Version to Config (Official)
-        if: env.IS_OFFICIAL == 'true'
-        run: |
-          NEW_VERSION="${{ env.TAG_NAME }}"
-          NEW_VERSION=${NEW_VERSION#v} # Remove 'v' prefix
-          
-          echo "Bumping baseVersionName to $NEW_VERSION in config.gradle.kts"
-          
-          # Setup Git
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          
-          # Fetch and Checkout Main (robustly)
-          git fetch origin main
-          git checkout -B main origin/main
-          
-          # Update File using sed with robust regex
-          sed -i "s/\"baseVersionName\"[[:space:]]*to[[:space:]]*\"[^\"]*\"/\"baseVersionName\" to \"$NEW_VERSION\"/" config.gradle.kts
-          
-          # Verify change
-          grep "baseVersionName" config.gradle.kts
-          
-          # Commit and Push if changed
-          if git diff --quiet config.gradle.kts; then
-             echo "Config already up to date."
-          else
-             git add config.gradle.kts
-             git commit -m "chore: bump baseVersionName to $NEW_VERSION [skip ci]"
-             git push origin main
-          fi
 
       # --- Nightly Release ---
       - name: Generate Channel JSON

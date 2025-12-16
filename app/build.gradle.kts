@@ -28,12 +28,21 @@ fun getGitCommandOutput(vararg command: String): String {
     }
 }
 
-// Helper to get the latest Git tag version (e.g. v1.2.0 -> 1.2.0)
-// CHANGED: Added --exact-match to ensure we only use the tag if the current commit IS the tag.
-// If we are ahead of the tag (nightly/dev), this returns empty/error, so we fallback to config.gradle.kts.
-fun getGitTagVersion(): String? {
+// Helper 1: Get Exact Tag (used for Official Releases)
+// Returns e.g. "1.2.1" only if the current commit is exactly tagged "v1.2.1"
+fun getExactGitTagVersion(): String? {
     val tag = getGitCommandOutput("git", "describe", "--tags", "--exact-match", "--match", "v*")
     return if (tag.startsWith("v")) tag.substring(1) else null
+}
+
+// Helper 2: Get Latest Global Tag (Highest Version)
+// CHANGED: Use 'git tag' with sort instead of 'git describe' to find v1.2.1 even if not merged into current branch.
+fun getLatestGitTagVersion(): String? {
+    // List all tags starting with 'v', sort by version (descending)
+    // The output is a newline-separated list. We take the first line.
+    val allTags = getGitCommandOutput("git", "tag", "--list", "v*", "--sort=-v:refname")
+    val firstTag = allTags.lines().firstOrNull { it.isNotBlank() }?.trim()
+    return if (firstTag != null && firstTag.startsWith("v")) firstTag.substring(1) else null
 }
 
 android {
@@ -46,9 +55,22 @@ android {
     val appConfig = extra["appConfig"] as? Map<String, Any> ?: emptyMap()
     
     // Get base config values with fallback
-    val gitTagVersion = getGitTagVersion()
+    val exactGitTag = getExactGitTagVersion()
+    val latestGitTag = getLatestGitTagVersion()
     val configVersionName = appConfig["baseVersionName"] as? String ?: "1.0.0"
-    val baseVersionName = gitTagVersion ?: configVersionName
+    
+    // 🔥 重要修正：讀取從 CI/CD 傳入的 -PciBaseVersion
+    val projectBaseVersion = if (project.hasProperty("ciBaseVersion")) project.property("ciBaseVersion") as String else null
+    
+    // Priority Logic:
+    // 1. Exact Tag (Official Release builds)
+    // 2. CI Provided Base Version (CI Nightly builds)
+    // 3. Latest Git Tag in Global History (Local Nightly builds)
+    // 4. Config.gradle.kts (Hard fallback)
+    val baseVersionName = exactGitTag 
+        ?: projectBaseVersion 
+        ?: latestGitTag 
+        ?: configVersionName
     
     val baseApplicationId = appConfig["baseApplicationId"] as? String ?: "com.example.medicationreminderapp"
     // Fallback appName if missing to prevent empty filename prefix
@@ -145,6 +167,7 @@ android {
         
         println("✅ Final VersionCode: $versionCode (Source: ${if (projectCiVersionCode != null) "CI/CD (-P)" else if (envVersionCodeOverride != null) "CI/CD (Env)" else "Git Commit Count"})")
         println("✅ Final Channel: $updateChannel")
+        println("✅ Final Base Version: $baseVersionName (ExactTag: $exactGitTag, CI: $projectBaseVersion, LatestTag: $latestGitTag, Config: $configVersionName)")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
