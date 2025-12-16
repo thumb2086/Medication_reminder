@@ -2,6 +2,9 @@
 
 ## 2025-01-27
 ### DevOps
+*   **自動化版本號同步 (New):**
+    *   **CI/CD (YAML):** 在 `android-cicd.yml` 新增 `Sync Version to Config` 步驟。當發布正式版 Tag (如 `v1.2.1`) 時，CI 會自動解析版本號，並使用 `sed` 更新 `config.gradle.kts` 中的 `baseVersionName`。
+    *   **自動提交:** 更新後的 `config.gradle.kts` 會由 GitHub Actions Bot 自動 commit 並 push 回 `main` 分支。這確保了後續的 Nightly/Dev 建置會自動基於新的版本號 (例如 `1.2.1-dev-xxx`) 進行版號遞增，無需人工介入。
 *   **Version Code 策略修正 (Final):**
     *   **回歸 Commit Count:** 確認 CI 環境的 `run_number` 與 APK 內部的 `versionCode` (Git Commit Count) 不一致導致更新循環問題。決定棄用 `run_number`，全面回歸 **Git Commit Count**。
     *   **YAML 修正:** `android-cicd.yml` 新增步驟計算 `git rev-list --count HEAD`，並將此數值透過 `-PciVersionCode` 傳遞給 Gradle，同時寫入 JSON。
