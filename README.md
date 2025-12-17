@@ -26,7 +26,8 @@ A smart medication reminder application integrated with an ESP32-based smart pil
     *   **Safety Checks:** Detects if an update belongs to a different channel (Application ID) and warns the user that a separate app instance will be installed instead of an in-place update.
     *   **Stable:** Official releases from the `main` branch.
     *   **Dev:** Cutting-edge builds from the `dev` branch.
-    *   **Dynamic Branch Discovery:** The app queries GitHub Releases to find available active branches (tagged as `nightly-<branch>`), allowing you to test specific feature branches easily.
+    *   **Dynamic Branch Discovery:** The app queries GitHub Releases to find available active branches, allowing you to test specific feature branches easily.
+    *   **Dead Channel Warning:** Automatically detects if the currently selected feature branch has been deleted or is no longer maintained, prompting the user to switch channels.
 *   **Robust Update Installation:** Smart handling of APK downloads with automatic fallback mechanisms to ensure successful installation on various Android versions (including Android 13+).
 *   **Multi-Channel CI/CD:** Supports dynamic "Feature Branch" releases. Every branch gets its own update channel (e.g., `feat-new-ui`), allowing parallel testing without interference.
 

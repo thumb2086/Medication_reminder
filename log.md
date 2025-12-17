@@ -20,6 +20,13 @@
 *   **WiFi 圖示修復:**
     *   **深色模式適配:** 修正 `ic_wifi.xml` 的填充顏色為白色並套用 `?attr/colorControlNormal` tint，解決在深色主題下圖示變成黑色無法看見的問題。
 
+### Settings & Update Logic
+*   **修復 GitHub Release 頻道解析 (Bug Fix):**
+    *   **問題:** `SettingsFragment` 原本僅能解析 `nightly-<branch>` 格式的 Tag，無法識別新的動態版本號 Tag (如 `1.2.1-nightly-fix-wifi-287`)，導致功能分支無法顯示在頻道列表中。
+    *   **修正:** 更新 `SettingsFragment.kt` 中的 `fetchAvailableChannels` 邏輯，加入正則表達式 `.*-nightly-(.+)-\d+` 來正確提取分支名稱 (例如 `fix-wifi`)，確保所有活躍的功能分支都能被用戶看見並選擇。
+*   **失效頻道檢測與警告 (New Feature):**
+    *   **功能:** 在設定頁面中新增檢查機制。若用戶當前選用的更新頻道 (非 `main` 或 `dev`) 在遠端 Release 列表中找不到 (代表分支已被刪除)，會彈出 `AlertDialog` 警告用戶「頻道已失效」，並建議切換回 Stable 或其他有效頻道。
+
 ### DevOps
 *   **修復 CI/CD 清理腳本 (Bug Fix):**
     *   **問題:** 當 `grep` 搜尋不到舊 Tag 時會回傳 Exit Code 1，導致 GitHub Actions 判定步驟失敗 (儘管這是預期中的行為)。
