@@ -1,6 +1,11 @@
 # 更新日誌
 
 ## 2025-01-27
+### Configuration
+*   **Gradle Deprecation 修復:**
+    *   **Build Config:** 修正 `app/build.gradle.kts` 中關於 `adbOptions` 與 `installOptions` 的 Deprecation 警告。
+    *   **修正內容:** 將過時的 `adbOptions { installOptions("-r", "--no-incremental") }` 替換為 `installation { installOptions.addAll(listOf("-r", "--no-incremental")) }`，解決了 AGP 8.0+ 的 `Replaced by installation` 警告與 `Val cannot be reassigned` 錯誤。
+
 ### Code Quality
 *   **程式碼清理:**
     *   **XML:** 移除 `calendar_day_layout.xml` 中未使用的 `xmlns:app` 命名空間宣告。
@@ -8,7 +13,7 @@
 *   **國際化 (i18n):**
     *   **英文翻譯:** 補齊 `values-en/strings.xml` 中缺漏的 `new_app_id_warning_title` 與 `new_app_id_warning_message` 字串翻譯，解決 Lint 錯誤。
 
-### Configuration
+### Configuration (Previous)
 *   **Gradle Deprecation 修復:**
     *   **Build Config:** 修改 `app/build.gradle.kts`，將過時的 `installation { installOptions(...) }` 區塊替換為 `adbOptions { installOptions(...) }`。這消除了「'fun installOptions(vararg options: String): Unit' is deprecated」的警告，並確保與未來的 AGP 版本相容。
 *   **安裝錯誤修復:**

@@ -80,22 +80,21 @@ android {
 
     // [Step 1] Force Version Code logic
     // Priority: -PciVersionCode > System.getenv("VERSION_CODE_OVERRIDE") > git rev-list
-    var finalVersionCode = 1
     val projectCiVersionCode = if (project.hasProperty("ciVersionCode")) project.property("ciVersionCode")?.toString()?.toIntOrNull() else null
     val envVersionCodeOverride = System.getenv("VERSION_CODE_OVERRIDE")?.toIntOrNull()
     val envBuildNumber = System.getenv("BUILD_NUMBER")?.toIntOrNull()
     
-    if (projectCiVersionCode != null) {
-        finalVersionCode = projectCiVersionCode
-        println("✅ [Gradle] Force using -PciVersionCode: $finalVersionCode")
+    val finalVersionCode = if (projectCiVersionCode != null) {
+        println("✅ [Gradle] Force using -PciVersionCode: $projectCiVersionCode")
+        projectCiVersionCode
     } else if (envVersionCodeOverride != null) {
-        finalVersionCode = envVersionCodeOverride
-        println("✅ [Gradle] Force using ENV variable: $finalVersionCode")
+        println("✅ [Gradle] Force using ENV variable: $envVersionCodeOverride")
+        envVersionCodeOverride
     } else {
         // Fallback to git commit count
          val commitCount = getGitCommandOutput("git", "rev-list", "--count", "HEAD").toIntOrNull() ?: 1
-         finalVersionCode = commitCount
-         println("⚠️ [Gradle] Fallback to Git Commit Count: $finalVersionCode")
+         println("⚠️ [Gradle] Fallback to Git Commit Count: $commitCount")
+         commitCount
     }
 
     // [Step 2] Force Channel Name Logic
@@ -256,17 +255,6 @@ android {
             
             // Fix: Disable Baseline Profile to prevent INSTALL_BASELINE_PROFILE_FAILED on emulators/test devices
             // during manual installation of release APKs.
-            // This does NOT affect performance significantly for this app scale.
-            // Note: DSL might vary by AGP version. For AGP 8+, use installation block.
-            // installation {
-            //     installOptions("-r", "--no-incremental")
-            // }
-            // For older AGP or simpler fix, just disable profile generation if not strictly needed or handle manually.
-            // However, the error usually comes from 'installRelease'.
-            // Let's try to set baselineProfile.isEnabled = false if the block exists, 
-            // but since it's not standard in basic BuildType, we use installation options if possible.
-            // Actually, the most robust way to fix "INSTALL_BASELINE_PROFILE_FAILED" for local testing 
-            // is to use the 'installation' block in android {} but that is top-level.
             
             isMinifyEnabled = false
             proguardFiles(
@@ -277,10 +265,9 @@ android {
     }
     
     // Fix for INSTALL_BASELINE_PROFILE_FAILED
-    // Removed deprecated installation block and installOptions
-    // Replaced with adbOptions
-    adbOptions {
-        installOptions("-r", "--no-incremental")
+    // Use installation block with correct property usage for AGP 8+
+    installation {
+        installOptions.addAll(listOf("-r", "--no-incremental"))
     }
 
     compileOptions {
