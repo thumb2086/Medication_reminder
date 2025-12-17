@@ -1,9 +1,27 @@
 # 待辦事項 (To-Do List)
 
+- [x] **修復「Delete Old Nightly Releases」腳本報錯:**
+    - [x] 即使 `grep` 找不到舊 Tag，也不應該讓 Workflow 失敗 (Exit Code 1)。需要在 `grep` 指令後加上 `|| true`。
+- [x] **防止版本堆積 (Release Pile-up):**
+    - [x] 修改 `.github/workflows/android-cicd.yml`，在建立新的 Nightly Release 前，自動搜尋並刪除同分支的舊版 Release，保持發布頁面整潔。
+- [x] **加入 Concurrency 控制:**
+    - [x] 修改 `.github/workflows/android-cicd.yml`，在 `on` 之後加入 `concurrency` 區塊，設定 `group` 與 `cancel-in-progress: true`，避免重複部署導致衝突。
+- [ ] **修復 Application ID 設定:**
+    - [ ] 修改 `config.gradle.kts`，將 `baseApplicationId` 從 `com.example.medicationreminderapp` 改回 `com.thumb2086.medication_reminder`，解決無法更新與 Google Play 上架問題。
+- [ ] **解決 Baseline Profile 安裝錯誤:**
+    - [ ] 修改 `app/build.gradle.kts`，在 `release` buildType 中加入 `baselineProfile.isEnabled = false` (或相應 DSL)，以避免 `INSTALL_BASELINE_PROFILE_FAILED` 錯誤。
+- [ ] **驗證 APK 檔名與 JSON 內容匹配:** 檢查 `android-cicd.yml` 是否正確將 `archivesBaseName` (Gradle 產出) 寫入 JSON。
+- [x] **UI 修復:**
+    - [x] **WiFi 圖示顏色修復:** 將 `ic_wifi.xml` 的填充顏色改為白色，並套用 `?attr/colorControlNormal` tint，以解決在深色模式下不可見的問題。
 - [x] **自動化版本號同步:**
     - [x] **CI/CD 自動抓取最近 Tag:** 修改 `android-cicd.yml`，使用 `git describe --tags` 動態獲取最近的 Tag (例如 `v1.2.1`) 作為 Base Version。
     - [x] **Gradle 支援覆寫:** 修改 `app/build.gradle.kts`，支援透過 `-PciBaseVersion` 參數覆寫 `baseVersionName`。
     - [x] **移除舊機制:** 移除之前 `android-cicd.yml` 中使用 `sed` 修改 `config.gradle.kts` 的步驟，改為完全動態傳參。
-- [ ] **驗證 APK 檔名與 JSON 內容匹配:** 檢查 `android-cicd.yml` 是否正確將 `archivesBaseName` (Gradle 產出) 寫入 JSON。
+- [x] **修復 CI/CD 清理腳本:**
+    - [x] 修改 `android-cicd.yml` 中的 Cleanup Job，改用 `gh release list --json tagName` 搭配 `grep` 進行精準搜尋，解決舊版腳本無法刪除動態 Tag (如 `1.2.1-nightly-fix-wifi-287`) 的問題。
+- [x] **驗證 APK 檔名與 JSON 內容匹配:**
+    - [x] 檢查 `app/build.gradle.kts`: `archivesBaseName` 設定為 `MedicationReminder-v${finalVersionName}`，且 `finalVersionName` 不含空格。
+    - [x] 檢查 `android-cicd.yml`: 使用 `find` 抓取 Gradle 產出的 APK 並移除 `-release` 後綴。
+    - [x] 結果: JSON 中的 URL 與 Release 附件名稱一致 (例如 `MedicationReminder-v1.2.1-nightly-255.apk`)。
 - [x] **功能優化:**
     - [x] **JSON 檢查:** 確認 `fetchAvailableChannels` 能正確解析 GitHub API 返回的 JSON 結構。

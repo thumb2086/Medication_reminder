@@ -16,6 +16,15 @@ on:
         required: true
         type: string
 
+# 🔥 新增這段：並發控制 🔥
+concurrency:
+  # 群組名稱：使用 "工作流程名-分支名"
+  # 這樣 dev 分支的任務只會跟 dev 的打架，不會影響到 main
+  group: ${{ github.workflow }}-${{ github.ref }}
+  
+  # 如果有新的任務進來，立即取消正在跑的舊任務
+  cancel-in-progress: true
+
 jobs:
   # ========================================================
   # Job 1: Build & Release
@@ -69,7 +78,8 @@ jobs:
              RAW_BRANCH=${GITHUB_REF#refs/heads/}
              SAFE_NAME=$(echo "$RAW_BRANCH" | tr '/_' '-')
              echo "CHANNEL_NAME=$SAFE_NAME" >> $GITHUB_ENV
-             echo "TAG_NAME=nightly-$SAFE_NAME" >> $GITHUB_ENV
+             # 🔥 TAG_NAME 包含版本號，確保唯一性與可追溯性
+             echo "TAG_NAME=${BASE_VERSION}-nightly-${SAFE_NAME}-${COMMIT_COUNT}" >> $GITHUB_ENV
              echo "IS_OFFICIAL=false" >> $GITHUB_ENV
           fi
 
@@ -188,13 +198,35 @@ jobs:
           publish_dir: ./public
           keep_files: true
       
-      - name: Cleanup Old Nightly Release
+      # 🔥【新增這一步】在建立新版之前，先刪除該分支所有的舊版 Release
+      - name: Delete Old Nightly Releases
         if: env.IS_OFFICIAL == 'false'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Deleting old release and tag: ${{ env.TAG_NAME }}"
-          gh release delete "${{ env.TAG_NAME }}" --cleanup-tag --yes || echo "No existing release to delete"
+          KEYWORD="${{ env.CHANNEL_NAME }}"
+          echo "🧹 Cleaning up old nightly builds for channel: $KEYWORD..."
+          
+          # 1. 搜尋包含此分支名稱的所有舊 Tag
+          # 例如: 1.2.1-nightly-fix-del-release-287
+          # 🔥 修復：grep 失敗時不要報錯 (|| true)，因為這是正常的 (代表沒有舊版需要刪除)
+          TAGS_TO_DELETE=$(gh release list --limit 100 --json tagName --jq '.[].tagName' | grep "$KEYWORD" || true)
+          
+          if [ -z "$TAGS_TO_DELETE" ]; then
+            echo "✨ No old releases found. Clean start."
+          else
+            echo "⚠️ Found old releases to delete:"
+            echo "$TAGS_TO_DELETE"
+            
+            for tag in $TAGS_TO_DELETE; do
+              echo "🗑️ Deleting old version: $tag"
+              # 刪除 Release 物件
+              gh release delete "$tag" --cleanup-tag --yes || echo "::warning::Failed to delete release $tag"
+              
+              # 刪除 Git Tag (確保乾淨)
+              git push origin --delete "refs/tags/$tag" || echo "::notice::Git tag $tag already gone"
+            done
+          fi
 
       - name: Create Nightly Release
         if: env.IS_OFFICIAL == 'false'
@@ -212,7 +244,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ========================================================
-  # Job 2: Cleanup
+  # Job 2: Cleanup (升級版：支援動態版本號刪除)
   # ========================================================
   cleanup:
     name: Cleanup Release & JSON
@@ -223,40 +255,76 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Determine Target
+      - name: Determine Target Branch Name
+        id: target
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             RAW_BRANCH="${{ inputs.target_branch_name }}"
           else
             RAW_BRANCH="${{ github.event.ref }}"
           fi
+          
+          # 標準化分支名稱 (fix/app-update -> fix-app-update)
           SAFE_NAME=$(echo "$RAW_BRANCH" | tr '/_' '-')
-          echo "TAG_NAME=nightly-$SAFE_NAME" >> $GITHUB_ENV
-          echo "JSON_FILE="update_${SAFE_NAME}.json"" >> $GITHUB_ENV
+          echo "TARGET_KEYWORD=$SAFE_NAME" >> $GITHUB_ENV
+          
+          echo "::notice::Will search and destroy releases containing: $SAFE_NAME"
 
-      - name: Delete GitHub Release
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 🔥 核心修改：使用 JSON 模式精準抓取 Tag 名稱
+      - name: Delete Matching Releases & Tags
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release delete "${{ env.TAG_NAME }}" --cleanup-tag --yes || echo "Release not found"
+          KEYWORD="${{ env.TARGET_KEYWORD }}"
+          echo "🔍 Searching for releases containing keyword: '$KEYWORD'..."
+          
+          # 1. 抓取所有 Tag 名稱 (使用 JSON 輸出避免格式跑掉)
+          # 2. 使用 grep 過濾出包含關鍵字的 Tag
+          # 🔥 修復：grep 失敗時不要報錯 (|| true)
+          TAGS_TO_DELETE=$(gh release list --limit 100 --json tagName --jq '.[].tagName' | grep "$KEYWORD" || true)
+          
+          if [ -z "$TAGS_TO_DELETE" ]; then
+            echo "⚠️ No releases found containing '$KEYWORD'. Nothing to delete."
+          else
+            echo "✅ Found tags to delete:"
+            echo "$TAGS_TO_DELETE"
+            
+            # 3. 迴圈刪除
+            for tag in $TAGS_TO_DELETE; do
+              echo "🗑️ Deleting Release & Tag: $tag"
+              
+              # 刪除 Release
+              gh release delete "$tag" --cleanup-tag --yes || echo "::warning::Failed to delete release $tag via API"
+              
+              # 強制刪除 Git Tag (雙重保險)
+              git push origin --delete "refs/tags/$tag" || echo "::notice::Git tag $tag already gone."
+            done
+          fi
 
-      - name: Force Delete Git Tag
-        run: |
-          git push origin --delete "refs/tags/${{ env.TAG_NAME }}" || echo "Git Tag gone"
-
+      # 2. 清理 gh-pages 上的 JSON (保持不變)
       - name: Cleanup JSON from gh-pages
         uses: actions/checkout@v4
         with:
           ref: gh-pages
-          fetch-depth: 0
-
+          fetch-depth: 0 
+          
       - name: Remove JSON File
         run: |
+          # JSON 檔名通常比較固定，還是可以用推測的
+          JSON_FILE="update_${{ env.TARGET_KEYWORD }}.json"
+          
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git pull origin gh-pages --rebase
-          if [ -f "${{ env.JSON_FILE }}" ]; then
-            git rm "${{ env.JSON_FILE }}"
-            git commit -m "Cleanup ${{ env.JSON_FILE }}"
+          
+          if [ -f "$JSON_FILE" ]; then
+            git rm "$JSON_FILE"
+            git commit -m "Cleanup $JSON_FILE"
+            git pull --rebase origin gh-pages
             git push origin gh-pages
+            echo "::notice::Successfully removed $JSON_FILE"
+          else
+            echo "::notice::File $JSON_FILE not found on gh-pages."
           fi
