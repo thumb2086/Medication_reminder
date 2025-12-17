@@ -2,6 +2,9 @@
 
 ## 2025-01-27
 ### DevOps
+*   **修復 CI/CD 清理腳本 (Bug Fix):**
+    *   **問題:** 當 `grep` 搜尋不到舊 Tag 時會回傳 Exit Code 1，導致 GitHub Actions 判定步驟失敗 (儘管這是預期中的行為)。
+    *   **修正:** 在 `android-cicd.yml` 的 `grep` 指令後加上 `|| true`，確保即使沒有舊版本可刪除，流程也能繼續執行而不報錯。影響範圍包括 Build Job 中的 `Delete Old Nightly Releases` 與 Cleanup Job 中的 `Delete Matching Releases & Tags`。
 *   **Release 清理腳本穩定性 (Bug Fix):**
     *   **問題:** CI 流程中的 `Delete Old Nightly Releases` 步驟使用 `grep` 搜尋舊 Tag 時，若無舊版本可刪除，會因 `grep` 回傳 Exit Code 1 而導致整個 Workflow 失敗。
     *   **修正:** 在 `android-cicd.yml` 的 `grep` 指令後加上 `|| true`，確保即使無搜尋結果也能正常繼續後續流程，徹底解決 Clean Tag 失效問題。
