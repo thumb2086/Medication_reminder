@@ -267,6 +267,7 @@ android {
     // Fix for INSTALL_BASELINE_PROFILE_FAILED
     // Use installation block with correct property usage for AGP 8+
     installation {
+        // 使用 addAll 並傳入一個 List，這符合 AGP 8+ 的規範且不會有編譯錯誤
         installOptions.addAll(listOf("-r", "--no-incremental"))
     }
 

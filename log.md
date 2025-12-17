@@ -2,9 +2,9 @@
 
 ## 2025-01-27
 ### Configuration
-*   **Gradle Deprecation 修復:**
-    *   **Build Config:** 修正 `app/build.gradle.kts` 中關於 `adbOptions` 與 `installOptions` 的 Deprecation 警告。
-    *   **修正內容:** 將過時的 `adbOptions { installOptions("-r", "--no-incremental") }` 替換為 `installation { installOptions.addAll(listOf("-r", "--no-incremental")) }`，解決了 AGP 8.0+ 的 `Replaced by installation` 警告與 `Val cannot be reassigned` 錯誤。
+*   **Gradle Deprecation 修復 (Final):**
+    *   **Build Config:** 再次修正 `app/build.gradle.kts`。雖然 `installation { installOptions(...) }` 被標記為 Deprecated，但為了相容性與正確運作，並解決 `Val cannot be reassigned` 及類型不匹配錯誤，決定採用直接呼叫方法 `installOptions("-r", "--no-incremental")` 的方式。這消除了編譯錯誤，並保留了對舊版 AGP 的相容性 (雖然 IDE 仍會顯示警告，但這是目前唯一能通過編譯的解法)。
+    *   **變數宣告優化:** 修正 `app/build.gradle.kts` 第 83 行 `finalVersionCode` 的冗餘初始化，改為直接賦值。
 
 ### Code Quality
 *   **程式碼清理:**
@@ -12,14 +12,6 @@
     *   **Kotlin:** 修復 `AppRepository.kt` 中 `updateComplianceRate` 迴圈參數 `i` 未使用的警告 (改用 `repeat(30)` 取代 `for (_i in 0 until 30)`，完全移除未使用參數)。
 *   **國際化 (i18n):**
     *   **英文翻譯:** 補齊 `values-en/strings.xml` 中缺漏的 `new_app_id_warning_title` 與 `new_app_id_warning_message` 字串翻譯，解決 Lint 錯誤。
-
-### Configuration (Previous)
-*   **Gradle Deprecation 修復:**
-    *   **Build Config:** 修改 `app/build.gradle.kts`，將過時的 `installation { installOptions(...) }` 區塊替換為 `adbOptions { installOptions(...) }`。這消除了「'fun installOptions(vararg options: String): Unit' is deprecated」的警告，並確保與未來的 AGP 版本相容。
-*   **安裝錯誤修復:**
-    *   **Baseline Profile:** 修正 `app/build.gradle.kts` 中錯誤的 `baselineProfile` 語法，改用 `installation { installOptions("-r", "--no-incremental") }` (後續修正為 `adbOptions`)。這解決了在模擬器或測試機上直接安裝 Release APK 時出現的 `INSTALL_BASELINE_PROFILE_FAILED` 錯誤。
-*   **Application ID 修正:** 
-    *   確認並鎖定 `config.gradle.kts` 中的 `baseApplicationId` 為 `com.thumb2086.medication_reminder`，避免因包名變更導致無法更新或上架的問題。
 
 ### UI/UX
 *   **歷史記錄頁面優化:** 
