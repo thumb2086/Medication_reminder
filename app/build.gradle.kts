@@ -277,7 +277,9 @@ android {
     }
     
     // Fix for INSTALL_BASELINE_PROFILE_FAILED
-    installation {
+    // Removed deprecated installation block and installOptions
+    // Replaced with adbOptions
+    adbOptions {
         installOptions("-r", "--no-incremental")
     }
 

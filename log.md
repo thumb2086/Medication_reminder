@@ -4,9 +4,17 @@
 ### Code Quality
 *   **程式碼清理:**
     *   **XML:** 移除 `calendar_day_layout.xml` 中未使用的 `xmlns:app` 命名空間宣告。
-    *   **Kotlin:** 修復 `AppRepository.kt` 中 `updateComplianceRate` 迴圈參數 `i` 未使用的警告 (更名為 `_i`)。
+    *   **Kotlin:** 修復 `AppRepository.kt` 中 `updateComplianceRate` 迴圈參數 `i` 未使用的警告 (改用 `repeat(30)` 取代 `for (_i in 0 until 30)`，完全移除未使用參數)。
 *   **國際化 (i18n):**
     *   **英文翻譯:** 補齊 `values-en/strings.xml` 中缺漏的 `new_app_id_warning_title` 與 `new_app_id_warning_message` 字串翻譯，解決 Lint 錯誤。
+
+### Configuration
+*   **Gradle Deprecation 修復:**
+    *   **Build Config:** 修改 `app/build.gradle.kts`，將過時的 `installation { installOptions(...) }` 區塊替換為 `adbOptions { installOptions(...) }`。這消除了「'fun installOptions(vararg options: String): Unit' is deprecated」的警告，並確保與未來的 AGP 版本相容。
+*   **安裝錯誤修復:**
+    *   **Baseline Profile:** 修正 `app/build.gradle.kts` 中錯誤的 `baselineProfile` 語法，改用 `installation { installOptions("-r", "--no-incremental") }` (後續修正為 `adbOptions`)。這解決了在模擬器或測試機上直接安裝 Release APK 時出現的 `INSTALL_BASELINE_PROFILE_FAILED` 錯誤。
+*   **Application ID 修正:** 
+    *   確認並鎖定 `config.gradle.kts` 中的 `baseApplicationId` 為 `com.thumb2086.medication_reminder`，避免因包名變更導致無法更新或上架的問題。
 
 ### UI/UX
 *   **歷史記錄頁面優化:** 
@@ -14,12 +22,6 @@
     *   **視覺反饋:** 新增 `red_dot.xml` 資源，並確保狀態判斷邏輯正確區分「今天之前」與「今天之後」。
 *   **WiFi 圖示修復:**
     *   **深色模式適配:** 修正 `ic_wifi.xml` 的填充顏色為白色並套用 `?attr/colorControlNormal` tint，解決在深色主題下圖示變成黑色無法看見的問題。
-
-### Configuration
-*   **安裝錯誤修復:**
-    *   **Baseline Profile:** 修正 `app/build.gradle.kts` 中錯誤的 `baselineProfile` 語法，改用 `installation { installOptions("-r", "--no-incremental") }`。這解決了在模擬器或測試機上直接安裝 Release APK 時出現的 `INSTALL_BASELINE_PROFILE_FAILED` 錯誤。
-*   **Application ID 修正:** 
-    *   確認並鎖定 `config.gradle.kts` 中的 `baseApplicationId` 為 `com.thumb2086.medication_reminder`，避免因包名變更導致無法更新或上架的問題。
 
 ### DevOps
 *   **修復 CI/CD 清理腳本 (Bug Fix):**

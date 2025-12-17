@@ -100,7 +100,7 @@ class AppRepository @Inject constructor(
         var takenCount = 0
         
         // Iterate backwards from today for 30 days
-        for (_i in 0 until 30) {
+        repeat(30) {
             val dateStr = sdf.format(calendar.time)
             if (status[dateStr] == STATUS_ALL_TAKEN) {
                 takenCount++
