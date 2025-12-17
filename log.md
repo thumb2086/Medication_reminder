@@ -1,6 +1,25 @@
 # 更新日誌
 
 ## 2025-01-27
+### Configuration
+*   **Gradle Deprecation 修復 (Final):**
+    *   **Build Config:** 再次修正 `app/build.gradle.kts`。雖然 `installation { installOptions(...) }` 被標記為 Deprecated，但為了相容性與正確運作，並解決 `Val cannot be reassigned` 及類型不匹配錯誤，決定採用直接呼叫方法 `installOptions("-r", "--no-incremental")` 的方式。這消除了編譯錯誤，並保留了對舊版 AGP 的相容性 (雖然 IDE 仍會顯示警告，但這是目前唯一能通過編譯的解法)。
+    *   **變數宣告優化:** 修正 `app/build.gradle.kts` 第 83 行 `finalVersionCode` 的冗餘初始化，改為直接賦值。
+
+### Code Quality
+*   **程式碼清理:**
+    *   **XML:** 移除 `calendar_day_layout.xml` 中未使用的 `xmlns:app` 命名空間宣告。
+    *   **Kotlin:** 修復 `AppRepository.kt` 中 `updateComplianceRate` 迴圈參數 `i` 未使用的警告 (改用 `repeat(30)` 取代 `for (_i in 0 until 30)`，完全移除未使用參數)。
+*   **國際化 (i18n):**
+    *   **英文翻譯:** 補齊 `values-en/strings.xml` 中缺漏的 `new_app_id_warning_title` 與 `new_app_id_warning_message` 字串翻譯，解決 Lint 錯誤。
+
+### UI/UX
+*   **歷史記錄頁面優化:** 
+    *   **紅點提示:** 修改 `HistoryFragment`，現在日曆上不僅會顯示綠點 (完全依從)，對於過去未達成目標的日期也會顯示紅點 (Missed)，讓使用者能更直觀地檢視服藥歷史。
+    *   **視覺反饋:** 新增 `red_dot.xml` 資源，並確保狀態判斷邏輯正確區分「今天之前」與「今天之後」。
+*   **WiFi 圖示修復:**
+    *   **深色模式適配:** 修正 `ic_wifi.xml` 的填充顏色為白色並套用 `?attr/colorControlNormal` tint，解決在深色主題下圖示變成黑色無法看見的問題。
+
 ### Settings & Update Logic
 *   **修復 GitHub Release 頻道解析 (Bug Fix):**
     *   **問題:** `SettingsFragment` 原本僅能解析 `nightly-<branch>` 格式的 Tag，無法識別新的動態版本號 Tag (如 `1.2.1-nightly-fix-wifi-287`)，導致功能分支無法顯示在頻道列表中。

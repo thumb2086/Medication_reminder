@@ -94,13 +94,21 @@ class AppRepository @Inject constructor(
     }
 
     private fun updateComplianceRate(status: Map<String, Int>) {
-        val totalDays = status.keys.size
-        if (totalDays == 0) {
-            _complianceRate.value = 0f
-            return
+        // Calculate compliance for the past 30 days
+        val calendar = Calendar.getInstance()
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        var takenCount = 0
+        
+        // Iterate backwards from today for 30 days
+        repeat(30) {
+            val dateStr = sdf.format(calendar.time)
+            if (status[dateStr] == STATUS_ALL_TAKEN) {
+                takenCount++
+            }
+            calendar.add(Calendar.DAY_OF_YEAR, -1)
         }
-        val daysTaken = status.values.count { it == STATUS_ALL_TAKEN }
-        _complianceRate.value = (daysTaken.toFloat() / totalDays.toFloat())
+        
+        _complianceRate.value = (takenCount.toFloat() / 30f)
     }
 
     // --- Sensor Data Management ---

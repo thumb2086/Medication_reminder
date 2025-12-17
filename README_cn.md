@@ -23,7 +23,7 @@
         *   **Dev 版本：** 預設為 `Dev` 頻道。
         *   **功能分支版本：** 預設為該功能分支頻道 (例如 `feat-new-ui`)。
     *   **動態更新檢查：** 智慧抓取對應頻道的最新版本資訊 (例如 `update_dev.json`, `update_nightly.json`)。
-        *   **Dev 頻道邏輯：** 使用 Dev 頻道的用戶，若有新的 Stable 版本發布，也會收到通知，確保不會錯過正式版更新。
+        *   **安全檢查：** 偵測更新是否屬於不同頻道 (Application ID)，並警告使用者這將安裝另一個應用程式實例，而非原地更新。
     *   **Stable：** 來自 `main` 分支的正式發布版本。
     *   **Dev：** 來自 `dev` 分支的最新開發版本。
     *   **動態分支發現：** App 會查詢 GitHub Releases 以尋找活躍的分支，讓您能輕鬆測試特定功能分支。
@@ -97,6 +97,8 @@ App 與 ESP32 智慧藥盒之間的通訊基於自訂的二進位協定，透過
 *   **分支清理：** 當分支被刪除時，對應的 Nightly Release 與 Tag 也會自動移除，保持發布列表整潔。亦支援透過 GitHub Actions workflow dispatch 手動清理。
 *   **版本控制：** `versionCode` 採用 **Git Commit Count** 以確保 Android Build 與 CI Artifacts 的嚴格一致性。`versionName` 則採用 `1.2.1-dev-260` 格式。
 *   **發布命名：** Nightly Release 現在使用更清晰的標題格式：`<分支> | <版本名稱>` (例如 `feat-ui | 1.2.0-nightly-205`)，方便識別來源分支與版本細節。
+*   **動態基礎版本：** CI/CD 自動偵測最新的 Git Tag (例如 `v1.2.1`) 作為所有後續 Nightly 建置的基礎版本，確保版本名稱始終反映最新的穩定里程碑 (例如 `1.2.1-nightly-xxx`)。
+*   **部署並發控制：** 實作並發控制，透過自動取消同一分支上的舊有工作流程，防止 `gh-pages` 部署衝突。
 
 ## 授權條款
 

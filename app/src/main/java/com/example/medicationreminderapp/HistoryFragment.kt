@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -17,6 +18,7 @@ import com.kizitonwose.calendar.core.DayPosition
 import com.kizitonwose.calendar.view.MonthDayBinder
 import com.kizitonwose.calendar.view.ViewContainer
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -64,16 +66,28 @@ class HistoryFragment : Fragment() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     viewModel.dailyStatusMap.collect { statusMap ->
+                        // Refresh day binder to update dots
                         binding.calendarView.dayBinder = object : MonthDayBinder<DayViewContainer> {
                             override fun create(view: View) = DayViewContainer(view)
                             override fun bind(container: DayViewContainer, data: CalendarDay) {
                                 val textView = container.view.findViewById<TextView>(R.id.calendarDayText)
                                 textView.text = data.date.dayOfMonth.toString()
-                                val dotView = container.view.findViewById<View>(R.id.dotView)
+                                val dotView = container.view.findViewById<ImageView>(R.id.dotView)
 
                                 if (data.position == DayPosition.MonthDate) {
                                     val dateStr = formatter.format(data.date)
-                                    dotView.isVisible = statusMap[dateStr] == AppRepository.STATUS_ALL_TAKEN
+                                    val isTaken = statusMap[dateStr] == AppRepository.STATUS_ALL_TAKEN
+                                    val isPast = data.date.isBefore(LocalDate.now())
+
+                                    if (isTaken) {
+                                        dotView.isVisible = true
+                                        dotView.setImageResource(R.drawable.green_dot)
+                                    } else if (isPast) {
+                                        dotView.isVisible = true
+                                        dotView.setImageResource(R.drawable.red_dot)
+                                    } else {
+                                        dotView.isVisible = false
+                                    }
                                 } else {
                                     dotView.isVisible = false
                                 }

@@ -80,22 +80,21 @@ android {
 
     // [Step 1] Force Version Code logic
     // Priority: -PciVersionCode > System.getenv("VERSION_CODE_OVERRIDE") > git rev-list
-    var finalVersionCode = 1
     val projectCiVersionCode = if (project.hasProperty("ciVersionCode")) project.property("ciVersionCode")?.toString()?.toIntOrNull() else null
     val envVersionCodeOverride = System.getenv("VERSION_CODE_OVERRIDE")?.toIntOrNull()
     val envBuildNumber = System.getenv("BUILD_NUMBER")?.toIntOrNull()
     
-    if (projectCiVersionCode != null) {
-        finalVersionCode = projectCiVersionCode
-        println("✅ [Gradle] Force using -PciVersionCode: $finalVersionCode")
+    val finalVersionCode = if (projectCiVersionCode != null) {
+        println("✅ [Gradle] Force using -PciVersionCode: $projectCiVersionCode")
+        projectCiVersionCode
     } else if (envVersionCodeOverride != null) {
-        finalVersionCode = envVersionCodeOverride
-        println("✅ [Gradle] Force using ENV variable: $finalVersionCode")
+        println("✅ [Gradle] Force using ENV variable: $envVersionCodeOverride")
+        envVersionCodeOverride
     } else {
         // Fallback to git commit count
          val commitCount = getGitCommandOutput("git", "rev-list", "--count", "HEAD").toIntOrNull() ?: 1
-         finalVersionCode = commitCount
-         println("⚠️ [Gradle] Fallback to Git Commit Count: $finalVersionCode")
+         println("⚠️ [Gradle] Fallback to Git Commit Count: $commitCount")
+         commitCount
     }
 
     // [Step 2] Force Channel Name Logic
@@ -254,9 +253,9 @@ android {
                 signingConfig = signingConfigs.getByName("debug")
             }
             
-
-
-
+            // Fix: Disable Baseline Profile to prevent INSTALL_BASELINE_PROFILE_FAILED on emulators/test devices
+            // during manual installation of release APKs.
+            
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -264,6 +263,14 @@ android {
             )
         }
     }
+    
+    // Fix for INSTALL_BASELINE_PROFILE_FAILED
+    // Use installation block with correct property usage for AGP 8+
+    installation {
+        // 使用 addAll 並傳入一個 List，這符合 AGP 8+ 的規範且不會有編譯錯誤
+        installOptions.addAll(listOf("-r", "--no-incremental"))
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
