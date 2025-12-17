@@ -15,6 +15,12 @@
     *   確認並鎖定 `config.gradle.kts` 中的 `baseApplicationId` 為 `com.thumb2086.medication_reminder`，避免因包名變更導致無法更新或上架的問題。
 
 ### DevOps
+*   **修復 CI/CD 清理腳本 (Bug Fix):**
+    *   **問題:** 當 `grep` 搜尋不到舊 Tag 時會回傳 Exit Code 1，導致 GitHub Actions 判定步驟失敗 (儘管這是預期中的行為)。
+    *   **修正:** 在 `android-cicd.yml` 的 `grep` 指令後加上 `|| true`，確保即使沒有舊版本可刪除，流程也能繼續執行而不報錯。影響範圍包括 Build Job 中的 `Delete Old Nightly Releases` 與 Cleanup Job 中的 `Delete Matching Releases & Tags`。
+*   **Release 清理腳本穩定性 (Bug Fix):**
+    *   **問題:** CI 流程中的 `Delete Old Nightly Releases` 步驟使用 `grep` 搜尋舊 Tag 時，若無舊版本可刪除，會因 `grep` 回傳 Exit Code 1 而導致整個 Workflow 失敗。
+    *   **修正:** 在 `android-cicd.yml` 的 `grep` 指令後加上 `|| true`，確保即使無搜尋結果也能正常繼續後續流程，徹底解決 Clean Tag 失效問題。
 *   **防止版本堆積 (Release Pile-up):**
     *   **問題:** 每次 Push 都會產生一個新的 Nightly Release，導致 Release 頁面被同分支的歷史版本塞滿 (例如 `287`, `288`, `289`)，舊版不會自動清除。
     *   **修正:** 在 `android-cicd.yml` 的建置流程中，**在建立新 Release 之前**，插入「自動清理舊版」步驟。該步驟會搜尋包含目前分支名稱的所有舊 Tag，並將其 Release 與 Git Tag 一併刪除，確保每個分支永遠只保留最新的一個 Nightly Build。
@@ -32,8 +38,6 @@
     *   **Gradle:** 
         *   修改 `app/build.gradle.kts`，新增讀取 `-PciBaseVersion` 屬性的邏輯。
         *   優先順序調整為：`Git Tag (Local)` > `-PciBaseVersion (CI)` > `config.gradle.kts`。這確保了 CI 環境下永遠使用從 Git 歷史計算出的正確基礎版本，而無需修改檔案。
-    *   **APK 檔名與 JSON 一致性:**
-        *   確認 CI 流程中 `Find and Rename APK` 步驟與 `Generate Channel JSON` 步驟使用相同的 Version Code 與 Version Name 邏輯，確保 JSON 內的下載連結與實際檔名完全匹配。
     *   **效果:** 
         *   只要您在 Git 打上 `v1.2.1` Tag，之後所有的 Nightly Build (`dev`, `feature`) 都會自動變成 `1.2.1-nightly-xxx`。
         *   發布新版只需 `git tag v1.3.0` 並推送，後續自動切換為 `1.3.0` 基底。
