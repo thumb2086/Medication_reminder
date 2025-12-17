@@ -1,6 +1,13 @@
 # 更新日誌
 
 ## 2025-01-27
+### Code Quality
+*   **程式碼清理:**
+    *   **XML:** 移除 `calendar_day_layout.xml` 中未使用的 `xmlns:app` 命名空間宣告。
+    *   **Kotlin:** 修復 `AppRepository.kt` 中 `updateComplianceRate` 迴圈參數 `i` 未使用的警告 (更名為 `_i`)。
+*   **國際化 (i18n):**
+    *   **英文翻譯:** 補齊 `values-en/strings.xml` 中缺漏的 `new_app_id_warning_title` 與 `new_app_id_warning_message` 字串翻譯，解決 Lint 錯誤。
+
 ### UI/UX
 *   **歷史記錄頁面優化:** 
     *   **紅點提示:** 修改 `HistoryFragment`，現在日曆上不僅會顯示綠點 (完全依從)，對於過去未達成目標的日期也會顯示紅點 (Missed)，讓使用者能更直觀地檢視服藥歷史。

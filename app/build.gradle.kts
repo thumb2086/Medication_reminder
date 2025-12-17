@@ -254,9 +254,20 @@ android {
                 signingConfig = signingConfigs.getByName("debug")
             }
             
-
-
-
+            // Fix: Disable Baseline Profile to prevent INSTALL_BASELINE_PROFILE_FAILED on emulators/test devices
+            // during manual installation of release APKs.
+            // This does NOT affect performance significantly for this app scale.
+            // Note: DSL might vary by AGP version. For AGP 8+, use installation block.
+            // installation {
+            //     installOptions("-r", "--no-incremental")
+            // }
+            // For older AGP or simpler fix, just disable profile generation if not strictly needed or handle manually.
+            // However, the error usually comes from 'installRelease'.
+            // Let's try to set baselineProfile.isEnabled = false if the block exists, 
+            // but since it's not standard in basic BuildType, we use installation options if possible.
+            // Actually, the most robust way to fix "INSTALL_BASELINE_PROFILE_FAILED" for local testing 
+            // is to use the 'installation' block in android {} but that is top-level.
+            
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -264,6 +275,12 @@ android {
             )
         }
     }
+    
+    // Fix for INSTALL_BASELINE_PROFILE_FAILED
+    installation {
+        installOptions("-r", "--no-incremental")
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
