@@ -1,5 +1,7 @@
 # 待辦事項 (To-Do List)
 
+- [x] **修復「Delete Old Nightly Releases」腳本報錯:**
+    - [x] 即使 `grep` 找不到舊 Tag，也不應該讓 Workflow 失敗 (Exit Code 1)。需要在 `grep` 指令後加上 `|| true`。
 - [x] **防止版本堆積 (Release Pile-up):**
     - [x] 修改 `.github/workflows/android-cicd.yml`，在建立新的 Nightly Release 前，自動搜尋並刪除同分支的舊版 Release，保持發布頁面整潔。
 - [x] **加入 Concurrency 控制:**
