@@ -209,7 +209,8 @@ jobs:
           
           # 1. 搜尋包含此分支名稱的所有舊 Tag
           # 例如: 1.2.1-nightly-fix-del-release-287
-          TAGS_TO_DELETE=$(gh release list --limit 100 --json tagName --jq '.[].tagName' | grep "$KEYWORD")
+          # 🔥 修復：grep 失敗時不要報錯 (|| true)，因為這是正常的 (代表沒有舊版需要刪除)
+          TAGS_TO_DELETE=$(gh release list --limit 100 --json tagName --jq '.[].tagName' | grep "$KEYWORD" || true)
           
           if [ -z "$TAGS_TO_DELETE" ]; then
             echo "✨ No old releases found. Clean start."
@@ -282,7 +283,8 @@ jobs:
           
           # 1. 抓取所有 Tag 名稱 (使用 JSON 輸出避免格式跑掉)
           # 2. 使用 grep 過濾出包含關鍵字的 Tag
-          TAGS_TO_DELETE=$(gh release list --limit 100 --json tagName --jq '.[].tagName' | grep "$KEYWORD")
+          # 🔥 修復：grep 失敗時不要報錯 (|| true)
+          TAGS_TO_DELETE=$(gh release list --limit 100 --json tagName --jq '.[].tagName' | grep "$KEYWORD" || true)
           
           if [ -z "$TAGS_TO_DELETE" ]; then
             echo "⚠️ No releases found containing '$KEYWORD'. Nothing to delete."

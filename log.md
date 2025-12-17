@@ -11,6 +11,9 @@
     *   **深色模式適配:** 修正 `ic_wifi.xml` 的填充顏色為白色並套用 `?attr/colorControlNormal` tint，解決在深色主題下圖示變成黑色無法看見的問題。
 
 ### DevOps
+*   **修復 CI/CD 清理腳本 (Bug Fix):**
+    *   **問題:** 當 `grep` 搜尋不到舊 Tag 時會回傳 Exit Code 1，導致 GitHub Actions 判定步驟失敗 (儘管這是預期中的行為)。
+    *   **修正:** 在 `android-cicd.yml` 的 `grep` 指令後加上 `|| true`，確保即使沒有舊版本可刪除，流程也能繼續執行而不報錯。影響範圍包括 Build Job 中的 `Delete Old Nightly Releases` 與 Cleanup Job 中的 `Delete Matching Releases & Tags`。
 *   **防止版本堆積 (Release Pile-up):**
     *   **問題:** 每次 Push 都會產生一個新的 Nightly Release，導致 Release 頁面被同分支的歷史版本塞滿 (例如 `287`, `288`, `289`)，舊版不會自動清除。
     *   **修正:** 在 `android-cicd.yml` 的建置流程中，**在建立新 Release 之前**，插入「自動清理舊版」步驟。該步驟會搜尋包含目前分支名稱的所有舊 Tag，並將其 Release 與 Git Tag 一併刪除，確保每個分支永遠只保留最新的一個 Nightly Build。
