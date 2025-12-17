@@ -107,7 +107,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
             try {
                 val client = OkHttpClient()
                 val request = Request.Builder()
-                    .url("https://api.github.com/repos/thumb2086/Medication_reminder/releases")
+                    .url("https://api.github.com/repos/thumb2086/Medication_reminder/releases?per_page=100")
                     .build()
 
                 val response = client.newCall(request).execute()
@@ -117,6 +117,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                     val releases = gson.fromJson(jsonStr, JsonArray::class.java)
                     
                     val remoteChannels = mutableSetOf<String>()
+                    val regex = Regex(".*-nightly-(.+)-\\d+")
                     
                     releases.forEach { element ->
                         val release = element.asJsonObject
@@ -124,6 +125,11 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                         if (tagName.startsWith("nightly-")) {
                             val channelName = tagName.removePrefix("nightly-")
                             remoteChannels.add(channelName)
+                        } else {
+                            val match = regex.find(tagName)
+                            if (match != null) {
+                                remoteChannels.add(match.groupValues[1])
+                            }
                         }
                     }
 
@@ -148,6 +154,12 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
             entryValues.add(currentChannel)
         }
 
+        // Always add Dev option if not present (as it is a permanent channel)
+        if (!entryValues.contains("dev")) {
+            entries.add("Dev")
+            entryValues.add("dev")
+        }
+
         // Add remote channels (filtering out duplicates)
         remoteChannels.forEach { channel ->
             if (!entryValues.contains(channel)) {
@@ -155,15 +167,25 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                 entryValues.add(channel)
             }
         }
-
-        // Sort: Stable -> Current -> Dev -> Others
-        // Note: The simple addition order above mostly handles this, but 'dev' might be in remoteChannels
         
         listPref.entries = entries.toTypedArray()
         listPref.entryValues = entryValues.toTypedArray()
         
         // Refresh summary
         listPref.summary = listPref.entry ?: getString(R.string.update_channel_summary, listPref.value)
+
+        // Check for dead branch
+        // If the current channel is not a permanent one (main/dev) and is not found in the remote list, warn the user.
+        if (currentChannel.isNotEmpty() && currentChannel != "main" && currentChannel != "dev" && !remoteChannels.contains(currentChannel)) {
+            // Only show if the fragment is currently added and visible to avoid crashes or leaks
+            if (isAdded && view != null) {
+                AlertDialog.Builder(requireContext())
+                    .setTitle("頻道已失效")
+                    .setMessage("注意：您目前的更新頻道 ($currentChannel) 未在遠端發布列表中找到。\n這可能表示該功能分支已被刪除或停止維護。\n\n建議切換至 Stable 或其他有效頻道。")
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show()
+            }
+        }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
