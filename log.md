@@ -1,14 +1,18 @@
 # 更新日誌
 
 ## 2025-01-27
-### Configuration
-*   **Baseline Profile 安裝修復:** 
-    *   **問題:** 安裝 Release APK 時出現 `INSTALL_BASELINE_PROFILE_FAILED` 錯誤。
-    *   **修正:** 目前在 `app/build.gradle.kts` 中並未顯式啟用 Baseline Profile 插件，但為避免此類錯誤阻礙安裝測試，暫無須額外動作，該錯誤通常發生在嘗試安裝帶有 Baseline Profile 的 APK 但系統或 ADB 處理失敗時。若持續發生，可考慮在 `buildTypes` 中明確禁用。
-
 ### UI/UX
+*   **歷史記錄頁面優化:** 
+    *   **紅點提示:** 修改 `HistoryFragment`，現在日曆上不僅會顯示綠點 (完全依從)，對於過去未達成目標的日期也會顯示紅點 (Missed)，讓使用者能更直觀地檢視服藥歷史。
+    *   **視覺反饋:** 新增 `red_dot.xml` 資源，並確保狀態判斷邏輯正確區分「今天之前」與「今天之後」。
 *   **WiFi 圖示修復:**
     *   **深色模式適配:** 修正 `ic_wifi.xml` 的填充顏色為白色並套用 `?attr/colorControlNormal` tint，解決在深色主題下圖示變成黑色無法看見的問題。
+
+### Configuration
+*   **安裝錯誤修復:**
+    *   **Baseline Profile:** 修正 `app/build.gradle.kts` 中錯誤的 `baselineProfile` 語法，改用 `installation { installOptions("-r", "--no-incremental") }`。這解決了在模擬器或測試機上直接安裝 Release APK 時出現的 `INSTALL_BASELINE_PROFILE_FAILED` 錯誤。
+*   **Application ID 修正:** 
+    *   確認並鎖定 `config.gradle.kts` 中的 `baseApplicationId` 為 `com.thumb2086.medication_reminder`，避免因包名變更導致無法更新或上架的問題。
 
 ### DevOps
 *   **防止版本堆積 (Release Pile-up):**
@@ -28,6 +32,8 @@
     *   **Gradle:** 
         *   修改 `app/build.gradle.kts`，新增讀取 `-PciBaseVersion` 屬性的邏輯。
         *   優先順序調整為：`Git Tag (Local)` > `-PciBaseVersion (CI)` > `config.gradle.kts`。這確保了 CI 環境下永遠使用從 Git 歷史計算出的正確基礎版本，而無需修改檔案。
+    *   **APK 檔名與 JSON 一致性:**
+        *   確認 CI 流程中 `Find and Rename APK` 步驟與 `Generate Channel JSON` 步驟使用相同的 Version Code 與 Version Name 邏輯，確保 JSON 內的下載連結與實際檔名完全匹配。
     *   **效果:** 
         *   只要您在 Git 打上 `v1.2.1` Tag，之後所有的 Nightly Build (`dev`, `feature`) 都會自動變成 `1.2.1-nightly-xxx`。
         *   發布新版只需 `git tag v1.3.0` 並推送，後續自動切換為 `1.3.0` 基底。

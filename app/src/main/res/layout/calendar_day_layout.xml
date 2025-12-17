@@ -19,7 +19,6 @@
         android:layout_marginBottom="8dp"
         android:src="@drawable/green_dot"
         android:visibility="gone"
-        android:contentDescription="@string/medication_taken_indicator"
-        app:tint="@android:color/holo_green_dark"/>
+        android:contentDescription="@string/medication_taken_indicator" />
 
 </FrameLayout>
