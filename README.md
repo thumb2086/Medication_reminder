@@ -9,7 +9,10 @@ A smart medication reminder application integrated with an ESP32-based smart pil
 *   **Smart Reminders:** customizable medication schedules with frequency and time settings.
 *   **Hardware Integration:** seamless connection with an ESP32 smart pillbox via Bluetooth Low Energy (BLE).
 *   **Real-time Monitoring:** displays real-time temperature and humidity data from the pillbox sensors.
-*   **Adherence Tracking:** records medication intake history and generates visual charts for compliance analysis.
+*   **Adherence Tracking:** Visualizes medication history with multi-status indicators and calculates a 30-day compliance rate.
+    *   **Green Dot:** All doses taken as scheduled.
+    *   **Yellow Dot:** Partially taken (missed some doses).
+    *   **Red Dot:** No doses taken on a scheduled day.
 *   **Character Themes:** Choose between "Kuromi" and "Chibi Maruko-chan" themes for a personalized experience.
 *   **Engineering Mode:** toggle hardware engineering mode directly from the app for diagnostics.
 *   **Wi-Fi Configuration:** Configure the ESP32's Wi-Fi credentials directly from the app via BLE. The interface is now enhanced with Material Design visuals, input validation, and clear instructions.
@@ -26,7 +29,8 @@ A smart medication reminder application integrated with an ESP32-based smart pil
     *   **Safety Checks:** Detects if an update belongs to a different channel (Application ID) and warns the user that a separate app instance will be installed instead of an in-place update.
     *   **Stable:** Official releases from the `main` branch.
     *   **Dev:** Cutting-edge builds from the `dev` branch.
-    *   **Dynamic Branch Discovery:** The app queries GitHub Releases to find available active branches (tagged as `nightly-<branch>`), allowing you to test specific feature branches easily.
+    *   **Dynamic Branch Discovery:** The app queries GitHub Releases to find available active branches, allowing you to test specific feature branches easily.
+    *   **Dead Channel Warning:** Automatically detects if the currently selected feature branch has been deleted or is no longer maintained, prompting the user to switch channels.
 *   **Robust Update Installation:** Smart handling of APK downloads with automatic fallback mechanisms to ensure successful installation on various Android versions (including Android 13+).
 *   **Multi-Channel CI/CD:** Supports dynamic "Feature Branch" releases. Every branch gets its own update channel (e.g., `feat-new-ui`), allowing parallel testing without interference.
 

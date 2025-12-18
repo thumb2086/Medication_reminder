@@ -1,6 +1,8 @@
 package com.example.medicationreminderapp
 
+import android.app.AlarmManager
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -34,5 +36,18 @@ class MedicationTakenReceiver : BroadcastReceiver() {
         // 2. Cancel notification (fixes the "not disappearing" issue)
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(notificationId)
+
+        // 3. Cancel any pending snooze alarms for this notification
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val alarmIntent = Intent(context, AlarmReceiver::class.java) // Snooze schedules another alarm
+        val alarmPendingIntent = PendingIntent.getBroadcast(
+            context,
+            notificationId, // Request code is the notification ID
+            alarmIntent,
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+        )
+        if (alarmPendingIntent != null) {
+            alarmManager.cancel(alarmPendingIntent)
+        }
     }
 }

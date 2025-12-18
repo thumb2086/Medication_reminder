@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -51,7 +52,6 @@ class HistoryFragment : Fragment() {
         binding.calendarView.setup(startMonth, endMonth, java.time.DayOfWeek.SUNDAY)
         binding.calendarView.scrollToMonth(currentMonth)
         
-        // Initial month title
         binding.monthTitle.text = monthTitleFormatter.format(currentMonth)
 
         binding.calendarView.monthScrollListener = { month ->
@@ -69,11 +69,27 @@ class HistoryFragment : Fragment() {
                             override fun bind(container: DayViewContainer, data: CalendarDay) {
                                 val textView = container.view.findViewById<TextView>(R.id.calendarDayText)
                                 textView.text = data.date.dayOfMonth.toString()
-                                val dotView = container.view.findViewById<View>(R.id.dotView)
+                                val dotView = container.view.findViewById<ImageView>(R.id.dotView)
 
                                 if (data.position == DayPosition.MonthDate) {
                                     val dateStr = formatter.format(data.date)
-                                    dotView.isVisible = statusMap[dateStr] == AppRepository.STATUS_ALL_TAKEN
+                                    val status = statusMap[dateStr]
+
+                                    dotView.isVisible = true // Make dot visible and decide color
+                                    when (status) {
+                                        AppRepository.STATUS_ALL_TAKEN -> {
+                                            dotView.setImageResource(R.drawable.green_dot)
+                                        }
+                                        AppRepository.STATUS_PARTIALLY_TAKEN -> {
+                                            dotView.setImageResource(R.drawable.yellow_dot)
+                                        }
+                                        AppRepository.STATUS_NONE_TAKEN -> {
+                                            dotView.setImageResource(R.drawable.red_dot)
+                                        }
+                                        else -> { // STATUS_NOT_APPLICABLE or future dates
+                                            dotView.isVisible = false
+                                        }
+                                    }
                                 } else {
                                     dotView.isVisible = false
                                 }

@@ -1,0 +1,89 @@
+name: "Bug Report"
+description: "Create a report to help us improve Spotube"
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please make sure to check if this issue is a duplicate before submitting.
+
+  - type: checkboxes
+    id: search-duplicate
+    attributes:
+      label: "Is there an existing issue for this? (Please read the description)"
+      description: "Don't waste our time, we are working hard to make Spotube better for you. Try with multiple similar keywords, and check the closed issues too."
+      options:
+        - label: "I have searched the existing issues"
+          required: true
+
+  - type: textarea
+    id: current-behavior
+    attributes:
+      label: "Current Behavior"
+      description: "Write what you are experiencing currently."
+      placeholder: "The app isn't working as expected. It crashes when I do this..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: "Expected Behavior"
+      description: "Write what you expected to happen."
+      placeholder: "The app should do this when I do that..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: "Steps to reproduce"
+      description: "Steps to reproduce the issue. A not well written description might lead to the delay in fixing the issue."
+      value: |
+        1. I opened the app
+        2. I did this
+        3. And that
+        4. Then this happened
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: "Logs"
+      description: "If you have any logs, paste them here. Make sure to remove any sensitive information. You can find the logs in the app's Settings > Developers > Logs page."
+      render: html
+      value: |
+        <details>
+        <summary>Logs</summary>
+        ...
+        <Replace this line by pasting your logs here>
+        ...
+        </details>
+    validations:
+      required: true
+
+  - type: input
+    id: operating-system
+    attributes:
+      label: "Operating System"
+      description: "The OS in which you used Spotube to face the issue. Use comma to separate multiple OS."
+      placeholder: "Android, Linux, macOS or Windows? Make sure to include the version too."
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: "Spotube version"
+      description: "The version of Spotube you are using."
+      placeholder: "e.g. v3.3.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: "Additional context"
+      description: "Add any other context about the problem here (e.g., screenshots or screen recordings)."

@@ -252,6 +252,8 @@
     <string name="install_now">立即安裝</string>
     <string name="no_updates_available">目前已是最新版本</string>
     <string name="update_check_failed">檢查更新失敗</string>
+    <string name="new_app_id_warning_title">警告：安裝新應用程式</string>
+    <string name="new_app_id_warning_message">此更新來自不同的頻道 (%1$s -> %2$s)，Application ID 已變更。這將會安裝一個全新的應用程式，您的舊資料將無法自動繼承。您確定要繼續嗎？</string>
 
     <!-- Engineering Mode -->
     <string name="developer_settings">開發者設定</string>

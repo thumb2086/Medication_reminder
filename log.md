@@ -1,19 +1,55 @@
 # 更新日誌
 
+## 2025-01-28
+### Features
+*   **日曆紀錄功能重構 (History Calendar Enhancement):**
+    *   **精準狀態計算:** 重構 `AppRepository` 的核心邏輯。現在，日曆上的每日狀態會根據每種藥物的服用計畫 (開始/結束日期、每日次數) 與詳細的服藥時間紀錄 (`MedicationTakenRecord`) 動態計算，取代了先前過於簡化的判斷方式。
+    *   **多狀態顯示:** `HistoryFragment` 現在能顯示更多元的服藥狀態，並以不同顏色標示：
+        *   **綠色 (`green_dot`):** 完全按照計畫服藥。
+        *   **黃色 (`yellow_dot`):** 部分服藥 (當天未完成所有劑量)。
+        *   **紅色 (`red_dot`):** 未服藥 (當天有應服藥物但無紀錄)。
+        *   **無圓點:** 當天無須服藥或未來日期。
+    *   **新增資源:** 建立了新的 `yellow_dot.xml` drawable 資源以供部分服藥狀態使用。
+
+### Code Quality
+*   **警告修正:** 
+    *   **`AppRepository.kt`:** 移除了未被使用的 `loadDailyStatusData` 和 `saveDailyStatusData` 函式。由於日曆狀態現在是動態產生，不再需要獨立儲存。
+    *   **`HistoryFragment.kt`:** 移除了未使用的 `LocalDate` import，保持程式碼乾淨。
+
 ## 2025-01-27
 ### Configuration
-*   **Baseline Profile 安裝修復:** 
-    *   **問題:** 安裝 Release APK 時出現 `INSTALL_BASELINE_PROFILE_FAILED` 錯誤。
-    *   **修正:** 目前在 `app/build.gradle.kts` 中並未顯式啟用 Baseline Profile 插件，但為避免此類錯誤阻礙安裝測試，暫無須額外動作，該錯誤通常發生在嘗試安裝帶有 Baseline Profile 的 APK 但系統或 ADB 處理失敗時。若持續發生，可考慮在 `buildTypes` 中明確禁用。
+*   **Gradle Deprecation 修復 (Final):**
+    *   **Build Config:** 再次修正 `app/build.gradle.kts`。雖然 `installation { installOptions(...) }` 被標記為 Deprecated，但為了相容性與正確運作，並解決 `Val cannot be reassigned` 及類型不匹配錯誤，決定採用直接呼叫方法 `installOptions("-r", "--no-incremental")` 的方式。這消除了編譯錯誤，並保留了對舊版 AGP 的相容性 (雖然 IDE 仍會顯示警告，但這是目前唯一能通過編譯的解法)。
+    *   **變數宣告優化:** 修正 `app/build.gradle.kts` 第 83 行 `finalVersionCode` 的冗餘初始化，改為直接賦值。
+
+### Code Quality
+*   **程式碼清理:**
+    *   **XML:** 移除 `calendar_day_layout.xml` 中未使用的 `xmlns:app` 命名空間宣告。
+    *   **Kotlin:** 修復 `AppRepository.kt` 中 `updateComplianceRate` 迴圈參數 `i` 未使用的警告 (改用 `repeat(30)` 取代 `for (_i in 0 until 30)`，完全移除未使用參數)。
+*   **國際化 (i18n):**
+    *   **英文翻譯:** 補齊 `values-en/strings.xml` 中缺漏的 `new_app_id_warning_title` 與 `new_app_id_warning_message` 字串翻譯，解決 Lint 錯誤。
 
 ### UI/UX
+*   **歷史記錄頁面優化:** 
+    *   **紅點提示:** 修改 `HistoryFragment`，現在日曆上不僅會顯示綠點 (完全依從)，對於過去未達成目標的日期也會顯示紅點 (Missed)，讓使用者能更直觀地檢視服藥歷史。
+    *   **視覺反饋:** 新增 `red_dot.xml` 資源，並確保狀態判斷邏輯正確區分「今天之前」與「今天之後」。
 *   **WiFi 圖示修復:**
     *   **深色模式適配:** 修正 `ic_wifi.xml` 的填充顏色為白色並套用 `?attr/colorControlNormal` tint，解決在深色主題下圖示變成黑色無法看見的問題。
+
+### Settings & Update Logic
+*   **修復 GitHub Release 頻道解析 (Bug Fix):**
+    *   **問題:** `SettingsFragment` 原本僅能解析 `nightly-<branch>` 格式的 Tag，無法識別新的動態版本號 Tag (如 `1.2.1-nightly-fix-wifi-287`)，導致功能分支無法顯示在頻道列表中。
+    *   **修正:** 更新 `SettingsFragment.kt` 中的 `fetchAvailableChannels` 邏輯，加入正則表達式 `.*-nightly-(.+)-\d+` 來正確提取分支名稱 (例如 `fix-wifi`)，確保所有活躍的功能分支都能被用戶看見並選擇。
+*   **失效頻道檢測與警告 (New Feature):**
+    *   **功能:** 在設定頁面中新增檢查機制。若用戶當前選用的更新頻道 (非 `main` 或 `dev`) 在遠端 Release 列表中找不到 (代表分支已被刪除)，會彈出 `AlertDialog` 警告用戶「頻道已失效」，並建議切換回 Stable 或其他有效頻道。
 
 ### DevOps
 *   **修復 CI/CD 清理腳本 (Bug Fix):**
     *   **問題:** 當 `grep` 搜尋不到舊 Tag 時會回傳 Exit Code 1，導致 GitHub Actions 判定步驟失敗 (儘管這是預期中的行為)。
     *   **修正:** 在 `android-cicd.yml` 的 `grep` 指令後加上 `|| true`，確保即使沒有舊版本可刪除，流程也能繼續執行而不報錯。影響範圍包括 Build Job 中的 `Delete Old Nightly Releases` 與 Cleanup Job 中的 `Delete Matching Releases & Tags`。
+*   **Release 清理腳本穩定性 (Bug Fix):**
+    *   **問題:** CI 流程中的 `Delete Old Nightly Releases` 步驟使用 `grep` 搜尋舊 Tag 時，若無舊版本可刪除，會因 `grep` 回傳 Exit Code 1 而導致整個 Workflow 失敗。
+    *   **修正:** 在 `android-cicd.yml` 的 `grep` 指令後加上 `|| true`，確保即使無搜尋結果也能正常繼續後續流程，徹底解決 Clean Tag 失效問題。
 *   **防止版本堆積 (Release Pile-up):**
     *   **問題:** 每次 Push 都會產生一個新的 Nightly Release，導致 Release 頁面被同分支的歷史版本塞滿 (例如 `287`, `288`, `289`)，舊版不會自動清除。
     *   **修正:** 在 `android-cicd.yml` 的建置流程中，**在建立新 Release 之前**，插入「自動清理舊版」步驟。該步驟會搜尋包含目前分支名稱的所有舊 Tag，並將其 Release 與 Git Tag 一併刪除，確保每個分支永遠只保留最新的一個 Nightly Build。
