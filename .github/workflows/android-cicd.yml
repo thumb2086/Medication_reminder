@@ -16,15 +16,6 @@ on:
         required: true
         type: string
 
-# 🔥 新增這段：並發控制 🔥
-concurrency:
-  # 群組名稱：使用 "工作流程名-分支名"
-  # 這樣 dev 分支的任務只會跟 dev 的打架，不會影響到 main
-  group: ${{ github.workflow }}-${{ github.ref }}
-  
-  # 如果有新的任務進來，立即取消正在跑的舊任務
-  cancel-in-progress: true
-
 jobs:
   # ========================================================
   # Job 1: Build & Release
@@ -33,6 +24,12 @@ jobs:
     name: Build and Release
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    
+    # ✅ 新增：只讓 Build 工作有排他性 (防止部署衝突)
+    concurrency:
+      group: build-${{ github.ref }}
+      cancel-in-progress: true
+      
     permissions:
       contents: write
     steps:
