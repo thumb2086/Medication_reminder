@@ -149,13 +149,49 @@ jobs:
           EOF
           cp public/$JSON_FILE .
           
-      - name: Deploy Main JSON to GitHub Pages
+      - name: Deploy Main JSON with Retry
         if: env.IS_OFFICIAL == 'true'
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./public
-          keep_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 1. 設定 Git 使用者
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          
+          # 2. 為了避免污染當前目錄，我們在 /tmp 複製一份 gh-pages
+          git clone --depth=1 --branch=gh-pages https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git /tmp/gh-pages-repo
+          
+          # 3. 複製生成的 JSON 到 gh-pages 目錄
+          cp public/update_main.json /tmp/gh-pages-repo/
+          
+          # 4. 進入目錄並提交
+          cd /tmp/gh-pages-repo
+          git add update_main.json
+          
+          # 如果沒有變更就跳過 (避免空 commit 報錯)
+          if git diff --staged --quiet; then
+            echo "No changes to update_main.json"
+          else
+            git commit -m "Update update_main.json for ${{ github.ref_name }}"
+            
+            # 🔥 5. 核心：重試迴圈 (Retry Loop) 🔥
+            # 如果 push 失敗，就 pull --rebase 再試一次，最多試 5 次
+            n=0
+            until [ "$n" -ge 5 ]
+            do
+               git pull --rebase origin gh-pages && git push origin gh-pages && break
+               n=$((n+1))
+               echo "::warning::Git push failed (race condition), retrying in 5s... ($n/5)"
+               sleep 5
+            done
+            
+            if [ "$n" -ge 5 ]; then
+              echo "::error::Failed to push to gh-pages after 5 attempts."
+              exit 1
+            fi
+            
+            echo "✅ Successfully deployed update_main.json"
+          fi
 
       - name: Create Official Release
         if: env.IS_OFFICIAL == 'true'
@@ -187,13 +223,50 @@ jobs:
           EOF
           cp public/$JSON_FILE .
 
-      - name: Deploy JSON to GitHub Pages
+      - name: Deploy Nightly JSON with Retry
         if: env.IS_OFFICIAL == 'false'
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./public
-          keep_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 1. 設定 Git 使用者
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          
+          # 2. Clone gh-pages 到 /tmp
+          # 注意：如果上一步(Official)已經 clone 過，這裡要先清掉或重用，簡單起見我們直接重 clone
+          rm -rf /tmp/gh-pages-repo
+          git clone --depth=1 --branch=gh-pages https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git /tmp/gh-pages-repo
+          
+          # 3. 複製生成的 JSON
+          JSON_FILENAME="update_${{ env.CHANNEL_NAME }}.json"
+          cp public/$JSON_FILENAME /tmp/gh-pages-repo/
+          
+          # 4. 進入目錄並提交
+          cd /tmp/gh-pages-repo
+          git add $JSON_FILENAME
+          
+          if git diff --staged --quiet; then
+            echo "No changes to $JSON_FILENAME"
+          else
+            git commit -m "Update $JSON_FILENAME for ${{ env.CHANNEL_NAME }}"
+            
+            # 🔥 5. 核心：重試迴圈 🔥
+            n=0
+            until [ "$n" -ge 5 ]
+            do
+               git pull --rebase origin gh-pages && git push origin gh-pages && break
+               n=$((n+1))
+               echo "::warning::Git push failed (race condition), retrying in 5s... ($n/5)"
+               sleep 5
+            done
+            
+            if [ "$n" -ge 5 ]; then
+              echo "::error::Failed to push to gh-pages after 5 attempts."
+              exit 1
+            fi
+            
+            echo "✅ Successfully deployed $JSON_FILENAME"
+          fi
       
       # 🔥【新增這一步】在建立新版之前，先刪除該分支所有的舊版 Release
       - name: Delete Old Nightly Releases
