@@ -21,7 +21,9 @@ class MedicationTakenReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val notificationId = intent.getIntExtra("notification_id", -1)
-        if (notificationId == -1) return
+        val requestCode = intent.getIntExtra("requestCode", -1)
+
+        if (notificationId == -1 || requestCode == -1) return
 
         // Use Hilt EntryPoint to access the correct singleton repository
         val hiltEntryPoint = EntryPointAccessors.fromApplication(
@@ -37,12 +39,12 @@ class MedicationTakenReceiver : BroadcastReceiver() {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(notificationId)
 
-        // 3. Cancel any pending snooze alarms for this notification
+        // 3. Cancel the next scheduled alarm
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val alarmIntent = Intent(context, AlarmReceiver::class.java) // Snooze schedules another alarm
+        val alarmIntent = Intent(context, AlarmReceiver::class.java)
         val alarmPendingIntent = PendingIntent.getBroadcast(
             context,
-            notificationId, // Request code is the notification ID
+            requestCode, // Use the same request code to find the pending intent
             alarmIntent,
             PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
         )

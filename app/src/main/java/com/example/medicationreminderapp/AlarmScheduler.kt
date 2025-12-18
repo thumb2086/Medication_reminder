@@ -25,10 +25,10 @@ class AlarmScheduler(private val context: Context) {
                 putExtra("medicationName", medication.name)
                 putExtra("dosage", medication.dosage)
                 putExtra("notificationId", medication.slotNumber) // Pass slotNumber as notificationId
+                putExtra("requestCode", medication.id * 100 + index) // Pass request code
             }
 
-            // Make request code unique for each alarm time
-            val requestCode = medication.id * 100 + index 
+            val requestCode = medication.id * 100 + index
 
             val pendingIntent = PendingIntent.getBroadcast(
                 context,
@@ -37,10 +37,10 @@ class AlarmScheduler(private val context: Context) {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
-            alarmManager.setRepeating(
+            // Use setExactAndAllowWhileIdle for precision
+            alarmManager.setExactAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
                 alarmTime.timeInMillis,
-                AlarmManager.INTERVAL_DAY,
                 pendingIntent
             )
         }
