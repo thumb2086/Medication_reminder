@@ -16,6 +16,11 @@ class AlarmScheduler(private val context: Context) {
                 this.timeInMillis = timeInMillis
             }
 
+            // If the alarm time is in the past, schedule it for the next day.
+            if (alarmTime.before(Calendar.getInstance())) {
+                alarmTime.add(Calendar.DAY_OF_YEAR, 1)
+            }
+
             val intent = Intent(context, AlarmReceiver::class.java).apply {
                 putExtra("medicationName", medication.name)
                 putExtra("dosage", medication.dosage)
