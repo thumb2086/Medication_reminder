@@ -109,8 +109,8 @@ class AppRepository @Inject constructor(
             return
         }
 
-        val minStartDate = medications.minOfOrNull { it.startDate } ?: System.currentTimeMillis()
-        val maxEndDate = medications.maxOfOrNull { it.endDate } ?: System.currentTimeMillis()
+        val minStartDate = medications.minOf { it.startDate }
+        val maxEndDate = medications.maxOf { it.endDate }
 
         calendar.timeInMillis = minStartDate
         val endDateCalendar = Calendar.getInstance()
@@ -226,8 +226,18 @@ class AppRepository @Inject constructor(
     private fun loadMedicationData() {
         sharedPreferences.getString(KEY_MEDICATION_DATA, null)?.let {
             try {
-                val data: List<Medication> = gson.fromJson(it, object : TypeToken<List<Medication>>() {}.type) ?: emptyList()
-                _medicationList.value = data
+                val rawData: List<Medication> = gson.fromJson(it, object : TypeToken<List<Medication>>() {}.type) ?: emptyList()
+                
+                // A reasonable earliest date to prevent issues with zero/default timestamps (e.g. 1970)
+                val minValidTimestamp = 1577836800000L // January 1, 2020 UTC
+                val cleanedData = rawData.filter { med -> med.startDate > minValidTimestamp && med.endDate > minValidTimestamp }
+
+                _medicationList.value = cleanedData
+
+                // If data was cleaned, save it back to remove invalid entries from persistence.
+                if (rawData.size != cleanedData.size) {
+                    saveMedicationData()
+                }
             } catch (e: JsonSyntaxException) {
                 Log.e("AppRepository", "Failed to parse medication data", e)
             }
