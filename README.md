@@ -9,7 +9,10 @@ A smart medication reminder application integrated with an ESP32-based smart pil
 *   **Smart Reminders:** customizable medication schedules with frequency and time settings.
 *   **Hardware Integration:** seamless connection with an ESP32 smart pillbox via Bluetooth Low Energy (BLE).
 *   **Real-time Monitoring:** displays real-time temperature and humidity data from the pillbox sensors.
-*   **Adherence Tracking:** Visualizes medication history with status indicators (Green for Taken, Red for Missed) and calculates a 30-day compliance rate.
+*   **Adherence Tracking:** Visualizes medication history with multi-status indicators and calculates a 30-day compliance rate.
+    *   **Green Dot:** All doses taken as scheduled.
+    *   **Yellow Dot:** Partially taken (missed some doses).
+    *   **Red Dot:** No doses taken on a scheduled day.
 *   **Character Themes:** Choose between "Kuromi" and "Chibi Maruko-chan" themes for a personalized experience.
 *   **Engineering Mode:** toggle hardware engineering mode directly from the app for diagnostics.
 *   **Wi-Fi Configuration:** Configure the ESP32's Wi-Fi credentials directly from the app via BLE. The interface is now enhanced with Material Design visuals, input validation, and clear instructions.

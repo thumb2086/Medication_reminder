@@ -18,7 +18,6 @@ import com.kizitonwose.calendar.core.DayPosition
 import com.kizitonwose.calendar.view.MonthDayBinder
 import com.kizitonwose.calendar.view.ViewContainer
 import kotlinx.coroutines.launch
-import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -53,7 +52,6 @@ class HistoryFragment : Fragment() {
         binding.calendarView.setup(startMonth, endMonth, java.time.DayOfWeek.SUNDAY)
         binding.calendarView.scrollToMonth(currentMonth)
         
-        // Initial month title
         binding.monthTitle.text = monthTitleFormatter.format(currentMonth)
 
         binding.calendarView.monthScrollListener = { month ->
@@ -66,7 +64,6 @@ class HistoryFragment : Fragment() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     viewModel.dailyStatusMap.collect { statusMap ->
-                        // Refresh day binder to update dots
                         binding.calendarView.dayBinder = object : MonthDayBinder<DayViewContainer> {
                             override fun create(view: View) = DayViewContainer(view)
                             override fun bind(container: DayViewContainer, data: CalendarDay) {
@@ -76,17 +73,22 @@ class HistoryFragment : Fragment() {
 
                                 if (data.position == DayPosition.MonthDate) {
                                     val dateStr = formatter.format(data.date)
-                                    val isTaken = statusMap[dateStr] == AppRepository.STATUS_ALL_TAKEN
-                                    val isPast = data.date.isBefore(LocalDate.now())
+                                    val status = statusMap[dateStr]
 
-                                    if (isTaken) {
-                                        dotView.isVisible = true
-                                        dotView.setImageResource(R.drawable.green_dot)
-                                    } else if (isPast) {
-                                        dotView.isVisible = true
-                                        dotView.setImageResource(R.drawable.red_dot)
-                                    } else {
-                                        dotView.isVisible = false
+                                    dotView.isVisible = true // Make dot visible and decide color
+                                    when (status) {
+                                        AppRepository.STATUS_ALL_TAKEN -> {
+                                            dotView.setImageResource(R.drawable.green_dot)
+                                        }
+                                        AppRepository.STATUS_PARTIALLY_TAKEN -> {
+                                            dotView.setImageResource(R.drawable.yellow_dot)
+                                        }
+                                        AppRepository.STATUS_NONE_TAKEN -> {
+                                            dotView.setImageResource(R.drawable.red_dot)
+                                        }
+                                        else -> { // STATUS_NOT_APPLICABLE or future dates
+                                            dotView.isVisible = false
+                                        }
                                     }
                                 } else {
                                     dotView.isVisible = false
