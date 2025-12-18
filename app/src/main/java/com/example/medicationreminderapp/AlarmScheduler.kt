@@ -4,6 +4,8 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
+import android.util.Log
 import java.util.*
 
 class AlarmScheduler(private val context: Context) {
@@ -16,7 +18,6 @@ class AlarmScheduler(private val context: Context) {
                 this.timeInMillis = timeInMillis
             }
 
-            // If the alarm time is in the past, schedule it for the next day.
             if (alarmTime.before(Calendar.getInstance())) {
                 alarmTime.add(Calendar.DAY_OF_YEAR, 1)
             }
@@ -24,8 +25,8 @@ class AlarmScheduler(private val context: Context) {
             val intent = Intent(context, AlarmReceiver::class.java).apply {
                 putExtra("medicationName", medication.name)
                 putExtra("dosage", medication.dosage)
-                putExtra("notificationId", medication.slotNumber) // Pass slotNumber as notificationId
-                putExtra("requestCode", medication.id * 100 + index) // Pass request code
+                putExtra("notificationId", medication.slotNumber)
+                putExtra("requestCode", medication.id * 100 + index)
             }
 
             val requestCode = medication.id * 100 + index
@@ -37,12 +38,22 @@ class AlarmScheduler(private val context: Context) {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
-            // Use setExactAndAllowWhileIdle for precision
-            alarmManager.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                alarmTime.timeInMillis,
-                pendingIntent
-            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+                Log.w("AlarmScheduler", "Cannot schedule exact alarms. App lacks permission.")
+                // Optionally, guide user to grant permission
+                return@forEachIndexed
+            }
+
+            try {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    alarmTime.timeInMillis,
+                    pendingIntent
+                )
+            } catch (se: SecurityException) {
+                Log.e("AlarmScheduler", "SecurityException while scheduling alarm.", se)
+                // Handle exception, maybe notify user that alarms can't be set
+            }
         }
     }
 
