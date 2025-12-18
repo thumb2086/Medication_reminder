@@ -1,5 +1,21 @@
 # 更新日誌
 
+## 2025-01-28
+### Features
+*   **日曆紀錄功能重構 (History Calendar Enhancement):**
+    *   **精準狀態計算:** 重構 `AppRepository` 的核心邏輯。現在，日曆上的每日狀態會根據每種藥物的服用計畫 (開始/結束日期、每日次數) 與詳細的服藥時間紀錄 (`MedicationTakenRecord`) 動態計算，取代了先前過於簡化的判斷方式。
+    *   **多狀態顯示:** `HistoryFragment` 現在能顯示更多元的服藥狀態，並以不同顏色標示：
+        *   **綠色 (`green_dot`):** 完全按照計畫服藥。
+        *   **黃色 (`yellow_dot`):** 部分服藥 (當天未完成所有劑量)。
+        *   **紅色 (`red_dot`):** 未服藥 (當天有應服藥物但無紀錄)。
+        *   **無圓點:** 當天無須服藥或未來日期。
+    *   **新增資源:** 建立了新的 `yellow_dot.xml` drawable 資源以供部分服藥狀態使用。
+
+### Code Quality
+*   **警告修正:** 
+    *   **`AppRepository.kt`:** 移除了未被使用的 `loadDailyStatusData` 和 `saveDailyStatusData` 函式。由於日曆狀態現在是動態產生，不再需要獨立儲存。
+    *   **`HistoryFragment.kt`:** 移除了未使用的 `LocalDate` import，保持程式碼乾淨。
+
 ## 2025-01-27
 ### Configuration
 *   **Gradle Deprecation 修復 (Final):**
