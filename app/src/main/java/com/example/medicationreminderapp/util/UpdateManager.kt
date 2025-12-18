@@ -197,7 +197,7 @@ class UpdateManager(private val context: Context) {
         // Extract base version (1.2.0)
         val localBase = normalizedLocal.substringBefore("-")
         val remoteBase = normalizedRemote.substringBefore("-")
-        
+
         if (localBase != remoteBase) {
             val localParts = localBase.split(".").map { it.toIntOrNull() ?: 0 }
             val remoteParts = remoteBase.split(".").map { it.toIntOrNull() ?: 0 }
@@ -207,20 +207,37 @@ class UpdateManager(private val context: Context) {
                 val l = localParts.getOrElse(i) { 0 }
                 val r = remoteParts.getOrElse(i) { 0 }
                 if (r > l) return true
-                if (r < l) return false
+                if (l > r) return false
             }
         }
-        
-        // Fallback or secondary check using commit count if available in version string
+
+        // --- NEW LOGIC for when base versions are the same ---
+        val localHasSuffix = normalizedLocal.contains("-")
+        val remoteHasSuffix = normalizedRemote.contains("-")
+
+        // Case 1: local is '1.2.1-dev', remote is '1.2.1'. Remote is NOT newer.
+        if (localHasSuffix && !remoteHasSuffix) {
+            return false
+        }
+
+        // Case 2: local is '1.2.1', remote is '1.2.1-dev'. Remote IS newer.
+        if (!localHasSuffix && remoteHasSuffix) {
+            return true
+        }
+
+        // Case 3: Both have suffixes. Compare them by commit count if possible.
         val localCount = getCommitCount(normalizedLocal)
         val remoteCount = getCommitCount(normalizedRemote)
-        
+
         if (localCount != null && remoteCount != null) {
             return remoteCount > localCount
         }
-        
+
+        // If suffixes are not comparable numbers (e.g., '-dev' vs '-rc1'), or any other case,
+        // consider them not an upgrade.
         return false
     }
+
 
     private fun getCommitCount(version: String): Int? {
         val parts = version.split("-")
