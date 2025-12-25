@@ -1,5 +1,15 @@
 # 更新日誌
 
+## 2025-01-29
+### ESP32 Refactor
+*   **程式碼模組化 (Code Modularization):** 
+    *   將 `esp32.ino` 的所有程式碼重構並分解為多個獨立的模組，存放於 `esp32/src/` 目錄下。
+    *   建立 `config.h`, `globals.h`, `ble_handler`, `display`, `hardware`, `input`, `storage`, `wifi_ota` 和 `main` 等模組，大幅提升程式碼的可讀性與可維護性。
+    *   保留了所有原有功能，包括開機硬體自檢（馬達 0-180 度轉動、LED 閃爍、蜂鳴器測試）。
+*   **檔案清理 (File Cleanup):** 
+    *   清空了根目錄下已過時的 `esp32.ino` 檔案，因為其功能已完全轉移至新模組。
+*   **版本更新:** ESP32 韌體版本號更新至 `v22.0`。
+
 ## 2025-01-28
 ### Features
 *   **日曆紀錄功能重構 (History Calendar Enhancement):**
