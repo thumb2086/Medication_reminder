@@ -34,6 +34,22 @@ A smart medication reminder application integrated with an ESP32-based smart pil
 *   **Robust Update Installation:** Smart handling of APK downloads with automatic fallback mechanisms to ensure successful installation on various Android versions (including Android 13+).
 *   **Multi-Channel CI/CD:** Supports dynamic "Feature Branch" releases. Every branch gets its own update channel (e.g., `feat-new-ui`), allowing parallel testing without interference.
 
+## ESP32 Firmware
+
+The ESP32 firmware has been refactored into a modular architecture for improved readability, maintainability, and scalability. The code is organized into the following components located in the `esp32/src/` directory:
+
+*   **`main.ino`**: The main entry point that orchestrates the different modules.
+*   **`ble_handler`**: Manages all Bluetooth Low Energy (BLE) communication.
+*   **`display`**: Handles all screen drawing and UI logic.
+*   **`hardware`**: Controls hardware peripherals (motor, buzzer, sensors).
+*   **`input`**: Manages user input from the rotary encoder and buttons.
+*   **`storage`**: Handles flash storage operations (SPIFFS, Preferences).
+*   **`wifi_ota`**: Manages Wi-Fi connectivity, NTP sync, and OTA updates.
+*   **`config.h`**: Centralized constants and configuration.
+*   **`globals.h`**: Global variable declarations.
+
+All original functionalities, including the power-on self-test (POST), have been preserved.
+
 ## Bluetooth Low Energy Protocol
 
 The communication between the App and the ESP32 Smart Pillbox relies on a custom binary protocol over BLE UART Service.

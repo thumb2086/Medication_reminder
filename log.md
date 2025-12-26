@@ -1,5 +1,11 @@
 # 更新日誌
 
+## 2025-12-26
+
+- 確認 ESP32 韌體已完成模組化重構。
+- 清理 `todo.md`。
+- 更新 `README.md` 和 `README_cn.md` 以反映新的韌體架構。
+
 ## 2025-01-29
 ### ESP32 Refactor
 *   **程式碼模組化 (Code Modularization):** 
