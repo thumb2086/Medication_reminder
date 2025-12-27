@@ -254,8 +254,8 @@
     <string name="update_channel_current">Current (%s)</string>
     <string name="update_channel_dev">Dev</string>
     <string-array name="update_channel_entries">
-        <item>@string/update_channel_stable</item>
-        <item>@string/update_channel_dev</item>
+        <item>Stable (Main)</item>
+        <item>Development (Dev)</item>
     </string-array>
     <string-array name="update_channel_values">
         <item>main</item>
@@ -284,6 +284,15 @@
     <string name="reinstall_message">Already up-to-date.\n\n</string>
     <string name="version_label">Version</string>
     <string name="release_notes_label">Release Notes</string>
+    <string name="debug_build_warning">Warning: Debug build, update may fail due to signature mismatch.</string>
+    <string name="install_permission_title">Installation Permission Required</string>
+    <string name="install_permission_message">To install updates automatically, please allow the app to install unknown applications.</string>
+    <string name="go_to_settings">Go to Settings</string>
+    <string name="update_file_not_found">Update file not found</string>
+    <string name="update_download_failed">Update download failed</string>
+    <string name="install_file_not_found">Installation file not found</string>
+    <string name="install_file_corrupted">Installation file corrupted</string>
+    <string name="install_failed">Installation failed</string>
 
     <!-- Engineering Mode -->
     <string name="developer_settings">Developer Settings</string>

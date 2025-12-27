@@ -248,19 +248,19 @@ class UpdateManager(private val context: Context) {
     fun downloadAndInstall(url: String, fileName: String) {
         val isDebuggable = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
         if (isDebuggable) {
-            Toast.makeText(context, "警告: 正在使用除錯版本，更新可能會因簽名不符而失敗。", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, R.string.debug_build_warning, Toast.LENGTH_LONG).show()
         }
 
         if (!context.packageManager.canRequestPackageInstalls()) {
              AlertDialog.Builder(context)
-                .setTitle("需要安裝權限")
-                .setMessage("為了自動安裝更新，請允許應用程式安裝未知來源的應用程式。")
-                .setPositiveButton("前往設定") { _, _ ->
+                .setTitle(R.string.install_permission_title)
+                .setMessage(R.string.install_permission_message)
+                .setPositiveButton(R.string.go_to_settings) { _, _ ->
                     val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
                     intent.data = "package:${context.packageName}".toUri()
                     context.startActivity(intent)
                 }
-                .setNegativeButton("取消", null)
+                .setNegativeButton(R.string.cancel, null)
                 .show()
             return
         }
@@ -322,12 +322,12 @@ class UpdateManager(private val context: Context) {
                                     installApk(downloadedFile)
                                 } else {
                                     Log.e("UpdateManager", "APK file not found after download success reported.")
-                                    Toast.makeText(context, "更新檔案未找到", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, R.string.update_file_not_found, Toast.LENGTH_SHORT).show()
                                 }
 
                             } else {
                                 Log.e("UpdateManager", "Download failed with status: $status")
-                                Toast.makeText(context, "更新下載失敗", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, R.string.update_download_failed, Toast.LENGTH_SHORT).show()
                             }
                         }
                     }
@@ -353,12 +353,12 @@ class UpdateManager(private val context: Context) {
     private fun installApk(file: File) {
         try {
             if (!file.exists()) {
-                Toast.makeText(context, "安裝檔案未找到", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, R.string.install_file_not_found, Toast.LENGTH_SHORT).show()
                 return
             }
             
             if (file.length() < 1024) {
-                 Toast.makeText(context, "安裝檔案損毀", Toast.LENGTH_SHORT).show()
+                 Toast.makeText(context, R.string.install_file_corrupted, Toast.LENGTH_SHORT).show()
                  return
             }
 
@@ -376,7 +376,7 @@ class UpdateManager(private val context: Context) {
             context.startActivity(intent)
         } catch (e: Exception) {
             Log.e("UpdateManager", "Failed to install APK", e)
-            Toast.makeText(context, "安裝失敗: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "${context.getString(R.string.install_failed)}: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 }

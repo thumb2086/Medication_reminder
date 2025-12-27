@@ -1,5 +1,13 @@
 # 更新日誌
 
+## 2025-01-31
+### Bug Fixes & Improvements
+*   **修正跨頻道更新檢查:** 修改了 `UpdateManager.kt` 的更新邏輯，移除了會自動檢查 Stable 頻道的行為。現在 App 只會檢查當前所選的更新頻道，解決了在 Nightly 版本下，仍然會提示有新版 (Stable) 的問題。
+*   **修正 `strings.xml` 編譯錯誤:** 修正了 `strings.xml` 中因 `update_channel_entries` 引起的 "not found in default locale" 編譯錯誤，確保多國語言資源的一致性。
+*   **程式碼品質提升:** 
+    *   **國際化 (i18n):** 將 `downloadAndInstall()` 和 `installApk()` 中所有硬編碼的 Toast 和對話框訊息，全部抽取至字串資源，並提供了完整的英文翻譯。
+    *   **可讀性:** 修正了 `MainActivity.kt` 中多餘的程式碼限定詞，提升了程式碼的可讀性。
+
 ## 2025-01-30
 ### Code Quality & Bug Fixes
 *   **全面國際化 (i18n) 修正:**

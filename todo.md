@@ -5,6 +5,10 @@
 
 ### 已完成
 
+*   [x] **修正編譯錯誤與更新邏輯**
+    *   修正 `strings.xml` 中 "update_channel_stable" not found in default locale 的編譯錯誤。
+    *   修正 `UpdateManager.kt` 的跨頻道更新檢查邏輯，確保 App 只檢查當前選擇的更新頻道。
+    *   修正 `MainActivity.kt` 中的多餘程式碼限定詞警告。
 *   [x] **全面國際化 (i18n) 修正**
     *   找出所有在 `SettingsFragment.kt` 和其他相關檔案中硬編碼 (hardcoded) 的中文字串。
     *   將這些字串抽取到 `values/strings.xml` 中。

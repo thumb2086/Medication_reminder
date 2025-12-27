@@ -255,8 +255,8 @@
     <string name="update_channel_current">目前 (%s)</string>
     <string name="update_channel_dev">開發版 (Dev)</string>
     <string-array name="update_channel_entries">
-        <item>@string/update_channel_stable</item>
-        <item>@string/update_channel_dev</item>
+        <item>正式版 (Main)</item>
+        <item>開發版 (Dev)</item>
     </string-array>
     <string-array name="update_channel_values">
         <item>main</item>
@@ -285,6 +285,15 @@
     <string name="reinstall_message">目前已是最新版本。\n\n</string>
     <string name="version_label">版本</string>
     <string name="release_notes_label">更新內容</string>
+    <string name="debug_build_warning">警告: 正在使用除錯版本，更新可能會因簽名不符而失敗。</string>
+    <string name="install_permission_title">需要安裝權限</string>
+    <string name="install_permission_message">為了自動安裝更新，請允許應用程式安裝未知來源的應用程式。</string>
+    <string name="go_to_settings">前往設定</string>
+    <string name="update_file_not_found">更新檔案未找到</string>
+    <string name="update_download_failed">更新下載失敗</string>
+    <string name="install_file_not_found">安裝檔案未找到</string>
+    <string name="install_file_corrupted">安裝檔案損毀</string>
+    <string name="install_failed">安裝失敗</string>
 
     <!-- Engineering Mode -->
     <string name="developer_settings">開發者設定</string>

@@ -179,7 +179,7 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
                             MainViewModel.BleAction.REQUEST_HISTORIC_ENV_DATA -> bluetoothLeManager.requestHistoricEnvironmentData()
                         }
                     } else {
-                        Toast.makeText(this@MainActivity, "Bluetooth not connected", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@MainActivity, R.string.connect_box_first, Toast.LENGTH_SHORT).show()
                     }
                 }
             }
