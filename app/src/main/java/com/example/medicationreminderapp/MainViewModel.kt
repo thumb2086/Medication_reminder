@@ -22,10 +22,8 @@ class MainViewModel @Inject constructor(
     private val _bleStatus = MutableStateFlow("Disconnected")
     val bleStatus: StateFlow<String> = _bleStatus.asStateFlow()
 
-    private val _isEngineeringMode = MutableStateFlow(false)
-    val isEngineeringMode: StateFlow<Boolean> = _isEngineeringMode.asStateFlow()
-
     // Delegate Data StateFlows to Repository
+    val isEngineeringMode: StateFlow<Boolean> = repository.isEngineeringMode
     val historicSensorData: StateFlow<List<SensorDataPoint>> = repository.historicSensorData
     val medicationList: StateFlow<List<Medication>> = repository.medicationList
     val dailyStatusMap: StateFlow<Map<String, Int>> = repository.dailyStatusMap
@@ -57,7 +55,7 @@ class MainViewModel @Inject constructor(
     }
 
     fun setEngineeringMode(isEnabled: Boolean) {
-        _isEngineeringMode.value = isEnabled
+        repository.setEngineeringMode(isEnabled)
     }
 
     fun onRefreshEnvironmentData() {

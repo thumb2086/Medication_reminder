@@ -2,9 +2,12 @@
 
 ## 2025-02-02
 ### Bug Fixes & UI Improvements
+*   **徹底修復字體大小無法縮放問題 (根本原因)**: 將字體縮放邏輯從 `attachBaseContext` 移至 `MainActivity.kt` 的 `onCreate` 方法中，並確保在 `super.onCreate` 之前執行。這確保了我們的自訂 `Configuration` (包含 `fontScale`) 會在系統套用主題之前生效，從而避免了被主題中寫死的字體大小覆寫的問題。同時，也將縮放比例調整為 `0.8f`, `1.0f`, `1.5f`，以提供更顯著的視覺效果。
 *   **優化「頻道失效」通知**: 在 `SettingsFragment.kt` 中加入靜態旗標 `hasShownInvalidChannelWarning`，確保「頻道失效」的彈出式警告在單次 App 生命週期中只會顯示一次，避免在設定頁面中因重複讀取遠端頻道列表而反覆跳出通知，提升使用者體驗。
 *   **修正字體大小無法變更錯誤**: 修正 `MainActivity.kt` 中 `attachBaseContext` 方法的拼寫錯誤 (`attachBaseAontext` -> `attachBaseContext`)。此錯誤導致 App 無法正確套用使用者在設定中選擇的字體大小，修正後確保 App 能根據偏好設定，正確調整並顯示「小」、「中」、「大」三種字體尺寸。
 *   **程式碼品質提升**: 移除了 `MainActivity.kt` 中未使用的 `import android.content.res.Configuration`，提升程式碼的整潔性。
+*   **調整字體縮放比例**: 將「大字體」模式的縮放比例從 `1.1f` 提升至 `1.2f`，使字體放大的效果更為顯著，提升視覺可讀性。
+*   **徹底修復字體大小無法縮放問題**: 移除 `activity_main.xml` 中 `Toolbar` 的 `TextView` 上寫死的 `textAppearance` 屬性。此屬性會覆蓋 `attachBaseContext` 中設定的 `fontScale`，導致字體大小設定無效。移除後，`Toolbar` 的標題大小將能正確地隨著系統字體縮放設定而改變。
 
 ## 2025-02-01
 ### Bug Fixes & Code Quality
@@ -267,7 +270,7 @@
 ### DevOps
 *   **版本號與 CI/CD 優化:** Nightly 版本號格式調整。
 
-## 2025-01-05
+## 2_0_25-01-05
 ### DevOps
 *   **CI/CD 自動化實作:** 建立 GitHub Actions。
 

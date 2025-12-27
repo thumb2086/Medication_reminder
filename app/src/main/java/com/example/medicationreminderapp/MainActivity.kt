@@ -23,10 +23,8 @@ import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
-import androidx.core.content.edit
 import androidx.core.os.LocaleListCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -48,7 +46,7 @@ import java.util.*
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
+class MainActivity : BaseActivity(), BluetoothLeManager.BleListener {
 
     internal lateinit var binding: ActivityMainBinding
     private val viewModel: MainViewModel by viewModels()
@@ -56,6 +54,7 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
     private var alarmManager: AlarmManager? = null
     private lateinit var prefs: SharedPreferences
     private lateinit var updateManager: UpdateManager
+    private var currentEngineeringModeState: Boolean? = null
 
     private val requestNotificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         if (!isGranted) { Toast.makeText(this, getString(R.string.notification_permission_denied), Toast.LENGTH_LONG).show() }
@@ -68,24 +67,8 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         }
     }
 
-    override fun attachBaseContext(newBase: Context) {
-        val localPrefs = newBase.getSharedPreferences("settings", MODE_PRIVATE)
-        val fontSize = localPrefs.getString("font_size", "medium")
-        val scale = when (fontSize) {
-            "small" -> 0.9f
-            "medium" -> 1.0f
-            "large" -> 1.1f
-            else -> 1.0f
-        }
-
-        val configuration = newBase.resources.configuration
-        configuration.fontScale = scale
-        val updatedContext = newBase.createConfigurationContext(configuration)
-        super.attachBaseContext(updatedContext)
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
-        prefs = getSharedPreferences("settings", MODE_PRIVATE)
+        prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
         applyCharacterTheme()
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -106,7 +89,6 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         updateManager = UpdateManager(this)
 
         createNotificationChannel()
-        setupViewPagerAndTabs()
         requestAppPermissions()
         observeViewModel()
         setupFragmentNavigation()
@@ -177,6 +159,15 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
                     }
                 }
 
+                launch {
+                    viewModel.isEngineeringMode.collect { isEnabled ->
+                        if (currentEngineeringModeState != isEnabled) {
+                            currentEngineeringModeState = isEnabled
+                            setupViewPagerAndTabs(isEnabled)
+                        }
+                    }
+                }
+
                 viewModel.requestBleAction.observe(this@MainActivity) { action ->
                     if (viewModel.isBleConnected.value) {
                         when (action) {
@@ -201,8 +192,10 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         return super.onPrepareOptionsMenu(menu)
     }
 
-    private fun setupViewPagerAndTabs() {
-        binding.viewPager.adapter = ViewPagerAdapter(this)
+    private fun setupViewPagerAndTabs(isEngineeringMode: Boolean) {
+        val currentTabPosition = binding.tabLayout.selectedTabPosition.takeIf { it != -1 } ?: 0
+
+        binding.viewPager.adapter = ViewPagerAdapter(this, isEngineeringMode)
         TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
             tab.text = when (position) {
                 0 -> getString(R.string.tab_reminders)
@@ -212,6 +205,10 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
                 else -> null
             }
         }.attach()
+
+        if (currentTabPosition < binding.tabLayout.tabCount) {
+            binding.viewPager.setCurrentItem(currentTabPosition, false)
+        }
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -319,7 +316,6 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
     override fun onEngineeringModeUpdate(isEngineeringMode: Boolean) {
         viewModel.setEngineeringMode(isEngineeringMode)
         runOnUiThread {
-            prefs.edit { putBoolean("engineering_mode", isEngineeringMode) }
             val status = if (isEngineeringMode) "啟用" else "關閉"
             Toast.makeText(this, "藥盒回報：工程模式已 $status", Toast.LENGTH_LONG).show()
         }

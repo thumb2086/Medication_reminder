@@ -21,12 +21,12 @@
             android:theme="@style/Widget.App.Toolbar">
 
             <TextView
+                android:id="@+id/toolbar_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:gravity="center"
                 android:text="@string/app_name"
-                android:textAppearance="@style/TextAppearance.AppCompat.Widget.ActionBar.Title"
                 android:textColor="?attr/colorOnPrimary"
                 android:includeFontPadding="false" />
         </com.google.android.material.appbar.MaterialToolbar>
@@ -36,7 +36,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:tabGravity="fill"
-            app:tabMode="fixed" />
+            app:tabMode="scrollable"
+            app:tabTextAppearance="@style/TextAppearance.Design.Tab" />
 
     </com.google.android.material.appbar.AppBarLayout>
 

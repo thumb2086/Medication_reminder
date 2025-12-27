@@ -1,5 +1,6 @@
 package com.example.medicationreminderapp
 
+import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
@@ -9,6 +10,7 @@ import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -197,7 +199,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         val typedValue = TypedValue()
-        requireContext().theme.resolveAttribute(com.google.android.material.R.attr.colorSurface, typedValue, true)
+        requireContext().theme.resolveAttribute(android.R.attr.colorBackground, typedValue, true)
         view.setBackgroundColor(typedValue.data)
 
         // Handle Window Insets to avoid content being obscured by gesture navigation bar
@@ -343,7 +345,21 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
             "font_size" -> {
                 findPreference<ListPreference>(key)?.let { fontSizePreference ->
                     fontSizePreference.summary = fontSizePreference.entry
-                    activity?.recreate()
+
+                    val fontSizeValue = sharedPreferences.getString(key, "medium")
+                    val scale = when (fontSizeValue) {
+                        "small" -> 1.0f
+                        "medium" -> 1.5f
+                        "large" -> 1.8f
+                        else -> 1.0f
+                    }
+
+                    val appPrefs = requireContext().getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+                    appPrefs.edit {
+                        putFloat("font_scale", scale)
+                    }
+
+                    requireActivity().recreate()
                 }
             }
             "character" -> {
