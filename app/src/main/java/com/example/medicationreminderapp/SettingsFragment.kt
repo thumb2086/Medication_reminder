@@ -314,10 +314,10 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
 
                     val fontSizeValue = sharedPreferences.getString(key, "medium")
                     val scale = when (fontSizeValue) {
-                        "small" -> 1.0f
-                        "medium" -> 1.5f
+                        "small" -> 1.5f
+                        "medium" -> 1.6f
                         "large" -> 1.8f
-                        else -> 1.0f
+                        else -> 1.5f
                     }
 
                     val appPrefs = requireContext().getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
