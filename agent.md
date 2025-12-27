@@ -1,12 +1,23 @@
-中文回答
-先閱讀log.md、todo.md沒做完的工作
-做出計畫，寫todo.md
-開始改
-檢查更改是否有錯誤(sync project with gradle flies、build app、調用project error)
-有錯的話再改一次
-如果有沒改完的文件、需要的功能優化寫todo.md下次對話改
-將更改了什麼寫到log.md
-將完成的工作從todo.md移除，不要留下上次已完成的任務
-然後更新 README.md 、readme_cn.md檔案
-簡短總結更改內容
-減少廢話，盡量簡短，快速，完美完成要求
+計畫 (Update todo.md)：
+
+讀取 log.md、todo.md。
+
+重寫 todo.md：刪除已完成任務，將本次「計畫執行的工作」列在最上方。
+
+執行 (Code & Build)：
+
+開始修改代碼。
+
+自動糾錯循環：執行 Sync Project -> Build App -> Error Check。若報錯，我會自動改到成功為止。
+
+整理 (Sync Files)：
+
+log.md：簡短記錄變更內容。
+
+todo.md：移除已完成項，寫下「下次優化建議」。
+
+README.md / readme_cn.md：同步更新功能描述。
+
+回報 (Summary)：
+
+極簡總結。

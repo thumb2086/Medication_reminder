@@ -13,6 +13,7 @@ A smart medication reminder application integrated with an ESP32-based smart pil
     *   **Green Dot:** All doses taken as scheduled.
     *   **Yellow Dot:** Partially taken (missed some doses).
     *   **Red Dot:** No doses taken on a scheduled day.
+*   **Font Size Adjustment:** Users can choose between Small, Medium, and Large font sizes in the settings menu to improve readability. The app theme updates instantly to reflect the chosen size.
 *   **Character Themes:** Choose between "Kuromi" and "Chibi Maruko-chan" themes for a personalized experience.
 *   **Engineering Mode:** toggle hardware engineering mode directly from the app for diagnostics.
 *   **Wi-Fi Configuration:** Configure the ESP32's Wi-Fi credentials directly from the app via BLE. The interface is now enhanced with Material Design visuals, input validation, and clear instructions.
@@ -33,6 +34,40 @@ A smart medication reminder application integrated with an ESP32-based smart pil
     *   **Dead Channel Warning:** Automatically detects if the currently selected feature branch has been deleted or is no longer maintained, prompting the user to switch channels.
 *   **Robust Update Installation:** Smart handling of APK downloads with automatic fallback mechanisms to ensure successful installation on various Android versions (including Android 13+).
 *   **Multi-Channel CI/CD:** Supports dynamic "Feature Branch" releases. Every branch gets its own update channel (e.g., `feat-new-ui`), allowing parallel testing without interference.
+
+## ESP32 Firmware
+
+The ESP32 firmware is designed for a modular and maintainable architecture, with all major components separated into individual files in the `esp32/src/` directory.
+
+### Core Modules
+*   **`main.ino`**: The main entry point that orchestrates the different modules.
+*   **`ble_handler`**: Manages all Bluetooth Low Energy (BLE) communication.
+*   **`display`**: Handles all screen drawing and UI logic.
+*   **`hardware`**: Controls hardware peripherals (motor, buzzer, sensors). This module has been refactored to use the native **ESP32 LEDC** peripheral for servo motor control, ensuring compatibility with ESP32-C6 and providing precise PWM signal generation.
+*   **`input`**: Manages user input from the rotary encoder and buttons.
+*   **`storage`**: Handles flash storage operations (SPIFFS, Preferences).
+*   **`wifi_ota`**: Manages Wi-Fi connectivity, NTP sync, and OTA updates.
+*   **`config.h`**: Centralized constants, pin definitions, and configurations.
+*   **`globals.h`**: Global variable declarations.
+
+### Pinout Configuration (`config.h`)
+
+The firmware is configured with a specific pinout for ESP32-C6 boards. **Warning:** Using pins reserved for the internal flash memory (like GPIO 6-11) or other dedicated functions (like USB on GPIO 12/13) will cause the device to crash. The default configuration uses safe, tested pins.
+
+| Function | Pin | Notes |
+| :--- | :---: | :--- |
+| I2C SDA | 22 | For OLED Display |
+| I2C SCL | 21 | For OLED Display |
+| Encoder A | 19 | Rotary Encoder |
+| Encoder B | 18 | Rotary Encoder |
+| Encoder Push | 20 | Rotary Encoder Button |
+| Confirm Button | 23 | |
+| Back Button | 2 | Right Side Pin |
+| DHT Sensor | 1 | Left Side Pin, DHT11 Temp/Humid |
+| Buzzer 1 | 4 | Left Side Pin |
+| Buzzer 2 | 5 | Left Side Pin |
+| Servo Motor | 8 | ESP32-C6 compatible (LEDC) |
+| WS2812 LED Strip| 15 | |
 
 ## Bluetooth Low Energy Protocol
 
@@ -97,7 +132,7 @@ This project uses GitHub Actions for continuous integration and automated versio
     *   Builds an APK with a corresponding version name.
     *   Testers installing the APK from a specific branch will only receive updates for that branch.
 *   **Unified Naming:** All artifacts (APK) and version names now strictly follow the `X.Y.Z-channel-count` format (e.g., `1.2.1-dev-255`) to eliminate spaces and special characters, ensuring consistent behavior across different environments.
-*   **Branch Cleanup:** When a branch is deleted, the corresponding nightly release and tag are automatically removed to keep the release list clean. Manual cleanup is also supported via GitHub Actions workflow dispatch.
+*   **Branch Cleanup:* When a branch is deleted, the corresponding nightly release and tag are automatically removed to keep the release list clean. Manual cleanup is also supported via GitHub Actions workflow dispatch.
 *   **Versioning:** The `versionCode` corresponds to the **Git Commit Count** to ensure strict consistency between the Android Build and CI Artifacts. The `versionName` follows the `1.2.1-dev-260` format.
 *   **Release Naming:** Nightly releases now use a clearer title format: `<Branch> | <VersionName>` (e.g., `feat-ui | 1.2.0-nightly-205`) to easily identify the source branch and version details.
 *   **Dynamic Base Version:** CI/CD automatically detects the latest Git Tag (e.g., `v1.2.1`) as the base version for all subsequent nightly builds, ensuring the version name always reflects the latest stable milestone (e.g., `1.2.1-nightly-xxx`).
