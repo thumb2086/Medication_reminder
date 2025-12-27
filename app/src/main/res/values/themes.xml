@@ -112,28 +112,4 @@
         <item name="android:popupMenuStyle">@style/Widget.App.PopupMenu</item>
         <item name="actionBarTheme">@style/ThemeOverlay.App.Toolbar</item>
     </style>
-    
-    <style name="TextAppearance.App.Small" parent="TextAppearance.Material3.BodyLarge">
-        <item name="android:textSize">16sp</item>
-    </style>
-
-    <style name="TextAppearance.App.Medium" parent="TextAppearance.Material3.BodyLarge">
-        <item name="android:textSize">20sp</item>
-    </style>
-
-    <style name="TextAppearance.App.Large" parent="TextAppearance.Material3.BodyLarge">
-        <item name="android:textSize">24sp</item>
-    </style>
-
-    <style name="Theme.MedicationReminderApp.SmallText" parent="Theme.MedicationReminderApp">
-        <item name="android:textAppearance">@style/TextAppearance.App.Small</item>
-    </style>
-
-    <style name="Theme.MedicationReminderApp.MediumText" parent="Theme.MedicationReminderApp">
-        <item name="android:textAppearance">@style/TextAppearance.App.Medium</item>
-    </style>
-
-    <style name="Theme.MedicationReminderApp.LargeText" parent="Theme.MedicationReminderApp">
-        <item name="android:textAppearance">@style/TextAppearance.App.Large</item>
-    </style>
 </resources>

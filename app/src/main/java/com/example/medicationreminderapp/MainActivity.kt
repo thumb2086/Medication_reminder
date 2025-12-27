@@ -5,6 +5,7 @@ import android.app.AlarmManager
 import android.app.AlertDialog
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
@@ -67,9 +68,24 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         }
     }
 
+    override fun attachBaseContext(newBase: Context) {
+        val localPrefs = newBase.getSharedPreferences("settings", MODE_PRIVATE)
+        val fontSize = localPrefs.getString("font_size", "medium")
+        val scale = when (fontSize) {
+            "small" -> 0.9f
+            "medium" -> 1.0f
+            "large" -> 1.1f
+            else -> 1.0f
+        }
+
+        val configuration = newBase.resources.configuration
+        configuration.fontScale = scale
+        val updatedContext = newBase.createConfigurationContext(configuration)
+        super.attachBaseContext(updatedContext)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         prefs = getSharedPreferences("settings", MODE_PRIVATE)
-        applyFontSize()
         applyCharacterTheme()
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -95,16 +111,6 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         observeViewModel()
         setupFragmentNavigation()
         checkForUpdates()
-    }
-    private fun applyFontSize() {
-        val fontSize = prefs.getString("font_size", "medium")
-        val themeResId = when (fontSize) {
-            "small" -> R.style.Theme_MedicationReminderApp_SmallText
-            "medium" -> R.style.Theme_MedicationReminderApp_MediumText
-            "large" -> R.style.Theme_MedicationReminderApp_LargeText
-            else -> R.style.Theme_MedicationReminderApp_MediumText
-        }
-        setTheme(themeResId)
     }
 
     private fun checkForUpdates() {

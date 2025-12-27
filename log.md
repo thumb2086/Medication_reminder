@@ -1,5 +1,11 @@
 # 更新日誌
 
+## 2025-02-02
+### Bug Fixes & UI Improvements
+*   **優化「頻道失效」通知**: 在 `SettingsFragment.kt` 中加入靜態旗標 `hasShownInvalidChannelWarning`，確保「頻道失效」的彈出式警告在單次 App 生命週期中只會顯示一次，避免在設定頁面中因重複讀取遠端頻道列表而反覆跳出通知，提升使用者體驗。
+*   **修正字體大小無法變更錯誤**: 修正 `MainActivity.kt` 中 `attachBaseContext` 方法的拼寫錯誤 (`attachBaseAontext` -> `attachBaseContext`)。此錯誤導致 App 無法正確套用使用者在設定中選擇的字體大小，修正後確保 App 能根據偏好設定，正確調整並顯示「小」、「中」、「大」三種字體尺寸。
+*   **程式碼品質提升**: 移除了 `MainActivity.kt` 中未使用的 `import android.content.res.Configuration`，提升程式碼的整潔性。
+
 ## 2025-02-01
 ### Bug Fixes & Code Quality
 *   **修正 `strings.xml` 編譯錯誤:** 修正了 `strings.xml` 中因 `update_channel_entries` 引起的 "not found in default locale" 編譯錯誤，確保多國語言資源的一致性。

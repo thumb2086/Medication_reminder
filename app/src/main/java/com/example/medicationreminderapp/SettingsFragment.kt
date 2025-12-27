@@ -35,6 +35,10 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
 
     private val viewModel: MainViewModel by activityViewModels()
 
+    companion object {
+        private var hasShownInvalidChannelWarning = false
+    }
+
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.preferences, rootKey)
 
@@ -118,7 +122,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                     val releases = gson.fromJson(jsonStr, JsonArray::class.java)
                     
                     val remoteChannels = mutableSetOf<String>()
-                    val regex = Regex(".*-nightly-(.+)-\\\\d+")
+                    val regex = Regex(".*-nightly-(.+)-\\d+")
                     
                     releases.forEach { element ->
                         val release = element.asJsonObject
@@ -179,12 +183,13 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         // If the current channel is not a permanent one (main/dev) and is not found in the remote list, warn the user.
         if (currentChannel.isNotEmpty() && currentChannel != "main" && currentChannel != "dev" && !remoteChannels.contains(currentChannel)) {
             // Only show if the fragment is currently added and visible to avoid crashes or leaks
-            if (isAdded && view != null) {
+            if (isAdded && view != null && !hasShownInvalidChannelWarning) {
                 AlertDialog.Builder(requireContext())
                     .setTitle(getString(R.string.update_channel_invalid_title))
                     .setMessage(getString(R.string.update_channel_invalid_message, currentChannel))
                     .setPositiveButton(android.R.string.ok, null)
                     .show()
+                hasShownInvalidChannelWarning = true
             }
         }
     }
