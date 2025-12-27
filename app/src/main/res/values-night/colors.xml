@@ -5,4 +5,8 @@
     <color name="temp_color">#F2B8B5</color> 
     <!-- Lighter Blue for visibility on dark background -->
     <color name="humidity_color">#A0E6FF</color>
+
+    <!-- Status Colors (Dark Mode) -->
+    <color name="success_green">#81C784</color>
+    <color name="error_red">#E57373</color>
 </resources>

@@ -22,19 +22,17 @@ import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
-import androidx.core.content.edit
 import androidx.core.os.LocaleListCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.fragment.app.commit
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.preference.PreferenceManager
 import androidx.viewpager2.widget.ViewPager2
 import com.example.medicationreminderapp.adapter.ViewPagerAdapter
 import com.example.medicationreminderapp.databinding.ActivityMainBinding
@@ -47,7 +45,7 @@ import java.util.*
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
+class MainActivity : BaseActivity(), BluetoothLeManager.BleListener {
 
     internal lateinit var binding: ActivityMainBinding
     private val viewModel: MainViewModel by viewModels()
@@ -55,6 +53,7 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
     private var alarmManager: AlarmManager? = null
     private lateinit var prefs: SharedPreferences
     private lateinit var updateManager: UpdateManager
+    private var currentEngineeringModeState: Boolean? = null
 
     private val requestNotificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         if (!isGranted) { Toast.makeText(this, getString(R.string.notification_permission_denied), Toast.LENGTH_LONG).show() }
@@ -68,10 +67,10 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        prefs = PreferenceManager.getDefaultSharedPreferences(this)
-        WindowCompat.setDecorFitsSystemWindows(window, false)
+        prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
         applyCharacterTheme()
+        super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -89,7 +88,6 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         updateManager = UpdateManager(this)
 
         createNotificationChannel()
-        setupViewPagerAndTabs()
         requestAppPermissions()
         observeViewModel()
         setupFragmentNavigation()
@@ -153,10 +151,19 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
 
     private fun observeViewModel() {
         lifecycleScope.launch {
-            repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     viewModel.bleStatus.collect { status ->
                         viewModel.setBleStatus(status)
+                    }
+                }
+
+                launch {
+                    viewModel.isEngineeringMode.collect { isEnabled ->
+                        if (currentEngineeringModeState != isEnabled) {
+                            currentEngineeringModeState = isEnabled
+                            setupViewPagerAndTabs(isEnabled)
+                        }
                     }
                 }
 
@@ -167,7 +174,7 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
                             MainViewModel.BleAction.REQUEST_HISTORIC_ENV_DATA -> bluetoothLeManager.requestHistoricEnvironmentData()
                         }
                     } else {
-                        Toast.makeText(this@MainActivity, "Bluetooth not connected", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@MainActivity, R.string.connect_box_first, Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -184,8 +191,10 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         return super.onPrepareOptionsMenu(menu)
     }
 
-    private fun setupViewPagerAndTabs() {
-        binding.viewPager.adapter = ViewPagerAdapter(this)
+    private fun setupViewPagerAndTabs(isEngineeringMode: Boolean) {
+        val currentTabPosition = binding.tabLayout.selectedTabPosition.takeIf { it != -1 } ?: 0
+
+        binding.viewPager.adapter = ViewPagerAdapter(this, isEngineeringMode)
         TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
             tab.text = when (position) {
                 0 -> getString(R.string.tab_reminders)
@@ -195,6 +204,10 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
                 else -> null
             }
         }.attach()
+
+        if (currentTabPosition < binding.tabLayout.tabCount) {
+            binding.viewPager.setCurrentItem(currentTabPosition, false)
+        }
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -249,6 +262,7 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         }
     }
 
+    @Suppress("unused")
     fun setLocale(languageCode: String?) {
         val locales = if (languageCode == "system" || languageCode.isNullOrEmpty()) {
             LocaleListCompat.getEmptyLocaleList()
@@ -301,7 +315,6 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
     override fun onEngineeringModeUpdate(isEngineeringMode: Boolean) {
         viewModel.setEngineeringMode(isEngineeringMode)
         runOnUiThread {
-            prefs.edit { putBoolean("engineering_mode", isEngineeringMode) }
             val status = if (isEngineeringMode) "啟用" else "關閉"
             Toast.makeText(this, "藥盒回報：工程模式已 $status", Toast.LENGTH_LONG).show()
         }
@@ -317,6 +330,15 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
 
     override fun onHistoricDataComplete() {
         viewModel.onHistoricDataSyncCompleted()
+    }
+    
+    override fun onWifiStatusUpdate(status: Int) {
+        runOnUiThread {
+            val currentFragment = supportFragmentManager.findFragmentById(R.id.fragment_container)
+            if (currentFragment is WiFiConfigFragment) {
+                currentFragment.onWifiStatusUpdate(status)
+            }
+        }
     }
 
     override fun onError(errorCode: Int) {

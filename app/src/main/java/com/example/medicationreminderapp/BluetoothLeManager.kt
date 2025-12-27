@@ -45,6 +45,7 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
         fun onSensorData(temperature: Float, humidity: Float)
         fun onHistoricSensorData(timestamp: Long, temperature: Float, humidity: Float)
         fun onHistoricDataComplete()
+        fun onWifiStatusUpdate(status: Int)
         fun onError(errorCode: Int)
     }
 
@@ -203,6 +204,13 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
                 0x82 -> { listener?.onTimeSyncAcknowledged() }
                 0x83 -> { 
                     if (data.size > 1) listener?.onEngineeringModeUpdate(data[1].toInt() == 0x01)
+                }
+                0x84 -> { // Wi-Fi Status Update
+                    if (data.size > 1) {
+                        val wifiStatus = data[1].toInt()
+                        Log.d(TAG, "Wi-Fi Status Update: $wifiStatus")
+                        listener?.onWifiStatusUpdate(wifiStatus)
+                    }
                 }
                 0x90 -> {
                     // Protocol V2: Parse temp/humidity as 2-byte signed integers (value * 100)
@@ -402,6 +410,7 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
         Log.d(TAG, "TX: Set Alarm Slot $slot to $hour:$minute, Enable: $enable")
     }
 
+    @Suppress("unused")
     fun setEngineeringMode(enable: Boolean) {
         val command = byteArrayOf(0x13.toByte(), if (enable) 0x01.toByte() else 0x00.toByte())
         sendCommand(command)

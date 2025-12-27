@@ -42,6 +42,9 @@ class AppRepository @Inject constructor(
     private val _historicSensorData = MutableStateFlow<List<SensorDataPoint>>(emptyList())
     val historicSensorData: StateFlow<List<SensorDataPoint>> = _historicSensorData.asStateFlow()
 
+    private val _isEngineeringMode = MutableStateFlow(false)
+    val isEngineeringMode: StateFlow<Boolean> = _isEngineeringMode.asStateFlow()
+
     private val historicDataBuffer = mutableListOf<SensorDataPoint>()
 
     private val sharedPreferences: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -209,11 +212,17 @@ class AppRepository @Inject constructor(
         _historicSensorData.value = sortedData
     }
 
+    fun setEngineeringMode(isEnabled: Boolean) {
+        _isEngineeringMode.value = isEnabled
+        saveEngineeringMode()
+    }
+
     // --- Persistence ---
 
     private fun loadAllData() {
         loadMedicationData()
         loadTakenRecords()
+        loadEngineeringMode()
         updateDailyStatusMap()
     }
 
@@ -261,10 +270,21 @@ class AppRepository @Inject constructor(
         }
     }
 
+    private fun saveEngineeringMode() {
+        sharedPreferences.edit {
+            putBoolean(KEY_ENGINEERING_MODE, _isEngineeringMode.value)
+        }
+    }
+
+    private fun loadEngineeringMode() {
+        _isEngineeringMode.value = sharedPreferences.getBoolean(KEY_ENGINEERING_MODE, false)
+    }
+
     companion object {
         const val PREFS_NAME = "MedicationReminderAppPrefs"
         const val KEY_MEDICATION_DATA = "medication_data"
         const val KEY_TAKEN_RECORDS = "taken_records"
+        const val KEY_ENGINEERING_MODE = "engineering_mode"
         
         const val STATUS_NOT_APPLICABLE = 0
         const val STATUS_NONE_TAKEN = 1

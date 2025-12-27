@@ -1,5 +1,50 @@
 # 更新日誌
 
+## 2025-02-02
+### Bug Fixes & UI Improvements
+*   **徹底修復字體大小無法縮放問題 (根本原因)**: 將字體縮放邏輯從 `attachBaseContext` 移至 `MainActivity.kt` 的 `onCreate` 方法中，並確保在 `super.onCreate` 之前執行。這確保了我們的自訂 `Configuration` (包含 `fontScale`) 會在系統套用主題之前生效，從而避免了被主題中寫死的字體大小覆寫的問題。同時，也將縮放比例調整為 `0.8f`, `1.0f`, `1.5f`，以提供更顯著的視覺效果。
+*   **優化「頻道失效」通知**: 在 `SettingsFragment.kt` 中加入靜態旗標 `hasShownInvalidChannelWarning`，確保「頻道失效」的彈出式警告在單次 App 生命週期中只會顯示一次，避免在設定頁面中因重複讀取遠端頻道列表而反覆跳出通知，提升使用者體驗。
+*   **修正字體大小無法變更錯誤**: 修正 `MainActivity.kt` 中 `attachBaseContext` 方法的拼寫錯誤 (`attachBaseAontext` -> `attachBaseContext`)。此錯誤導致 App 無法正確套用使用者在設定中選擇的字體大小，修正後確保 App 能根據偏好設定，正確調整並顯示「小」、「中」、「大」三種字體尺寸。
+*   **程式碼品質提升**: 移除了 `MainActivity.kt` 中未使用的 `import android.content.res.Configuration`，提升程式碼的整潔性。
+*   **調整字體縮放比例**: 將「大字體」模式的縮放比例從 `1.1f` 提升至 `1.2f`，使字體放大的效果更為顯著，提升視覺可讀性。
+*   **徹底修復字體大小無法縮放問題**: 移除 `activity_main.xml` 中 `Toolbar` 的 `TextView` 上寫死的 `textAppearance` 屬性。此屬性會覆蓋 `attachBaseContext` 中設定的 `fontScale`，導致字體大小設定無效。移除後，`Toolbar` 的標題大小將能正確地隨著系統字體縮放設定而改變。
+
+## 2025-02-01
+### Bug Fixes & Code Quality
+*   **修正 `strings.xml` 編譯錯誤:** 修正了 `strings.xml` 中因 `update_channel_entries` 引起的 "not found in default locale" 編譯錯誤，確保多國語言資源的一致性。
+*   **修正 App 內更新檢查邏輯:**
+    *   **釐清自動與手動檢查:** 重構 `UpdateManager.kt` 中的 `checkForUpdates` 方法，確保「自動檢查」嚴格限定於 App 自身的建置頻道 (如 `dev`, `nightly`)，解決了先前會錯誤提示更新的問題。現在只有「手動檢查」會遵循使用者在設定頁面選擇的頻道。
+    *   **修正版本比對 (SemVer):** 修正 `isNewerVersion` 方法，使其能正確處理預發行版 (e.g., `1.2.2-dev`) 與穩定版 (e.g., `1.2.2`) 的比對，並修正了邏輯警告。現在，穩定版將被正確地視為比其對應的預發行版更新，符合 SemVer 規範。
+*   **程式碼品質提升:** 
+    *   **可讀性:** 修正了 `MainActivity.kt` 中多餘的程式碼限定詞，提升了程式碼的可讀性。
+
+## 2025-01-31
+### Bug Fixes & Improvements
+*   **修正跨頻道更新檢查:** 修改了 `UpdateManager.kt` 的更新邏輯，移除了會自動檢查 Stable 頻道的行為。現在 App 只會檢查當前所選的更新頻道，解決了在 Nightly 版本下，仍然會提示有新版 (Stable) 的問題。
+*   **修正 `strings.xml` 編譯錯誤:** 修正了 `strings.xml` 中因 `update_channel_entries` 引起的 "not found in default locale" 編譯錯誤，確保多國語言資源的一致性。
+*   **程式碼品質提升:** 
+    *   **國際化 (i18n):** 將 `downloadAndInstall()` 和 `installApk()` 中所有硬編碼的 Toast 和對話框訊息，全部抽取至字串資源，並提供了完整的英文翻譯。
+    *   **可讀性:** 修正了 `MainActivity.kt` 中多餘的程式碼限定詞，提升了程式碼的可讀性。
+
+## 2025-01-30
+### Code Quality & Bug Fixes
+*   **全面國際化 (i18n) 修正:**
+    *   **硬編碼字串移除:** 修正了 `SettingsFragment.kt` 中多處硬編碼的中文字串，包含「頻道已失效」的提示、更新檢查流程中的各種對話框標題與訊息，以及更新頻道的選項文字 (Stable, Current, Dev)。
+    *   **字串資源化:** 將所有上述的硬編碼字串，全部抽取至 `values/strings.xml`，並在 `values-en/strings.xml` 中提供了完整的英文翻譯。
+    *   **修正字體大小無法變更:** 調整了 `MainActivity.kt` 中 `onCreate()` 的程式碼順序，將 `applyFontSize()` 與 `applyCharacterTheme()` 移至 `super.onCreate()` 前，確保主題能正確被套用，解決了使用者設定字體大小後，介面沒有變化的問題。
+*   **修復設定頁面遺失:**
+    *   **還原設定頁面:** 透過 Git 歷史紀錄，將被意外重構的 `SettingsFragment.kt` 還原為 `PreferenceFragmentCompat` 版本，恢復了所有遺失的設定選項 (主題、語言、更新頻道等)。
+    *   **整合字體大小設定:** 將字體大小調整功能，以 `ListPreference` 的形式重新整合至 `preferences.xml`，使其與其他設定項目的風格和操作保持一致。
+
+## 2025-01-29
+### Features
+*   **字體大小調整功能:**
+    *   **多尺寸主題:** 在 `themes.xml` 中新增了 `Small`, `Medium`, `Large` 三種字體大小的樣式與主題，方便使用者根據視力需求調整。
+    *   **設定頁面:** 建立了 `SettingsFragment`，並在其中新增了 `RadioGroup`，讓使用者可以直觀地選擇「小」、「中」、「大」三種字體大小。
+    *   **即時應用:** 使用者在設定頁面選擇新的字體大小後，應用程式會立即重新啟動 (`recreate()`)，並載入新的主題，實現即時預覽效果。
+    *   **偏好儲存:** 使用者的字體大小選擇會儲存在 `SharedPreferences` 中，確保下次啟動 App 時能自動套用上次的設定。
+    *   **程式碼整合:** 在 `MainActivity` 中新增 `applyFontSize()` 函式，並在 `onCreate()` 中呼叫，確保在 App 生命週期早期階段就能正確套用主題。同時，也將 `SettingsFragment` 的導覽功能整合到 `onOptionsItemSelected()` 中。
+
 ## 2025-01-28
 ### Features
 *   **日曆紀錄功能重構 (History Calendar Enhancement):**
@@ -225,7 +270,7 @@
 ### DevOps
 *   **版本號與 CI/CD 優化:** Nightly 版本號格式調整。
 
-## 2025-01-05
+## 2_0_25-01-05
 ### DevOps
 *   **CI/CD 自動化實作:** 建立 GitHub Actions。
 
