@@ -2,6 +2,7 @@ package com.example.medicationreminderapp
 
 import android.content.Context
 import android.content.res.Configuration
+import android.content.res.Resources
 import androidx.appcompat.app.AppCompatActivity
 
 open class BaseActivity : AppCompatActivity() {
@@ -15,7 +16,7 @@ open class BaseActivity : AppCompatActivity() {
 
     // 2. To prevent some phones (like Xiaomi/Samsung) from overriding Resources at Runtime,
     // we add a second layer of interception here (this is the savior for many "invalid" cases)
-    override fun getResources(): android.content.res.Resources {
+    override fun getResources(): Resources {
         val res = super.getResources()
         val config = res.configuration
         

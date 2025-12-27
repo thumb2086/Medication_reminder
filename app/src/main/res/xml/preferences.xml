@@ -17,7 +17,7 @@
             app:summary="%s"
             app:entries="@array/theme_entries"
             app:entryValues="@array/theme_values"
-            app:defaultValue="system"
+            app.defaultValue="system"
             app:icon="@drawable/ic_palette" />
 
         <ListPreference
@@ -37,7 +37,7 @@
             app:entryValues="@array/font_size_values"
             app:defaultValue="medium" />
 
-        <ListPreference
+        <com.example.medicationreminderapp.ImagePickerPreference
             app:key="character"
             app:title="@string/character"
             app:summary="%s"

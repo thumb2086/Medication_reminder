@@ -57,21 +57,17 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
 
     private fun setupUpdateChannelPreference() {
         findPreference<ListPreference>("update_channel")?.let { listPref ->
-            // Use ViewModel helper to avoid Lint constant expression warning
             val currentChannel: String = viewModel.getCurrentUpdateChannel()
             val savedChannel = preferenceManager.sharedPreferences?.getString("update_channel", null)
 
-            // Initial simple setup with local current channel
             val entries = mutableListOf<CharSequence>(getString(R.string.update_channel_stable))
             val entryValues = mutableListOf<CharSequence>("main")
             
-            // Add current channel if it's not already in the list (e.g. not "main")
             if (currentChannel.isNotEmpty() && !entryValues.contains(currentChannel)) {
                 entries.add(getString(R.string.update_channel_current, currentChannel))
                 entryValues.add(currentChannel)
             }
             
-            // Add Dev by default if not present
             if (!entryValues.contains("dev")) {
                 entries.add(getString(R.string.update_channel_dev))
                 entryValues.add("dev")
@@ -80,31 +76,14 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
             listPref.entries = entries.toTypedArray()
             listPref.entryValues = entryValues.toTypedArray()
 
-            // Logic to set default value:
-            // 1. If user has manually selected a channel (savedChannel != null), use it.
-            // 2. If no selection (first install or clear data):
-            //    - If the installed version is from "main" (Stable), default to "main".
-            //    - If the installed version is from a specific branch (e.g., "dev" or "feat-x"), default to that branch ("Current").
-            //    - This ensures that if a user installs a Nightly build, they stay on that channel by default.
-            //    - But if they are on Stable, it stays Stable.
-            
-            if (listPref.value == null) {
-                if (savedChannel != null) {
-                    listPref.value = savedChannel
-                } else {
-                    // No saved preference, use build config
-                    if (currentChannel == "main" || currentChannel.isEmpty()) {
-                        listPref.value = "main"
-                    } else {
-                        // User installed a non-stable build, so default to that channel to keep receiving updates for it
-                         listPref.value = currentChannel
-                    }
-                }
+            if (savedChannel != null) {
+                listPref.value = savedChannel
+            } else {
+                listPref.value = currentChannel.ifEmpty { "main" }
             }
             
             listPref.summary = listPref.entry ?: getString(R.string.update_channel_summary, listPref.value)
             
-            // Fetch available channels from GitHub Releases
             fetchAvailableChannels(listPref)
         }
     }
@@ -155,22 +134,19 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         val entries = mutableListOf<CharSequence>(getString(R.string.update_channel_stable))
         val entryValues = mutableListOf<CharSequence>("main")
         
-        // Add current if valid
         if (currentChannel.isNotEmpty() && !entryValues.contains(currentChannel)) {
             entries.add(getString(R.string.update_channel_current, currentChannel))
             entryValues.add(currentChannel)
         }
 
-        // Always add Dev option if not present (as it is a permanent channel)
         if (!entryValues.contains("dev")) {
             entries.add(getString(R.string.update_channel_dev))
             entryValues.add("dev")
         }
 
-        // Add remote channels (filtering out duplicates)
         remoteChannels.forEach { channel ->
             if (!entryValues.contains(channel)) {
-                entries.add(channel.replaceFirstChar { it.uppercase() }) // Capitalize for display
+                entries.add(channel.replaceFirstChar { it.uppercase() })
                 entryValues.add(channel)
             }
         }
@@ -178,13 +154,9 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         listPref.entries = entries.toTypedArray()
         listPref.entryValues = entryValues.toTypedArray()
         
-        // Refresh summary
         listPref.summary = listPref.entry ?: getString(R.string.update_channel_summary, listPref.value)
 
-        // Check for dead branch
-        // If the current channel is not a permanent one (main/dev) and is not found in the remote list, warn the user.
         if (currentChannel.isNotEmpty() && currentChannel != "main" && currentChannel != "dev" && !remoteChannels.contains(currentChannel)) {
-            // Only show if the fragment is currently added and visible to avoid crashes or leaks
             if (isAdded && view != null && !hasShownInvalidChannelWarning) {
                 AlertDialog.Builder(requireContext())
                     .setTitle(getString(R.string.update_channel_invalid_title))
@@ -202,22 +174,18 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         requireContext().theme.resolveAttribute(android.R.attr.colorBackground, typedValue, true)
         view.setBackgroundColor(typedValue.data)
 
-        // Handle Window Insets to avoid content being obscured by gesture navigation bar
         ViewCompat.setOnApplyWindowInsetsListener(listView) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.updatePadding(bottom = systemBars.bottom)
             insets
         }
 
-        // Observe the engineering mode status from the ViewModel
         viewLifecycleOwner.lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.isEngineeringMode.collect { isEnabled ->
                     findPreference<SwitchPreferenceCompat>("engineering_mode")?.let {
-                        // Stop listening to changes to prevent feedback loop
                         preferenceScreen.sharedPreferences?.unregisterOnSharedPreferenceChangeListener(this@SettingsFragment)
                         it.isChecked = isEnabled
-                        // Re-register listener
                         preferenceScreen.sharedPreferences?.registerOnSharedPreferenceChangeListener(this@SettingsFragment)
                     }
                 }
@@ -264,17 +232,15 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
     }
 
     private fun checkForUpdates() {
-        // Automatically checks based on the channel defined in BuildConfig
         val updateManager = UpdateManager(requireContext())
         
         lifecycleScope.launch {
             Toast.makeText(requireContext(), getString(R.string.checking_for_updates), Toast.LENGTH_SHORT).show()
-            // Pass isManualCheck = true since this is a manual click
             val updateInfo = updateManager.checkForUpdates(isManualCheck = true)
             
             if (updateInfo != null) {
                 val sb = StringBuilder()
-                val title: String // Removed redundant initializer
+                val title: String
                 
                 if (updateInfo.isDifferentAppId) {
                     title = getString(R.string.install_different_version_title)
@@ -380,11 +346,8 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                 mainActivity?.bluetoothLeManager?.let { bleManager ->
                     if (bleManager.isConnected()) {
                         bleManager.setEngineeringMode(isEnabled)
-                        // Toast message is now sent from BleManager for better feedback
                     } else {
                         Toast.makeText(requireContext(), R.string.connect_box_first, Toast.LENGTH_SHORT).show()
-                        // Revert the switch state immediately if not connected
-                        // Unregister to prevent loop, change value, then re-register
                         sharedPreferences.unregisterOnSharedPreferenceChangeListener(this)
                         findPreference<SwitchPreferenceCompat>(key)?.isChecked = !isEnabled
                         sharedPreferences.registerOnSharedPreferenceChangeListener(this)
