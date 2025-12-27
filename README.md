@@ -42,7 +42,7 @@ The ESP32 firmware is designed for a modular and maintainable architecture, with
 *   **`main.ino`**: The main entry point that orchestrates the different modules.
 *   **`ble_handler`**: Manages all Bluetooth Low Energy (BLE) communication.
 *   **`display`**: Handles all screen drawing and UI logic.
-*   **`hardware`**: Controls hardware peripherals (motor, buzzer, sensors).
+*   **`hardware`**: Controls hardware peripherals (motor, buzzer, sensors). This module has been refactored to use the native **ESP32 LEDC** peripheral for servo motor control, ensuring compatibility with ESP32-C6 and providing precise PWM signal generation.
 *   **`input`**: Manages user input from the rotary encoder and buttons.
 *   **`storage`**: Handles flash storage operations (SPIFFS, Preferences).
 *   **`wifi_ota`**: Manages Wi-Fi connectivity, NTP sync, and OTA updates.
@@ -60,13 +60,13 @@ The firmware is configured with a specific pinout for ESP32-C6 boards. **Warning
 | Encoder A | 19 | Rotary Encoder |
 | Encoder B | 18 | Rotary Encoder |
 | Encoder Push | 20 | Rotary Encoder Button |
-| Confirm Button | 23 | | 
+| Confirm Button | 23 | |
 | Back Button | 2 | Right Side Pin |
 | DHT Sensor | 1 | Left Side Pin, DHT11 Temp/Humid |
 | Buzzer 1 | 4 | Left Side Pin |
 | Buzzer 2 | 5 | Left Side Pin |
-| Servo Motor | 8 | Moved from 3 to troubleshoot issue |
-| WS2812 LED Strip| 15 | | 
+| Servo Motor | 8 | ESP32-C6 compatible (LEDC) |
+| WS2812 LED Strip| 15 | |
 
 ## Bluetooth Low Energy Protocol
 

@@ -1,5 +1,12 @@
 # 更新日誌
 
+## 2025-12-30
+### Docs
+*   **文件更新 (Documentation Update):**
+    *   更新 `README.md` 與 `readme_cn.md`，以反映最新的 ESP32 韌體變更。
+    *   具體來說，文件現在闡明了馬達控制邏輯已重構，從 `ESP32Servo` 函式庫改為使用原生的 `LEDC` 周邊，以確保與 ESP32-C6 的完全相容性。
+    *   同時更新了腳位配置表，將伺服馬達腳位標示為 `8` 並註明 `ESP32-C6 compatible (LEDC)`。
+
 ## 2025-12-29
 ### ESP32
 *   **馬達控制重構 (Motor Control Refactor):**
