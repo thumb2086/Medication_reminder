@@ -1,6 +1,7 @@
 package com.example.medicationreminderapp
 
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.res.Configuration
 import android.content.res.Resources
 import androidx.appcompat.app.AppCompatActivity
@@ -9,9 +10,14 @@ open class BaseActivity : AppCompatActivity() {
 
     // 1. At Context connection time, directly replace the Context
     override fun attachBaseContext(newBase: Context) {
-        // Use ContextUtils to generate a new Context
-        val newContext = ContextUtils.updateLocale(newBase)
-        super.attachBaseContext(newContext)
+        val sharedPreferences = newBase.getSharedPreferences("app_prefs", MODE_PRIVATE)
+        val fontScale = sharedPreferences.getFloat("font_scale", 1.0f)
+
+        val configuration = newBase.resources.configuration
+        configuration.fontScale = fontScale
+        val updatedContext = newBase.createConfigurationContext(configuration)
+
+        super.attachBaseContext(ContextWrapper(updatedContext))
     }
 
     // 2. To prevent some phones (like Xiaomi/Samsung) from overriding Resources at Runtime,
@@ -22,7 +28,7 @@ open class BaseActivity : AppCompatActivity() {
         
         // Read the current setting value
         val sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE)
-        val targetScale = sharedPreferences.getFloat("font_scale", 1.0f)
+        val targetScale = sharedPreferences.getFloat("font_scale", 1.15f)
         
         // If the current resource's configuration doesn't match the target, force the correction
         if (config.fontScale != targetScale) {
