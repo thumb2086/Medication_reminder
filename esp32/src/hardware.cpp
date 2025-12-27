@@ -3,6 +3,7 @@
 #include <Wire.h>
 
 void runPOST() {
+    Serial.println("DEBUG: runPOST - Starting Power-On Self-Test");
     // Initialize low-power components
     pixels.begin();
     pixels.setBrightness(20);
@@ -16,17 +17,18 @@ void runPOST() {
 
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_ncenB08_tr);
-    // Corrected the missing '/ 2' for centering text
     u8g2.drawStr((128 - u8g2.getStrWidth("Hardware Check...")) / 2, 38, "Hardware Check...");
     u8g2.sendBuffer();
     delay(500);
 
     // Test LED and Buzzer (even if disconnected)
+    Serial.println("DEBUG: Testing RGB LED strip.");
     pixels.fill(pixels.Color(255, 0, 0)); pixels.show(); delay(300);
     pixels.fill(pixels.Color(0, 255, 0)); pixels.show(); delay(300);
     pixels.fill(pixels.Color(0, 0, 255)); pixels.show(); delay(300);
     pixels.clear(); pixels.show();
 
+    Serial.println("DEBUG: Testing buzzer.");
     tone(BUZZER_PIN, 1000, 100);
     tone(BUZZER_PIN_2, 1000, 100);
     delay(200);
@@ -35,9 +37,9 @@ void runPOST() {
     delay(200);
 
     // Perform the motor test
+    Serial.println("DEBUG: Testing motor.");
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_ncenB08_tr);
-    // Corrected the missing '/ 2' for centering text
     u8g2.drawStr((128 - u8g2.getStrWidth("Motor Test...")) / 2, 38, "Motor Test...");
     u8g2.sendBuffer();
 
@@ -57,14 +59,18 @@ void runPOST() {
     u8g2.drawStr((128 - u8g2.getStrWidth("Check OK")) / 2, 38, "Check OK");
     u8g2.sendBuffer();
     delay(1000);
+    Serial.println("DEBUG: POST finished.");
 }
 
 void playTickSound() {
+    // This function is too simple for a debug message, but you can add one if needed.
+    // Serial.println("DEBUG: playTickSound");
     tone(BUZZER_PIN, 2000, 20);
     tone(BUZZER_PIN_2, 2000, 20);
 }
 
 void playConfirmSound() {
+    // Serial.println("DEBUG: playConfirmSound");
     tone(BUZZER_PIN, 1500, 50);
     tone(BUZZER_PIN_2, 1500, 50);
     delay(60);
@@ -75,13 +81,17 @@ void playConfirmSound() {
 void updateSensorReadings() {
     if (millis() - lastSensorReadTime >= SENSOR_READ_INTERVAL) {
         lastSensorReadTime = millis();
+        // Serial.println("DEBUG: Reading DHT sensor.");
         float h = dht.readHumidity();
         float t = dht.readTemperature();
         if (!isnan(h) && !isnan(t)) {
             cachedHum = h;
             cachedTemp = t - TEMP_CALIBRATION_OFFSET;
             sensorDataValid = true;
+            // Serial.printf("DEBUG: Sensor data valid. Temp: %.1f, Hum: %.1f\n", cachedTemp, cachedHum);
         } else {
+            sensorDataValid = false;
+            Serial.println("DEBUG: Failed to read from DHT sensor!");
             Serial.println("Failed to read from DHT sensor!");
         }
     }
@@ -93,7 +103,9 @@ void checkAlarm() {
     lastAlarmCheckTime = millis();
     struct tm timeinfo;
     if (!getLocalTime(&timeinfo)) return;
+    // Serial.printf("DEBUG: Checking alarm for %02d:%02d. Current time: %02d:%02d:%02d\n", alarmHour, alarmMinute, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
     if (timeinfo.tm_hour == alarmHour && timeinfo.tm_min == alarmMinute && timeinfo.tm_sec == 0) {
+        Serial.println("DEBUG: ALARM TRIGGERED!");
         Serial.println("ALARM TRIGGERED!");
         isAlarmRinging = true;
         playConfirmSound();

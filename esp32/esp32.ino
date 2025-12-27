@@ -107,6 +107,7 @@ unsigned long lastAlarmCheckTime = 0;
 
 
 void returnToMainScreen() {
+    Serial.println("DEBUG: returnToMainScreen");
     currentUIMode = UI_MODE_MAIN_SCREENS;
     currentEncoderMode = MODE_NAVIGATION;
     currentPageIndex = SCREEN_TIME;
@@ -117,6 +118,7 @@ void setup() {
     Serial.begin(115200);
     delay(1000);
     Serial.printf("\n--- SmartMedBox Firmware %s ---\n", FIRMWARE_VERSION);
+    Serial.println("DEBUG: Starting setup().");
     pinMode(ENCODER_PSH_PIN, INPUT_PULLUP);
     pinMode(BUTTON_CONFIRM_PIN, INPUT_PULLUP);
     pinMode(BUTTON_BACK_PIN, INPUT_PULLUP);
@@ -125,6 +127,7 @@ void setup() {
     u8g2.enableUTF8Print();
 
     // Initialize sensor BEFORE power-hungry tasks
+    Serial.println("DEBUG: Initializing DHT sensor.");
     dht.begin();
 
     // Run hardware self-test (including motor)
@@ -134,11 +137,13 @@ void setup() {
         Serial.println("SPIFFS mount failed");
         return;
     }
+    Serial.println("DEBUG: SPIFFS mounted.");
     initializeHistoryFile();
     loadHistoryMetadata();
     loadPersistentStates();
     rotaryEncoder.begin();
     rotaryEncoder.setup([] { rotaryEncoder.readEncoder_ISR(); }, [] {});
+    Serial.println("DEBUG: Rotary encoder initialized.");
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_ncenB10_tr);
     u8g2.drawStr((128 - u8g2.getStrWidth("SmartMedBox"))/2, 30, "SmartMedBox");
@@ -158,11 +163,13 @@ void setup() {
 }
 
 void loop() {
+    // Serial.println("DEBUG: loop() start"); // This is very verbose
     if (isOtaMode) {
         ArduinoOTA.handle();
         if (digitalRead(BUTTON_BACK_PIN) == LOW && (millis() - lastBackPressTime > 500)) {
             lastBackPressTime = millis();
             playConfirmSound();
+            Serial.println("DEBUG: Exiting OTA mode and rebooting.");
             u8g2.clearBuffer();
             u8g2.setFont(u8g2_font_ncenB10_tr);
             u8g2.drawStr((128-u8g2.getStrWidth("Rebooting..."))/2, 38, "Rebooting...");
@@ -174,6 +181,7 @@ void loop() {
     }
 
     if (isAlarmRinging) {
+        // Visual alarm indication
         if ((millis() / 200) % 2 == 0) {
             pixels.fill(pixels.Color(255, 0, 0));
         } else {
@@ -181,12 +189,14 @@ void loop() {
         }
         pixels.show();
 
+        // Stop alarm with confirm button
         if (digitalRead(BUTTON_CONFIRM_PIN) == LOW) {
             isAlarmRinging = false;
             pixels.clear();
             pixels.show();
+            Serial.println("DEBUG: Alarm stopped by user.");
             Serial.println("Alarm Stopped by user.");
-            delay(500); 
+            delay(500); // Debounce
         }
     }
 
@@ -206,19 +216,23 @@ void loop() {
     handleBackButton();
 
     if (wifiState == WIFI_CONNECTED && millis() - lastNTPResync >= NTP_RESYNC_INTERVAL) {
+        Serial.println("DEBUG: NTP resync interval reached, forcing sync.");
         syncTimeNTPForce();
     }
     if (millis() - lastHistoryRecord > historyRecordInterval) {
         lastHistoryRecord = millis();
         if (sensorDataValid) {
+            // Serial.println("DEBUG: Recording history data."); // Can be verbose
             addDataToHistory(cachedTemp, cachedHum, WiFi.RSSI());
         }
     }
     if (wifiState == WIFI_CONNECTED && millis() - lastWeatherUpdate > WEATHER_INTERVAL) {
+        Serial.println("DEBUG: Weather update interval reached, fetching new data.");
         fetchWeatherData();
         lastWeatherUpdate = millis();
     }
     if (millis() - lastDisplayUpdate >= displayInterval) {
         updateDisplay();
     }
+    // Serial.println("DEBUG: loop() end"); // This is very verbose
 }
