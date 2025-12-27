@@ -180,6 +180,11 @@
         <item>en</item>
     </string-array>
 
+    <string name="font_size">Font Size</string>
+    <string name="small">Small</string>
+    <string name="medium">Medium</string>
+    <string name="large">Large</string>
+
     <string name="accent_color">Accent Color</string>
     <string name="accent_color_default">Default</string>
     <string name="accent_color_pink">Pink</string>
@@ -228,6 +233,9 @@
     <string name="wifi_password">Wi-Fi Password</string>
     <string name="send_wifi_credentials">Send Wi-Fi Credentials</string>
     <string name="wifi_credentials_sent">Wi-Fi credentials sent</string>
+    <string name="wifi_status_connecting">Connecting...</string>
+    <string name="wifi_status_connected">Connected</string>
+    <string name="wifi_status_failed">Connection Failed</string>
 
     <!-- Update -->
     <string name="update_settings">Update Settings</string>

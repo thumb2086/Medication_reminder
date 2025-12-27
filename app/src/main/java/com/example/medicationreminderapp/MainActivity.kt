@@ -5,6 +5,7 @@ import android.app.AlarmManager
 import android.app.AlertDialog
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
@@ -32,9 +33,9 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.fragment.app.commit
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.preference.PreferenceManager
 import androidx.viewpager2.widget.ViewPager2
 import com.example.medicationreminderapp.adapter.ViewPagerAdapter
 import com.example.medicationreminderapp.databinding.ActivityMainBinding
@@ -69,7 +70,8 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
+        applyFontSize()
         WindowCompat.setDecorFitsSystemWindows(window, false)
         applyCharacterTheme()
 
@@ -94,6 +96,16 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         observeViewModel()
         setupFragmentNavigation()
         checkForUpdates()
+    }
+    private fun applyFontSize() {
+        val fontSize = prefs.getString("font_size", "medium")
+        val themeResId = when (fontSize) {
+            "small" -> R.style.Theme_MedicationReminderApp_SmallText
+            "medium" -> R.style.Theme_MedicationReminderApp_MediumText
+            "large" -> R.style.Theme_MedicationReminderApp_LargeText
+            else -> R.style.Theme_MedicationReminderApp_MediumText
+        }
+        setTheme(themeResId)
     }
 
     private fun checkForUpdates() {
@@ -153,7 +165,7 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
 
     private fun observeViewModel() {
         lifecycleScope.launch {
-            repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     viewModel.bleStatus.collect { status ->
                         viewModel.setBleStatus(status)
@@ -249,6 +261,7 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
         }
     }
 
+    @Suppress("unused")
     fun setLocale(languageCode: String?) {
         val locales = if (languageCode == "system" || languageCode.isNullOrEmpty()) {
             LocaleListCompat.getEmptyLocaleList()
@@ -317,6 +330,15 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
 
     override fun onHistoricDataComplete() {
         viewModel.onHistoricDataSyncCompleted()
+    }
+    
+    override fun onWifiStatusUpdate(status: Int) {
+        runOnUiThread {
+            val currentFragment = supportFragmentManager.findFragmentById(R.id.fragment_container)
+            if (currentFragment is WiFiConfigFragment) {
+                currentFragment.onWifiStatusUpdate(status)
+            }
+        }
     }
 
     override fun onError(errorCode: Int) {

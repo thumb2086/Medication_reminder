@@ -1,5 +1,14 @@
 # 更新日誌
 
+## 2025-01-29
+### Features
+*   **字體大小調整功能:**
+    *   **多尺寸主題:** 在 `themes.xml` 中新增了 `Small`, `Medium`, `Large` 三種字體大小的樣式與主題，方便使用者根據視力需求調整。
+    *   **設定頁面:** 建立了 `SettingsFragment`，並在其中新增了 `RadioGroup`，讓使用者可以直觀地選擇「小」、「中」、「大」三種字體大小。
+    *   **即時應用:** 使用者在設定頁面選擇新的字體大小後，應用程式會立即重新啟動 (`recreate()`)，並載入新的主題，實現即時預覽效果。
+    *   **偏好儲存:** 使用者的字體大小選擇會儲存在 `SharedPreferences` 中，確保下次啟動 App 時能自動套用上次的設定。
+    *   **程式碼整合:** 在 `MainActivity` 中新增 `applyFontSize()` 函式，並在 `onCreate()` 中呼叫，確保在 App 生命週期早期階段就能正確套用主題。同時，也將 `SettingsFragment` 的導覽功能整合到 `onOptionsItemSelected()` 中。
+
 ## 2025-01-28
 ### Features
 *   **日曆紀錄功能重構 (History Calendar Enhancement):**

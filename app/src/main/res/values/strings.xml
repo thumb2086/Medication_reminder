@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">藥到叮嚀</string>
     <string name="app_title">藥物提醒助手</string>
@@ -180,6 +181,11 @@
         <item>en</item>
     </string-array>
 
+    <string name="font_size">字體大小</string>
+    <string name="small">小</string>
+    <string name="medium">中</string>
+    <string name="large">大</string>
+
     <string name="accent_color">輔助顏色</string>
     <string name="accent_color_default">預設</string>
     <string name="accent_color_pink">粉色</string>
@@ -228,6 +234,9 @@
     <string name="wifi_password">Wi-Fi 密碼</string>
     <string name="send_wifi_credentials">傳送 Wi-Fi 憑證</string>
     <string name="wifi_credentials_sent">Wi-Fi 憑證已傳送</string>
+    <string name="wifi_status_connecting">正在連線...</string>
+    <string name="wifi_status_connected">連線成功</string>
+    <string name="wifi_status_failed">連線失敗</string>
 
     <!-- Update -->
     <string name="update_settings">更新設定</string>
