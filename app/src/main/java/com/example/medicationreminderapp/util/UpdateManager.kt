@@ -220,39 +220,30 @@ class UpdateManager(private val context: Context) {
         // --- Logic for when base versions are the same (e.g., 1.2.1-dev vs 1.2.1) ---
         val localSuffix = normalizedLocal.substringAfter('-', "")
         val remoteSuffix = normalizedRemote.substringAfter('-', "")
-
         val localHasSuffix = localSuffix.isNotEmpty()
-        val remoteHasSuffix = remoteSuffix.isNotEmpty()
 
-        // Case 1: Remote is stable, local is pre-release (e.g., remote '1.2.1', local '1.2.1-dev')
-        // The stable version is always considered newer.
-        if (localHasSuffix && !remoteHasSuffix) {
-            return true
+        // If local is stable (no suffix), remote must have a suffix to be different.
+        // A remote pre-release is not newer than a local stable version.
+        if (!localHasSuffix) {
+            return false // e.g. local '1.2.1', remote '1.2.1-dev'. Remote is not newer.
         }
 
-        // Case 2: Local is stable, remote is pre-release (e.g., local '1.2.1', remote '1.2.1-dev')
-        // The pre-release is older, so it's not a newer version.
-        if (!localHasSuffix && remoteHasSuffix) {
-            return false
+        // If local has a suffix, but remote does not, remote is newer (stable release).
+        if (remoteSuffix.isEmpty()) {
+            return true // e.g. local '1.2.1-dev', remote '1.2.1'. Remote is newer.
         }
 
-        // Case 3: Both are pre-releases. Compare suffixes.
-        if (localHasSuffix && remoteHasSuffix) {
-            // First, try to compare by commit count (numeric suffix)
-            val localCount = localSuffix.substringAfterLast('-').toIntOrNull()
-            val remoteCount = remoteSuffix.substringAfterLast('-').toIntOrNull()
+        // If we reach here, both have suffixes. Compare them.
+        // First, try to compare by commit count (numeric suffix)
+        val localCount = localSuffix.substringAfterLast('-').toIntOrNull()
+        val remoteCount = remoteSuffix.substringAfterLast('-').toIntOrNull()
 
-            if (localCount != null && remoteCount != null) {
-                return remoteCount > localCount
-            }
-
-            // If not numeric, compare alphabetically (e.g., 'beta' vs 'rc1')
-            // SemVer: 'alpha' < 'beta' < 'rc'.
-            return remoteSuffix > localSuffix
+        if (localCount != null && remoteCount != null) {
+            return remoteCount > localCount
         }
 
-        // Should not be reached if base versions are equal and suffixes are handled, but as a fallback:
-        return false
+        // If not numeric, compare alphabetically (e.g., 'beta' vs 'rc1').
+        return remoteSuffix > localSuffix
     }
 
     fun downloadAndInstall(url: String, fileName: String) {

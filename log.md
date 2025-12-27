@@ -1,10 +1,13 @@
 # 更新日誌
 
 ## 2025-02-01
-### Bug Fixes & Improvements
+### Bug Fixes & Code Quality
+*   **修正 `strings.xml` 編譯錯誤:** 修正了 `strings.xml` 中因 `update_channel_entries` 引起的 "not found in default locale" 編譯錯誤，確保多國語言資源的一致性。
 *   **修正 App 內更新檢查邏輯:**
     *   **釐清自動與手動檢查:** 重構 `UpdateManager.kt` 中的 `checkForUpdates` 方法，確保「自動檢查」嚴格限定於 App 自身的建置頻道 (如 `dev`, `nightly`)，解決了先前會錯誤提示更新的問題。現在只有「手動檢查」會遵循使用者在設定頁面選擇的頻道。
-    *   **修正版本比對 (SemVer):** 修正 `isNewerVersion` 方法，使其能正確處理預發行版 (e.g., `1.2.2-dev`) 與穩定版 (e.g., `1.2.2`) 的比對。現在，穩定版將被正確地視為比其對應的預發行版更新，符合 SemVer 規範。
+    *   **修正版本比對 (SemVer):** 修正 `isNewerVersion` 方法，使其能正確處理預發行版 (e.g., `1.2.2-dev`) 與穩定版 (e.g., `1.2.2`) 的比對，並修正了邏輯警告。現在，穩定版將被正確地視為比其對應的預發行版更新，符合 SemVer 規範。
+*   **程式碼品質提升:** 
+    *   **可讀性:** 修正了 `MainActivity.kt` 中多餘的程式碼限定詞，提升了程式碼的可讀性。
 
 ## 2025-01-31
 ### Bug Fixes & Improvements

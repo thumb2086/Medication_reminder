@@ -69,7 +69,7 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
+        prefs = getSharedPreferences("settings", MODE_PRIVATE)
         applyFontSize()
         applyCharacterTheme()
         super.onCreate(savedInstanceState)
