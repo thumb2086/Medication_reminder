@@ -45,6 +45,63 @@
     *   **偏好儲存:** 使用者的字體大小選擇會儲存在 `SharedPreferences` 中，確保下次啟動 App 時能自動套用上次的設定。
     *   **程式碼整合:** 在 `MainActivity` 中新增 `applyFontSize()` 函式，並在 `onCreate()` 中呼叫，確保在 App 生命週期早期階段就能正確套用主題。同時，也將 `SettingsFragment` 的導覽功能整合到 `onOptionsItemSelected()` 中。
 
+## 2025-12-30
+### Docs
+*   **文件更新 (Documentation Update):**
+    *   更新 `README.md` 與 `readme_cn.md`，以反映最新的 ESP32 韌體變更。
+    *   具體來說，文件現在闡明了馬達控制邏輯已重構，從 `ESP32Servo` 函式庫改為使用原生的 `LEDC` 周邊，以確保與 ESP32-C6 的完全相容性。
+    *   同時更新了腳位配置表，將伺服馬達腳位標示為 `8` 並註明 `ESP32-C6 compatible (LEDC)`。
+
+## 2025-12-29
+### ESP32
+*   **馬達控制重構 (Motor Control Refactor):**
+    *   **問題診斷:** 使用者回報在更換為 ESP32-C6 開發板並更新腳位配置後，伺服馬達在開機自檢時沒有反應。
+    *   **根源分析:** 初步將 `SERVO_PIN` 更換至 `GPIO 8` 後問題依舊。經分析，根本原因極可能為 `ESP32Servo` 函式庫對新款 ESP32-C6 晶片的 PWM 功能支援不完整。
+    *   **解決方案:** 為徹底解決相容性問題，重構了馬達控制邏輯。棄用 `ESP32Servo` 函式庫，改為使用 ESP32 原生的 `LEDC` (LED Control) 周邊來直接產生精準的 50Hz PWM 訊號。此方法跳過了有相容性疑慮的函式庫，直接由底層硬體產生訊號，確保了在 ESP32-C6 上的可靠性。
+
+## 2025-12-28
+### ESP32
+*   **韌體優化 (Firmware Optimization):**
+    *   **除錯日誌優化:** 調整了 `handleWiFiConnection` 函式中的除錯訊息邏輯，從無條件印出改為僅在 Wi-Fi 處於 `WIFI_CONNECTING` 狀態時才印出，大幅減少了序列埠的訊息洗版問題，使日誌更具可讀性。
+    *   **降低 POST 亮度:** 根據使用者回饋，將開機自檢 (POST) 期間的 LED 燈條亮度從 `20` 調降至 `5`，以減輕視覺刺激。
+*   **硬體相容性修正 (ESP32-C6 Compatibility Fix):**
+    *   **問題診斷:** 根據使用者提供的開發板圖片，確認當前韌體腳位配置 (`config.h`) 與其使用的 ESP32-C6 開發板不相容，導致部分腳位 (如 `GPIO 27`, `32`) 不存在，或與板載功能 (如 USB 的 `GPIO 13`) 發生衝突。
+    *   **腳位全面重新配置:** 為確保硬體正常運作並滿足使用者接線需求 (DHT11 在左，返回鈕在右)，對腳位進行了全面重新規劃與修正：
+        *   `DHT_PIN`: `32` -> **`1`** (移至左側安全腳位)
+        *   `BUTTON_BACK_PIN`: `13` -> **`2`** (移至右側，避開 USB 保留腳位)
+        *   `SERVO_PIN`: `27` -> **`3`** (移至存在的安全腳位)
+    *   此更新確保了韌體與使用者當前硬體的完全相容性。
+
+## 2025-12-27
+### ESP32
+*   **腳位衝突修復 (USB Unrecognized Fix):**
+    *   **問題診斷:** 使用者回報 ESP32 連接電腦時會出現「USB 裝置無法辨識」的錯誤，且序列埠無任何輸出。此問題被診斷為程式在極早期因腳位衝突而崩潰並陷入無限重啟循環。
+    *   **根源分析:** 經查核 `config.h`，發現 `BUTTON_BACK_PIN (9)`, `BUZZER_PIN (10)`, `BUZZER_PIN_2 (11)` 使用了 ESP32-WROOM-32 模組為內部 SPI Flash 保留的腳位，導致啟動失敗。
+*   **腳位重新配置 (Pinout Re-configuration):**
+    *   **第一階段修正:** 將有衝突的腳位更換至 `GPIO 32, 25, 26`，成功解決 USB 無法辨識的問題。
+    *   **第二階段使用者自定義:** 根據使用者要求，再次調整腳位分配，並解決了新的腳位衝突：
+        *   `BUZZER_PIN` -> **GPIO 4**
+        *   `BUZZER_PIN_2` -> **GPIO 5**
+        *   `BUTTON_BACK_PIN` -> **GPIO 13**
+        *   為避免衝突，原先使用 `GPIO 13` 的 `DHT_PIN` 被移動至 **GPIO 32**。
+*   **除錯資訊植入:** 為協助問題排查，在所有 `esp32` 韌體的 `.cpp` 和 `.ino` 檔案中加入了詳細的 `Serial.println` 除錯日誌。
+
+## 2025-12-26
+
+- 確認 ESP32 韌體已完成模組化重構。
+- 清理 `todo.md`。
+- 更新 `README.md` 和 `README_cn.md` 以反映新的韌體架構。
+
+## 2025-01-29
+### ESP32 Refactor
+*   **程式碼模組化 (Code Modularization):** 
+    *   將 `esp32.ino` 的所有程式碼重構並分解為多個獨立的模組，存放於 `esp32/src/` 目錄下。
+    *   建立 `config.h`, `globals.h`, `ble_handler`, `display`, `hardware`, `input`, `storage`, `wifi_ota` 和 `main` 等模組，大幅提升程式碼的可讀性與可維護性。
+    *   保留了所有原有功能，包括開機硬體自檢（馬達 0-180 度轉動、LED 閃爍、蜂鳴器測試）。
+*   **檔案清理 (File Cleanup):** 
+    *   清空了根目錄下已過時的 `esp32.ino` 檔案，因為其功能已完全轉移至新模組。
+*   **版本更新:** ESP32 韌體版本號更新至 `v22.0`。
+
 ## 2025-01-28
 ### Features
 *   **日曆紀錄功能重構 (History Calendar Enhancement):**
@@ -270,7 +327,7 @@
 ### DevOps
 *   **版本號與 CI/CD 優化:** Nightly 版本號格式調整。
 
-## 2_0_25-01-05
+## 2025-01-05
 ### DevOps
 *   **CI/CD 自動化實作:** 建立 GitHub Actions。
 
