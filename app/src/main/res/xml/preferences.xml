@@ -17,7 +17,7 @@
             app:summary="%s"
             app:entries="@array/theme_entries"
             app:entryValues="@array/theme_values"
-            app.defaultValue="system"
+            app:defaultValue="system"
             app:icon="@drawable/ic_palette" />
 
         <ListPreference

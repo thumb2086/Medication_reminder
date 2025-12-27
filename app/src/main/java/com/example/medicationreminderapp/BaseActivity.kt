@@ -21,7 +21,7 @@ open class BaseActivity : AppCompatActivity() {
         val config = res.configuration
         
         // Read the current setting value
-        val sharedPreferences = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        val sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE)
         val targetScale = sharedPreferences.getFloat("font_scale", 1.0f)
         
         // If the current resource's configuration doesn't match the target, force the correction
