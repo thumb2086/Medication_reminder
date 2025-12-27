@@ -71,4 +71,8 @@
     <!-- Chart Colors -->
     <color name="temp_color">#B3261E</color>
     <color name="humidity_color">#006CBA</color>
+
+    <!-- Status Colors -->
+    <color name="success_green">#388E3C</color>
+    <color name="error_red">#D32F2F</color>
 </resources>

@@ -1,6 +1,6 @@
 # Medication Reminder App (藥到叮嚀)
 
-一款結合 ESP32 智慧藥盒的藥物提醒應用程式。協助使用者管理用藥排程、監控環境狀況，並透過手機通知與硬體警示確保按時服藥。
+A smart medication reminder application integrated with an ESP32-based smart pillbox. It helps users track their medication schedule, monitors environmental conditions, and ensures timely intake through a combination of mobile notifications and hardware alerts.
 
 [![Android CI/CD](https://github.com/thumb2086/Medication_reminder/actions/workflows/android-cicd.yml/badge.svg)](https://github.com/thumb2086/Medication_reminder/actions/workflows/android-cicd.yml)
 
@@ -13,6 +13,7 @@
     *   **綠點：** 按照計畫完成所有服藥。
     *   **黃點：** 部分服藥 (錯過某些劑量)。
     *   **紅點：** 在排定的日期未服用任何藥物。
+*   **字體大小調整：** 使用者可在設定選單中選擇「小」、「中」、「大」三種字體大小，以提升閱讀舒適度。App 主題將立即更新以反映所選尺寸。
 *   **主題切換：** 內建「庫洛米」與「櫻桃小丸子」主題，提供個人化體驗。
 *   **工程模式：** 可直接從 App 切換硬體工程模式以進行診斷。
 *   **Wi-Fi 設定：** 透過 BLE 直接設定 ESP32 的 Wi-Fi 連線。介面已全面升級為 Material Design 風格，並加入輸入驗證與清晰指引。
@@ -31,7 +32,7 @@
     *   **Dev：** 來自 `dev` 分支的最新開發版本。
     *   **動態分支發現：** App 會查詢 GitHub Releases 以尋找活躍的分支，讓您能輕鬆測試特定功能分支。
     *   **無效頻道警告：** 自動檢測目前選擇的功能分支是否已被刪除或停止維護，並主動提示使用者切換頻道。
-*   **強健的更新安裝：** 智慧處理 APK 下載，具備自動 fallback 機制，確保在各種 Android 版本 (包含 Android 13+). 上皆能成功安裝。
+*   **強健的更新安裝：** 智慧處理 APK 下罩，具備自動 fallback 機制，確保在各種 Android 版本 (包含 Android 13+). 上皆能成功安裝。
 *   **多頻道 CI/CD：** 支援動態「功能分支」發布。每個分支都有獨立的更新頻道 (例如 `feat-new-ui`)，允許並行測試而不互相干擾。
 
 ## ESP32 韌體

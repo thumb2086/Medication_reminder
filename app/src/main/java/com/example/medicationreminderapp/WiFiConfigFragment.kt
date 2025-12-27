@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
@@ -43,14 +44,42 @@ class WiFiConfigFragment : Fragment() {
 
             if (validateInput(ssid, password)) {
                 if (bluetoothLeManager.isConnected()) {
+                    showConnectingUI()
                     bluetoothLeManager.sendWifiCredentials(ssid, password)
                     saveSsid(ssid)
-                    Toast.makeText(requireContext(), R.string.wifi_credentials_sent, Toast.LENGTH_SHORT).show()
                 } else {
                     Toast.makeText(requireContext(), R.string.ble_status_disconnected, Toast.LENGTH_SHORT).show()
                 }
             }
         }
+    }
+    
+    fun onWifiStatusUpdate(status: Int) {
+        when (status) {
+            1 -> showSuccessUI()
+            else -> showFailureUI()
+        }
+    }
+
+    private fun showConnectingUI() {
+        binding.statusLayout.visibility = View.VISIBLE
+        binding.statusProgressBar.visibility = View.VISIBLE
+        binding.statusText.text = getString(R.string.wifi_status_connecting)
+        binding.sendWifiCredentialsButton.isEnabled = false
+    }
+
+    private fun showSuccessUI() {
+        binding.statusProgressBar.visibility = View.GONE
+        binding.statusText.text = getString(R.string.wifi_status_connected)
+        binding.statusText.setTextColor(ContextCompat.getColor(requireContext(), R.color.success_green))
+        binding.sendWifiCredentialsButton.isEnabled = true
+    }
+
+    private fun showFailureUI() {
+        binding.statusProgressBar.visibility = View.GONE
+        binding.statusText.text = getString(R.string.wifi_status_failed)
+        binding.statusText.setTextColor(ContextCompat.getColor(requireContext(), R.color.error_red))
+        binding.sendWifiCredentialsButton.isEnabled = true
     }
 
     private fun setupValidation() {

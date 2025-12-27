@@ -45,32 +45,36 @@ class UpdateManager(private val context: Context) {
 
     /**
      * Checks for updates.
-     * @param isManualCheck If true, it allows reinstalling the current version or switching channels even if versions are same.
+     * @param isManualCheck If true, checks the user's selected channel and allows reinstalling.
+     *                      If false (automatic check), it only checks the app's built-in channel.
      */
     suspend fun checkForUpdates(isManualCheck: Boolean = false): UpdateInfo? {
         return withContext(Dispatchers.IO) {
             try {
                 val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-                
-                // Determine default channel based on BuildConfig
-                val defaultChannel = if (BuildConfig.UPDATE_CHANNEL.isEmpty()) "main" else BuildConfig.UPDATE_CHANNEL
-                
-                // Get user selected channel, fallback to the build's channel
-                val selectedChannel = prefs.getString("update_channel", defaultChannel) ?: defaultChannel
-                
-                val isChannelSwitch = selectedChannel != BuildConfig.UPDATE_CHANNEL
-                
-                // If it's a manual check, we want to fetch the update info even if it's the same version
-                val forceUpdate = isManualCheck || isChannelSwitch
-                
-                Log.d("UpdateManager", "Checking for updates on channel: $selectedChannel (Switch: $isChannelSwitch, Manual: $isManualCheck, Force: $forceUpdate)")
+                val buildChannel = if (BuildConfig.UPDATE_CHANNEL.isEmpty()) "main" else BuildConfig.UPDATE_CHANNEL
 
-                val isStable = selectedChannel == "main" || selectedChannel == "master" || selectedChannel == "stable"
+                val channelToCheck: String
+                val force: Boolean
+
+                if (isManualCheck) {
+                    // Manual Check: Respect user's selection, and always allow download.
+                    channelToCheck = prefs.getString("update_channel", buildChannel) ?: buildChannel
+                    force = true
+                    Log.d("UpdateManager", "Starting MANUAL check for channel: '$channelToCheck'")
+                } else {
+                    // Automatic Check: Only check the app's own channel, no forcing.
+                    channelToCheck = buildChannel
+                    force = false
+                    Log.d("UpdateManager", "Starting AUTOMATIC check for channel: '$channelToCheck'")
+                }
+
+                val isStable = channelToCheck == "main" || channelToCheck == "master" || channelToCheck == "stable"
 
                 if (isStable) {
-                    checkStableUpdates(forceUpdate)
+                    checkStableUpdates(force)
                 } else {
-                    checkDynamicChannelUpdates(selectedChannel, forceUpdate)
+                    checkDynamicChannelUpdates(channelToCheck, force)
                 }
             } catch (e: Exception) {
                 Log.e("UpdateManager", "Error checking for updates", e)
@@ -108,24 +112,27 @@ class UpdateManager(private val context: Context) {
         val json = gson.fromJson(jsonStr, JsonObject::class.java)
 
         // Parse JSON
-        val remoteVersionCode = json.get("versionCode").asInt
         val latestVersionName = json.get("latestVersion").asString
         val downloadUrl = json.get("url").asString
         val releaseNotes = json.get("releaseNotes").asString
 
-        val isStrictlyNewer = remoteVersionCode > BuildConfig.VERSION_CODE
+        // Use the proper SemVer comparison
+        val isStrictlyNewer = isNewerVersion(BuildConfig.VERSION_NAME, latestVersionName)
         
         // Determine App ID difference
         val currentSuffix = getAppIdSuffix()
-        val targetSuffix = if (channel == "dev") ".dev" else ".nightly"
-        // Note: For dynamic channels, we assume non-stable. If channel is main, we shouldn't be here.
+        val targetSuffix = when {
+            channel == "dev" -> ".dev"
+            channel.isNotEmpty() && channel != "main" -> ".nightly" // Assume non-main/dev is nightly
+            else -> ""
+        }
         
         val isDifferentId = currentSuffix != targetSuffix
 
-        // Return info if it's newer OR forced
+        // Return info if it's newer OR forced (for manual checks)
         if (isStrictlyNewer || force) {
             return UpdateInfo(latestVersionName, downloadUrl, releaseNotes, true, isStrictlyNewer, isDifferentId)
-        } 
+        }
         
         return null
     }
@@ -184,8 +191,6 @@ class UpdateManager(private val context: Context) {
         }
     }
     
-    // Suppress warning about localVersion being always the same (BuildConfig.VERSION_NAME)
-    // This is expected as we always compare against the current app version.
     @Suppress("SameParameterValue")
     private fun isNewerVersion(localVersion: String, remoteVersion: String): Boolean {
         // Normalize both strings to handle "1.2.0 dev 254" vs "1.2.0-dev-254"
@@ -195,12 +200,13 @@ class UpdateManager(private val context: Context) {
         if (normalizedLocal == normalizedRemote) return false
 
         // Extract base version (1.2.0)
-        val localBase = normalizedLocal.substringBefore("-")
-        val remoteBase = normalizedRemote.substringBefore("-")
+        val localBase = normalizedLocal.substringBefore('-')
+        val remoteBase = normalizedRemote.substringBefore('-')
 
+        // Compare base versions (e.g., 1.2.1 vs 1.2.0)
         if (localBase != remoteBase) {
-            val localParts = localBase.split(".").map { it.toIntOrNull() ?: 0 }
-            val remoteParts = remoteBase.split(".").map { it.toIntOrNull() ?: 0 }
+            val localParts = localBase.split('.').map { it.toIntOrNull() ?: 0 }
+            val remoteParts = remoteBase.split('.').map { it.toIntOrNull() ?: 0 }
             val length = max(localParts.size, remoteParts.size)
 
             for (i in 0 until length) {
@@ -211,56 +217,51 @@ class UpdateManager(private val context: Context) {
             }
         }
 
-        // --- NEW LOGIC for when base versions are the same ---
-        val localHasSuffix = normalizedLocal.contains("-")
-        val remoteHasSuffix = normalizedRemote.contains("-")
+        // --- Logic for when base versions are the same (e.g., 1.2.1-dev vs 1.2.1) ---
+        val localSuffix = normalizedLocal.substringAfter('-', "")
+        val remoteSuffix = normalizedRemote.substringAfter('-', "")
+        val localHasSuffix = localSuffix.isNotEmpty()
 
-        // Case 1: local is '1.2.1-dev', remote is '1.2.1'. Remote is NOT newer.
-        if (localHasSuffix && !remoteHasSuffix) {
-            return false
+        // If local is stable (no suffix), remote must have a suffix to be different.
+        // A remote pre-release is not newer than a local stable version.
+        if (!localHasSuffix) {
+            return false // e.g. local '1.2.1', remote '1.2.1-dev'. Remote is not newer.
         }
 
-        // Case 2: local is '1.2.1', remote is '1.2.1-dev'. Remote IS newer.
-        if (!localHasSuffix && remoteHasSuffix) {
-            return true
+        // If local has a suffix, but remote does not, remote is newer (stable release).
+        if (remoteSuffix.isEmpty()) {
+            return true // e.g. local '1.2.1-dev', remote '1.2.1'. Remote is newer.
         }
 
-        // Case 3: Both have suffixes. Compare them by commit count if possible.
-        val localCount = getCommitCount(normalizedLocal)
-        val remoteCount = getCommitCount(normalizedRemote)
+        // If we reach here, both have suffixes. Compare them.
+        // First, try to compare by commit count (numeric suffix)
+        val localCount = localSuffix.substringAfterLast('-').toIntOrNull()
+        val remoteCount = remoteSuffix.substringAfterLast('-').toIntOrNull()
 
         if (localCount != null && remoteCount != null) {
             return remoteCount > localCount
         }
 
-        // If suffixes are not comparable numbers (e.g., '-dev' vs '-rc1'), or any other case,
-        // consider them not an upgrade.
-        return false
-    }
-
-
-    private fun getCommitCount(version: String): Int? {
-        val parts = version.split("-")
-        val lastPart = parts.lastOrNull()
-        return lastPart?.toIntOrNull()
+        // If not numeric, compare alphabetically (e.g., 'beta' vs 'rc1').
+        return remoteSuffix > localSuffix
     }
 
     fun downloadAndInstall(url: String, fileName: String) {
         val isDebuggable = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
         if (isDebuggable) {
-            Toast.makeText(context, "警告: 正在使用除錯版本，更新可能會因簽名不符而失敗。", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, R.string.debug_build_warning, Toast.LENGTH_LONG).show()
         }
 
         if (!context.packageManager.canRequestPackageInstalls()) {
              AlertDialog.Builder(context)
-                .setTitle("需要安裝權限")
-                .setMessage("為了自動安裝更新，請允許應用程式安裝未知來源的應用程式。")
-                .setPositiveButton("前往設定") { _, _ ->
+                .setTitle(R.string.install_permission_title)
+                .setMessage(R.string.install_permission_message)
+                .setPositiveButton(R.string.go_to_settings) { _, _ ->
                     val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
                     intent.data = "package:${context.packageName}".toUri()
                     context.startActivity(intent)
                 }
-                .setNegativeButton("取消", null)
+                .setNegativeButton(R.string.cancel, null)
                 .show()
             return
         }
@@ -322,12 +323,12 @@ class UpdateManager(private val context: Context) {
                                     installApk(downloadedFile)
                                 } else {
                                     Log.e("UpdateManager", "APK file not found after download success reported.")
-                                    Toast.makeText(context, "更新檔案未找到", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, R.string.update_file_not_found, Toast.LENGTH_SHORT).show()
                                 }
 
                             } else {
                                 Log.e("UpdateManager", "Download failed with status: $status")
-                                Toast.makeText(context, "更新下載失敗", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, R.string.update_download_failed, Toast.LENGTH_SHORT).show()
                             }
                         }
                     }
@@ -353,12 +354,12 @@ class UpdateManager(private val context: Context) {
     private fun installApk(file: File) {
         try {
             if (!file.exists()) {
-                Toast.makeText(context, "安裝檔案未找到", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, R.string.install_file_not_found, Toast.LENGTH_SHORT).show()
                 return
             }
             
             if (file.length() < 1024) {
-                 Toast.makeText(context, "安裝檔案損毀", Toast.LENGTH_SHORT).show()
+                 Toast.makeText(context, R.string.install_file_corrupted, Toast.LENGTH_SHORT).show()
                  return
             }
 
@@ -376,7 +377,7 @@ class UpdateManager(private val context: Context) {
             context.startActivity(intent)
         } catch (e: Exception) {
             Log.e("UpdateManager", "Failed to install APK", e)
-            Toast.makeText(context, "安裝失敗: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "${context.getString(R.string.install_failed)}: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 }
