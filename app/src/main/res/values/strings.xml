@@ -185,6 +185,16 @@
     <string name="small">小</string>
     <string name="medium">中</string>
     <string name="large">大</string>
+    <string-array name="font_size_entries">
+        <item>@string/small</item>
+        <item>@string/medium</item>
+        <item>@string/large</item>
+    </string-array>
+    <string-array name="font_size_values">
+        <item>small</item>
+        <item>medium</item>
+        <item>large</item>
+    </string-array>
 
     <string name="accent_color">輔助顏色</string>
     <string name="accent_color_default">預設</string>
@@ -234,17 +244,19 @@
     <string name="wifi_password">Wi-Fi 密碼</string>
     <string name="send_wifi_credentials">傳送 Wi-Fi 憑證</string>
     <string name="wifi_credentials_sent">Wi-Fi 憑證已傳送</string>
-    <string name="wifi_status_connecting">正在連線...</string>
+    <string name="wifi_status_connecting">正在連線…</string>
     <string name="wifi_status_connected">連線成功</string>
     <string name="wifi_status_failed">連線失敗</string>
 
     <!-- Update -->
     <string name="update_settings">更新設定</string>
     <string name="update_channel">更新頻道</string>
-    <!-- 預設只有 Stable，其他動態加入 -->
+    <string name="update_channel_stable">正式版 (Main)</string>
+    <string name="update_channel_current">目前 (%s)</string>
+    <string name="update_channel_dev">開發版 (Dev)</string>
     <string-array name="update_channel_entries">
-        <item>正式版 (Main)</item>
-        <item>開發版 (Dev)</item>
+        <item>@string/update_channel_stable</item>
+        <item>@string/update_channel_dev</item>
     </string-array>
     <string-array name="update_channel_values">
         <item>main</item>
@@ -263,6 +275,16 @@
     <string name="update_check_failed">檢查更新失敗</string>
     <string name="new_app_id_warning_title">警告：安裝新應用程式</string>
     <string name="new_app_id_warning_message">此更新來自不同的頻道 (%1$s -> %2$s)，Application ID 已變更。這將會安裝一個全新的應用程式，您的舊資料將無法自動繼承。您確定要繼續嗎？</string>
+    <string name="update_channel_invalid_title">頻道已失效</string>
+    <string name="update_channel_invalid_message">注意：您目前的更新頻道 (%s) 未在遠端發布列表中找到。\n這可能表示該功能分支已被刪除或停止維護。\n\n建議切換至 Stable 或其他有效頻道。</string>
+    <string name="cannot_open_link">無法開啟連結</string>
+    <string name="checking_for_updates">正在檢查更新…</string>
+    <string name="install_different_version_title">安裝不同版本？</string>
+    <string name="install_different_version_message">注意：此更新版本屬於不同的頻道 (Application ID 不同)。\n安裝後將會產生另一個應用程式，與目前版本並存。\n\n</string>
+    <string name="reinstall_title">重新安裝？</string>
+    <string name="reinstall_message">目前已是最新版本。\n\n</string>
+    <string name="version_label">版本</string>
+    <string name="release_notes_label">更新內容</string>
 
     <!-- Engineering Mode -->
     <string name="developer_settings">開發者設定</string>

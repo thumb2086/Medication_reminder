@@ -28,6 +28,14 @@
             app:entryValues="@array/language_values"
             app:defaultValue="system"
             app:icon="@drawable/ic_language" />
+            
+        <ListPreference
+            app:key="font_size"
+            app:title="@string/font_size"
+            app:summary="%s"
+            app:entries="@array/font_size_entries"
+            app:entryValues="@array/font_size_values"
+            app:defaultValue="medium" />
 
         <ListPreference
             app:key="character"

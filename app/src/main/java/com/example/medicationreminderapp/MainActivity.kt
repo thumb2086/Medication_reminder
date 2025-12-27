@@ -69,11 +69,11 @@ class MainActivity : AppCompatActivity(), BluetoothLeManager.BleListener {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
         prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
         applyFontSize()
-        WindowCompat.setDecorFitsSystemWindows(window, false)
         applyCharacterTheme()
+        super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)

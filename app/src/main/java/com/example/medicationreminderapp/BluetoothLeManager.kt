@@ -410,6 +410,7 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
         Log.d(TAG, "TX: Set Alarm Slot $slot to $hour:$minute, Enable: $enable")
     }
 
+    @Suppress("unused")
     fun setEngineeringMode(enable: Boolean) {
         val command = byteArrayOf(0x13.toByte(), if (enable) 0x01.toByte() else 0x00.toByte())
         sendCommand(command)

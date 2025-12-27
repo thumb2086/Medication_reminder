@@ -1,5 +1,15 @@
 # 更新日誌
 
+## 2025-01-30
+### Code Quality & Bug Fixes
+*   **全面國際化 (i18n) 修正:**
+    *   **硬編碼字串移除:** 修正了 `SettingsFragment.kt` 中多處硬編碼的中文字串，包含「頻道已失效」的提示、更新檢查流程中的各種對話框標題與訊息，以及更新頻道的選項文字 (Stable, Current, Dev)。
+    *   **字串資源化:** 將所有上述的硬編碼字串，全部抽取至 `values/strings.xml`，並在 `values-en/strings.xml` 中提供了完整的英文翻譯。
+    *   **修正字體大小無法變更:** 調整了 `MainActivity.kt` 中 `onCreate()` 的程式碼順序，將 `applyFontSize()` 與 `applyCharacterTheme()` 移至 `super.onCreate()` 前，確保主題能正確被套用，解決了使用者設定字體大小後，介面沒有變化的問題。
+*   **修復設定頁面遺失:**
+    *   **還原設定頁面:** 透過 Git 歷史紀錄，將被意外重構的 `SettingsFragment.kt` 還原為 `PreferenceFragmentCompat` 版本，恢復了所有遺失的設定選項 (主題、語言、更新頻道等)。
+    *   **整合字體大小設定:** 將字體大小調整功能，以 `ListPreference` 的形式重新整合至 `preferences.xml`，使其與其他設定項目的風格和操作保持一致。
+
 ## 2025-01-29
 ### Features
 *   **字體大小調整功能:**

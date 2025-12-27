@@ -184,6 +184,16 @@
     <string name="small">Small</string>
     <string name="medium">Medium</string>
     <string name="large">Large</string>
+    <string-array name="font_size_entries">
+        <item>@string/small</item>
+        <item>@string/medium</item>
+        <item>@string/large</item>
+    </string-array>
+    <string-array name="font_size_values">
+        <item>small</item>
+        <item>medium</item>
+        <item>large</item>
+    </string-array>
 
     <string name="accent_color">Accent Color</string>
     <string name="accent_color_default">Default</string>
@@ -233,16 +243,19 @@
     <string name="wifi_password">Wi-Fi Password</string>
     <string name="send_wifi_credentials">Send Wi-Fi Credentials</string>
     <string name="wifi_credentials_sent">Wi-Fi credentials sent</string>
-    <string name="wifi_status_connecting">Connecting...</string>
+    <string name="wifi_status_connecting">Connecting…</string>
     <string name="wifi_status_connected">Connected</string>
     <string name="wifi_status_failed">Connection Failed</string>
 
     <!-- Update -->
     <string name="update_settings">Update Settings</string>
     <string name="update_channel">Update Channel</string>
+    <string name="update_channel_stable">Stable (Main)</string>
+    <string name="update_channel_current">Current (%s)</string>
+    <string name="update_channel_dev">Dev</string>
     <string-array name="update_channel_entries">
-        <item>Stable (Main)</item>
-        <item>Development (Dev)</item>
+        <item>@string/update_channel_stable</item>
+        <item>@string/update_channel_dev</item>
     </string-array>
     <string-array name="update_channel_values">
         <item>main</item>
@@ -261,6 +274,16 @@
     <string name="update_check_failed">Failed to check for updates</string>
     <string name="new_app_id_warning_title">Warning: New App ID</string>
     <string name="new_app_id_warning_message">This update is from a different channel (%1$s -> %2$s) and has a new Application ID. This will install a new app and your old data will not be automatically transferred. Are you sure you want to continue?</string>
+    <string name="update_channel_invalid_title">Channel Invalid</string>
+    <string name="update_channel_invalid_message">Note: Your current update channel (%s) was not found in the remote release list.\nThis may mean the feature branch has been deleted or is no longer maintained.\n\nIt is recommended to switch to Stable or another valid channel.</string>
+    <string name="cannot_open_link">Cannot open link</string>
+    <string name="checking_for_updates">Checking for updates…</string>
+    <string name="install_different_version_title">Install different version?</string>
+    <string name="install_different_version_message">Note: This update belongs to a different channel (Application ID is different).\nIt will be installed as a separate application and will coexist with the current version.\n\n</string>
+    <string name="reinstall_title">Reinstall?</string>
+    <string name="reinstall_message">Already up-to-date.\n\n</string>
+    <string name="version_label">Version</string>
+    <string name="release_notes_label">Release Notes</string>
 
     <!-- Engineering Mode -->
     <string name="developer_settings">Developer Settings</string>
