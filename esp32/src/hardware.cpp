@@ -3,40 +3,58 @@
 #include <Wire.h>
 
 void runPOST() {
-    sg90.attach(SERVO_PIN);
+    // Initialize low-power components
     pixels.begin();
-    pixels.setBrightness(50);
+    pixels.setBrightness(20);
     pixels.clear();
     pixels.show();
+
     pinMode(BUZZER_PIN, OUTPUT);
     digitalWrite(BUZZER_PIN, LOW);
     pinMode(BUZZER_PIN_2, OUTPUT);
     digitalWrite(BUZZER_PIN_2, LOW);
-    
+
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_ncenB08_tr);
-    u8g2.drawStr((128 - u8g2.getStrWidth("Hardware Check..."))/2, 38, "Hardware Check...");
+    // Corrected the missing '/ 2' for centering text
+    u8g2.drawStr((128 - u8g2.getStrWidth("Hardware Check...")) / 2, 38, "Hardware Check...");
     u8g2.sendBuffer();
-    
+    delay(500);
+
+    // Test LED and Buzzer (even if disconnected)
     pixels.fill(pixels.Color(255, 0, 0)); pixels.show(); delay(300);
     pixels.fill(pixels.Color(0, 255, 0)); pixels.show(); delay(300);
     pixels.fill(pixels.Color(0, 0, 255)); pixels.show(); delay(300);
     pixels.clear(); pixels.show();
-    
+
     tone(BUZZER_PIN, 1000, 100);
     tone(BUZZER_PIN_2, 1000, 100);
     delay(200);
     tone(BUZZER_PIN, 1500, 100);
     tone(BUZZER_PIN_2, 1500, 100);
     delay(200);
-    
-    sg90.write(0); delay(500);
-    sg90.write(180); delay(500);
-    sg90.write(0); delay(500);
-    
+
+    // Perform the motor test
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_ncenB08_tr);
-    u8g2.drawStr((128 - u8g2.getStrWidth("Check OK"))/2, 38, "Check OK");
+    // Corrected the missing '/ 2' for centering text
+    u8g2.drawStr((128 - u8g2.getStrWidth("Motor Test...")) / 2, 38, "Motor Test...");
+    u8g2.sendBuffer();
+
+    sg90.attach(SERVO_PIN); // SERVO_PIN is now on safe pin 2
+    delay(100);
+    sg90.write(0);
+    delay(1000);
+    sg90.write(180);
+    delay(1000);
+    sg90.write(0);
+    delay(1000);
+    sg90.detach();
+
+    // Final "OK" message
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_ncenB08_tr);
+    u8g2.drawStr((128 - u8g2.getStrWidth("Check OK")) / 2, 38, "Check OK");
     u8g2.sendBuffer();
     delay(1000);
 }

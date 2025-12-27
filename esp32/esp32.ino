@@ -123,8 +123,13 @@ void setup() {
     Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
     u8g2.begin();
     u8g2.enableUTF8Print();
-    runPOST();
+
+    // Initialize sensor BEFORE power-hungry tasks
     dht.begin();
+
+    // Run hardware self-test (including motor)
+    runPOST();
+
     if (!SPIFFS.begin(true)) {
         Serial.println("SPIFFS mount failed");
         return;

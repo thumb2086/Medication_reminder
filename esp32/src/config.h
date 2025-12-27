@@ -22,7 +22,7 @@
 #define DHT_TYPE DHT11
 #define BUZZER_PIN 10
 #define BUZZER_PIN_2 11
-#define SERVO_PIN 3
+#define SERVO_PIN 27 // Changed from 3 to 27 to avoid Serial conflict
 #define WS2812_PIN 15
 #define NUM_LEDS 64
 
