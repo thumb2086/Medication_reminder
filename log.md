@@ -1,5 +1,11 @@
 # 更新日誌
 
+## 2025-02-01
+### Bug Fixes & Improvements
+*   **修正 App 內更新檢查邏輯:**
+    *   **釐清自動與手動檢查:** 重構 `UpdateManager.kt` 中的 `checkForUpdates` 方法，確保「自動檢查」嚴格限定於 App 自身的建置頻道 (如 `dev`, `nightly`)，解決了先前會錯誤提示更新的問題。現在只有「手動檢查」會遵循使用者在設定頁面選擇的頻道。
+    *   **修正版本比對 (SemVer):** 修正 `isNewerVersion` 方法，使其能正確處理預發行版 (e.g., `1.2.2-dev`) 與穩定版 (e.g., `1.2.2`) 的比對。現在，穩定版將被正確地視為比其對應的預發行版更新，符合 SemVer 規範。
+
 ## 2025-01-31
 ### Bug Fixes & Improvements
 *   **修正跨頻道更新檢查:** 修改了 `UpdateManager.kt` 的更新邏輯，移除了會自動檢查 Stable 頻道的行為。現在 App 只會檢查當前所選的更新頻道，解決了在 Nightly 版本下，仍然會提示有新版 (Stable) 的問題。

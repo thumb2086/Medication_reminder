@@ -2,19 +2,7 @@
 
 ### 下一步
 
-
-### 已完成
-
-*   [x] **修正編譯錯誤與更新邏輯**
-    *   修正 `strings.xml` 中 "update_channel_stable" not found in default locale 的編譯錯誤。
-    *   修正 `UpdateManager.kt` 的跨頻道更新檢查邏輯，確保 App 只檢查當前選擇的更新頻道。
-    *   修正 `MainActivity.kt` 中的多餘程式碼限定詞警告。
-*   [x] **全面國際化 (i18n) 修正**
-    *   找出所有在 `SettingsFragment.kt` 和其他相關檔案中硬編碼 (hardcoded) 的中文字串。
-    *   將這些字串抽取到 `values/strings.xml` 中。
-    *   在 `values-en/strings.xml` 中提供完整的英文翻譯。
-    *   確保 App 在英文介面下，不會再出現任何中文提示。
-*   [x] **繼續完成 WiFi 設定頁面**
-    *   讓使用者能在此頁面中輸入 Wi-Fi 名稱 (SSID) 與密碼。
-    *   將 Wi-Fi 憑證透過藍牙傳送給 ESP32 裝置。
-    *   處理傳送成功與失敗的各種情況，並提供明確的 UI 反饋。
+*   [ ] **修正與驗證 App 內更新邏輯**
+    *   區分自動檢查（僅檢查 App 自身頻道）與手動檢查（尊重使用者選擇）。
+    *   修正 `isNewerVersion` 的版本比對邏輯，使其符合 SemVer 規範，正確處理預發行版與穩定版的關係。
+    *   編譯並執行 App，確認自動更新與手動更新的行為符合預期。
