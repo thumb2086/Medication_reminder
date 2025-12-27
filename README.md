@@ -36,8 +36,9 @@ A smart medication reminder application integrated with an ESP32-based smart pil
 
 ## ESP32 Firmware
 
-The ESP32 firmware has been refactored into a modular architecture for improved readability, maintainability, and scalability. The code is organized into the following components located in the `esp32/src/` directory:
+The ESP32 firmware is designed for a modular and maintainable architecture, with all major components separated into individual files in the `esp32/src/` directory.
 
+### Core Modules
 *   **`main.ino`**: The main entry point that orchestrates the different modules.
 *   **`ble_handler`**: Manages all Bluetooth Low Energy (BLE) communication.
 *   **`display`**: Handles all screen drawing and UI logic.
@@ -45,10 +46,27 @@ The ESP32 firmware has been refactored into a modular architecture for improved 
 *   **`input`**: Manages user input from the rotary encoder and buttons.
 *   **`storage`**: Handles flash storage operations (SPIFFS, Preferences).
 *   **`wifi_ota`**: Manages Wi-Fi connectivity, NTP sync, and OTA updates.
-*   **`config.h`**: Centralized constants and configuration.
+*   **`config.h`**: Centralized constants, pin definitions, and configurations.
 *   **`globals.h`**: Global variable declarations.
 
-All original functionalities, including the power-on self-test (POST), have been preserved.
+### Pinout Configuration (`config.h`)
+
+The firmware is configured with a specific pinout for ESP32-C6 boards. **Warning:** Using pins reserved for the internal flash memory (like GPIO 6-11) or other dedicated functions (like USB on GPIO 12/13) will cause the device to crash. The default configuration uses safe, tested pins.
+
+| Function | Pin | Notes |
+| :--- | :---: | :--- |
+| I2C SDA | 22 | For OLED Display |
+| I2C SCL | 21 | For OLED Display |
+| Encoder A | 19 | Rotary Encoder |
+| Encoder B | 18 | Rotary Encoder |
+| Encoder Push | 20 | Rotary Encoder Button |
+| Confirm Button | 23 | | 
+| Back Button | 2 | Right Side Pin |
+| DHT Sensor | 1 | Left Side Pin, DHT11 Temp/Humid |
+| Buzzer 1 | 4 | Left Side Pin |
+| Buzzer 2 | 5 | Left Side Pin |
+| Servo Motor | 3 | | 
+| WS2812 LED Strip| 15 | | 
 
 ## Bluetooth Low Energy Protocol
 
