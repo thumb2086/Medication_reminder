@@ -10,19 +10,19 @@
 #define MAX_HISTORY 4800
 #define HISTORY_WINDOW_SIZE 60
 
-// ==================== 腳位定義 (v22.4 - ESP32-C6 相容性修正) ====================
+// ==================== 腳位定義 (v22.7 - C6 LEDC 馬達修正) ====================
 #define I2C_SDA_PIN 22
 #define I2C_SCL_PIN 21
 #define ENCODER_A_PIN GPIO_NUM_19
 #define ENCODER_B_PIN GPIO_NUM_18
 #define ENCODER_PSH_PIN GPIO_NUM_20
 #define BUTTON_CONFIRM_PIN 23
-#define BUTTON_BACK_PIN 2       // Moved to a safe pin on the right side
-#define DHT_PIN 1               // Moved to a safe pin on the left side
+#define BUTTON_BACK_PIN 2
+#define DHT_PIN 1
 #define DHT_TYPE DHT11
 #define BUZZER_PIN 4
 #define BUZZER_PIN_2 5
-#define SERVO_PIN 3             // Moved to a safe, existing pin
+#define SERVO_PIN 0             // Set to GPIO 0 based on user's successful test
 #define WS2812_PIN 15
 #define NUM_LEDS 64
 

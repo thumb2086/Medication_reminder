@@ -29,8 +29,11 @@ void startWiFiConnection() {
 }
 
 void handleWiFiConnection() {
-    Serial.println("DEBUG: handleWiFiConnection");
     if (wifiState != WIFI_CONNECTING) return;
+
+    // Only print debug message when actively trying to connect
+    Serial.println("DEBUG: handleWiFiConnection - Actively checking status...");
+
     if (WiFi.status() == WL_CONNECTED) {
         wifiState = WIFI_CONNECTED;
         Serial.printf("DEBUG: WiFi connected, IP: %s\n", WiFi.localIP().toString().c_str());

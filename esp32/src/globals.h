@@ -8,7 +8,7 @@
 #include <BLECharacteristic.h>
 #include <Preferences.h>
 #include "SPIFFS.h"
-#include <ESP32Servo.h>
+// #include <ESP32Servo.h> // Removed, using native LEDC
 #include <Adafruit_NeoPixel.h>
 #include "config.h"
 
@@ -20,7 +20,7 @@ extern DHT dht;
 extern BLECharacteristic *pDataEventCharacteristic;
 extern Preferences preferences;
 extern File historyFile;
-extern Servo sg90;
+// extern Servo sg90; // Removed, using native LEDC
 extern Adafruit_NeoPixel pixels;
 
 // ==================== 狀態與數據 ====================

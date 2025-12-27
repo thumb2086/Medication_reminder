@@ -16,7 +16,7 @@
 #include "SPIFFS.h"
 #include <ESPmDNS.h>
 #include <ArduinoOTA.h>
-#include <ESP32Servo.h>
+// #include <Servo.h> // No longer needed, using native LEDC for motor control
 #include <Adafruit_NeoPixel.h>
 
 #include "src/config.h"
@@ -34,7 +34,7 @@
 U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 AiEsp32RotaryEncoder rotaryEncoder(ENCODER_A_PIN, ENCODER_B_PIN, ENCODER_PSH_PIN, -1, 4);
 DHT dht(DHT_PIN, DHT_TYPE);
-Servo sg90;
+// Servo sg90; // No longer needed
 Adafruit_NeoPixel pixels(NUM_LEDS, WS2812_PIN, NEO_GRB + NEO_KHZ800);
 
 // ---- Wi-Fi & NTP & OTA 設定 ----
@@ -116,7 +116,7 @@ void returnToMainScreen() {
 
 void setup() {
     Serial.begin(115200);
-    delay(1000);
+    delay(3000); // Wait for PC to recognize USB, as per user's test code
     Serial.printf("\n--- SmartMedBox Firmware %s ---\n", FIRMWARE_VERSION);
     Serial.println("DEBUG: Starting setup().");
     pinMode(ENCODER_PSH_PIN, INPUT_PULLUP);
@@ -135,7 +135,7 @@ void setup() {
 
     if (!SPIFFS.begin(true)) {
         Serial.println("SPIFFS mount failed");
-        return;
+        // return; // We might want to allow operation even if SPIFFS fails
     }
     Serial.println("DEBUG: SPIFFS mounted.");
     initializeHistoryFile();

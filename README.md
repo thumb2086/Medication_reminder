@@ -65,7 +65,7 @@ The firmware is configured with a specific pinout for ESP32-C6 boards. **Warning
 | DHT Sensor | 1 | Left Side Pin, DHT11 Temp/Humid |
 | Buzzer 1 | 4 | Left Side Pin |
 | Buzzer 2 | 5 | Left Side Pin |
-| Servo Motor | 3 | | 
+| Servo Motor | 8 | Moved from 3 to troubleshoot issue |
 | WS2812 LED Strip| 15 | | 
 
 ## Bluetooth Low Energy Protocol

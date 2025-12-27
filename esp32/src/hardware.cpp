@@ -2,11 +2,41 @@
 #include "globals.h"
 #include <Wire.h>
 
+// Helper function to drive the servo to a specific angle using native LEDC
+void runServo(int angle) {
+    const int servoFreq = 50;       // Standard servo frequency
+    const int servoResolution = 16;   // 16-bit resolution for precise control
+
+    // Attach LEDC to the servo pin. On ESP32-C6 core 3.0+, this also sets up the channel.
+    if (!ledcAttach(SERVO_PIN, servoFreq, servoResolution)) {
+        Serial.println("ERROR: LEDC attach failed for Servo!");
+        return;
+    }
+
+    // Clamp the angle to the valid range
+    angle = constrain(angle, 0, 180);
+
+    // Map angle (0-180) to 16-bit duty cycle (0-65535)
+    // SG90 standard pulse width: 500us (0 deg) to 2500us (180 deg)
+    // For 50Hz, period is 20000us.
+    // Duty for 0 deg: (500 / 20000) * 65535 = 1638.375 -> 1638
+    // Duty for 180 deg: (2500 / 20000) * 65535 = 8191.875 -> 8192
+    int duty = map(angle, 0, 180, 1638, 8192);
+    
+    ledcWrite(SERVO_PIN, duty);
+    // Serial.printf("Servo -> %d degrees (Duty: %d)\n", angle, duty);
+
+    // A short delay is crucial for the servo to reach the position before detaching.
+    delay(500);
+    // Detach the pin to stop sending the signal, which prevents servo jitter and saves power.
+    ledcDetach(SERVO_PIN);
+}
+
 void runPOST() {
     Serial.println("DEBUG: runPOST - Starting Power-On Self-Test");
     // Initialize low-power components
     pixels.begin();
-    pixels.setBrightness(20);
+    pixels.setBrightness(5); // Lowered brightness to reduce eye strain
     pixels.clear();
     pixels.show();
 
@@ -36,22 +66,19 @@ void runPOST() {
     tone(BUZZER_PIN_2, 1500, 100);
     delay(200);
 
-    // Perform the motor test
-    Serial.println("DEBUG: Testing motor.");
+    // Perform the motor test using the new reliable method
+    Serial.println("DEBUG: Testing motor with user-validated LEDC method.");
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_ncenB08_tr);
     u8g2.drawStr((128 - u8g2.getStrWidth("Motor Test...")) / 2, 38, "Motor Test...");
     u8g2.sendBuffer();
 
-    sg90.attach(SERVO_PIN); // SERVO_PIN is now on safe pin 2
-    delay(100);
-    sg90.write(0);
-    delay(1000);
-    sg90.write(180);
-    delay(1000);
-    sg90.write(0);
-    delay(1000);
-    sg90.detach();
+    runServo(0);
+    delay(500); // Wait between movements
+    runServo(180);
+    delay(500);
+    runServo(0);
+    delay(500);
 
     // Final "OK" message
     u8g2.clearBuffer();
@@ -63,14 +90,11 @@ void runPOST() {
 }
 
 void playTickSound() {
-    // This function is too simple for a debug message, but you can add one if needed.
-    // Serial.println("DEBUG: playTickSound");
     tone(BUZZER_PIN, 2000, 20);
     tone(BUZZER_PIN_2, 2000, 20);
 }
 
 void playConfirmSound() {
-    // Serial.println("DEBUG: playConfirmSound");
     tone(BUZZER_PIN, 1500, 50);
     tone(BUZZER_PIN_2, 1500, 50);
     delay(60);
@@ -81,14 +105,12 @@ void playConfirmSound() {
 void updateSensorReadings() {
     if (millis() - lastSensorReadTime >= SENSOR_READ_INTERVAL) {
         lastSensorReadTime = millis();
-        // Serial.println("DEBUG: Reading DHT sensor.");
         float h = dht.readHumidity();
         float t = dht.readTemperature();
         if (!isnan(h) && !isnan(t)) {
             cachedHum = h;
             cachedTemp = t - TEMP_CALIBRATION_OFFSET;
             sensorDataValid = true;
-            // Serial.printf("DEBUG: Sensor data valid. Temp: %.1f, Hum: %.1f\n", cachedTemp, cachedHum);
         } else {
             sensorDataValid = false;
             Serial.println("DEBUG: Failed to read from DHT sensor!");
@@ -103,7 +125,6 @@ void checkAlarm() {
     lastAlarmCheckTime = millis();
     struct tm timeinfo;
     if (!getLocalTime(&timeinfo)) return;
-    // Serial.printf("DEBUG: Checking alarm for %02d:%02d. Current time: %02d:%02d:%02d\n", alarmHour, alarmMinute, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
     if (timeinfo.tm_hour == alarmHour && timeinfo.tm_min == alarmMinute && timeinfo.tm_sec == 0) {
         Serial.println("DEBUG: ALARM TRIGGERED!");
         Serial.println("ALARM TRIGGERED!");
