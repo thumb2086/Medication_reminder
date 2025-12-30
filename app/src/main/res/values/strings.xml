@@ -53,6 +53,20 @@
     <string name="error_sensor">錯誤：溫濕度感測器異常！</string>
     <string name="error_unknown">藥盒回報未知錯誤，代碼: %d</string>
     <string name="connect_box_first">請先連接藥盒</string>
+    <string name="ble_status_connected_searching">已連接至 %s，正在搜尋服務…</string>
+    <string name="ble_status_connect_error">連接失敗，狀態碼: %d</string>
+    <string name="ble_status_service_not_found">找不到指定的服務 UUID</string>
+    <string name="ble_status_char_not_found">找不到指定的特徵 UUID</string>
+    <string name="ble_status_enabling_notifications">服務和特徵已找到，正在啟用通知…</string>
+    <string name="ble_status_service_discovery_failed">服務搜尋失敗，狀態碼: %d</string>
+    <string name="ble_status_notifications_enabled">通知已成功啟用</string>
+    <string name="ble_status_notification_enable_failed">啟用通知失敗，狀態碼: %d</string>
+    <string name="ble_status_write_failed">寫入命令失敗</string>
+    <string name="ble_status_device_error">裝置錯誤: %s</string>
+    <string name="ble_status_found_connecting">找到藥盒，正在連接…</string>
+    <string name="ble_status_scan_failed">掃描失敗，錯誤碼: %d</string>
+    <string name="ble_status_scanning">正在掃描智慧藥盒…</string>
+    <string name="ble_status_scan_timeout">掃描超時，未找到藥盒</string>
 
     <!-- User Input & Validation -->
     <string name="fill_all_fields">請填寫所有必填欄位</string>
@@ -133,7 +147,7 @@
     <!-- New Strings for Fragment Architecture -->
     <string name="connect_box">連接藥盒</string>
     <string name="disconnect_box">斷開藥盒</string>
-    <string name="disconnected">未連接</string>
+    <string name="disconnected">已斷線</string>
     <string name="how_many_meds_prompt">要新增幾種藥物？</string>
     <string name="medication_name">藥物名稱</string>
     <string name="slot_number">藥倉編號</string>
@@ -233,6 +247,7 @@
     </string-array>
 
     <string name="kuromi_image_description">酷洛米圖片</string>
+    <string name="character_image_description">角色圖片</string>
 
     <!-- Wi-Fi Settings -->
     <string name="connection_settings">連線設定</string>
@@ -247,6 +262,7 @@
     <string name="wifi_status_connecting">正在連線…</string>
     <string name="wifi_status_connected">連線成功</string>
     <string name="wifi_status_failed">連線失敗</string>
+    <string name="wifi_icon_description">Wi-Fi 圖示</string>
 
     <!-- Update -->
     <string name="update_settings">更新設定</string>
@@ -263,6 +279,7 @@
     </string-array>
     <string name="update_channel_summary">目前所在頻道: %s</string>
     <string name="check_for_updates">檢查更新</string>
+    <string name="check_for_updates_summary">Check for new app versions</string>
     <string name="update_available_title">發現新版本</string>
     <string name="update_available_message">發現新版本 %s。您想要現在更新嗎？\n\n更新內容：\n%s</string>
     <string name="update_now">立即更新</string>

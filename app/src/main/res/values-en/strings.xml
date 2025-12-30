@@ -52,6 +52,20 @@
     <string name="error_sensor">Error: Temperature/Humidity sensor anomaly!</string>
     <string name="error_unknown">Pillbox reported an unknown error, code: %d</string>
     <string name="connect_box_first">Please connect to the pillbox first</string>
+    <string name="ble_status_connected_searching">Connected to %s, searching for services…</string>
+    <string name="ble_status_connect_error">Connection failed, status code: %d</string>
+    <string name="ble_status_service_not_found">Could not find the specified service UUID</string>
+    <string name="ble_status_char_not_found">Could not find the specified characteristic UUID</string>
+    <string name="ble_status_enabling_notifications">Services and characteristics found, enabling notifications…</string>
+    <string name="ble_status_service_discovery_failed">Service discovery failed, status code: %d</string>
+    <string name="ble_status_notifications_enabled">Notifications enabled successfully</string>
+    <string name="ble_status_notification_enable_failed">Failed to enable notifications, status code: %d</string>
+    <string name="ble_status_write_failed">Failed to write command</string>
+    <string name="ble_status_device_error">Device error: %s</string>
+    <string name="ble_status_found_connecting">Pillbox found, connecting…</string>
+    <string name="ble_status_scan_failed">Scan failed, error code: %d</string>
+    <string name="ble_status_scanning">Scanning for smart pillbox…</string>
+    <string name="ble_status_scan_timeout">Scan timed out, pillbox not found</string>
 
     <!-- User Input & Validation -->
     <string name="fill_all_fields">Please fill all required fields</string>
@@ -130,10 +144,10 @@
     <string name="how_many_medications">How many medications to add?</string>
 
     <!-- New Strings for Fragment Architecture -->
-    <string name="connect_box">Connect Pillbox</string>
-    <string name="disconnect_box">Disconnect Pillbox</string>
+    <string name="connect_box">Connect\nPillbox</string>
+    <string name="disconnect_box">Disconnect\nPillbox</string>
     <string name="disconnected">Disconnected</string>
-    <string name="how_many_meds_prompt">How many medications to add?</string>
+    <string name="how_many_meds_prompt">Number of Medications</string>
     <string name="medication_name">Medication Name</string>
     <string name="slot_number">Slot Number</string>
     <string name="start_date">Start Date</string>
@@ -232,6 +246,7 @@
     </string-array>
 
     <string name="kuromi_image_description">Kuromi image</string>
+    <string name="character_image_description">Character image</string>
 
     <!-- Wi-Fi Settings -->
     <string name="connection_settings">Connection Settings</string>
@@ -246,6 +261,7 @@
     <string name="wifi_status_connecting">Connecting…</string>
     <string name="wifi_status_connected">Connected</string>
     <string name="wifi_status_failed">Connection Failed</string>
+    <string name="wifi_icon_description">Wi-Fi Icon</string>
 
     <!-- Update -->
     <string name="update_settings">Update Settings</string>
@@ -262,6 +278,7 @@
     </string-array>
     <string name="update_channel_summary">Current Channel: %s</string>
     <string name="check_for_updates">Check for Updates</string>
+    <string name="check_for_updates_summary">Check for new app versions</string>
     <string name="update_available_title">Update Available</string>
     <string name="update_available_message">New version %s is available. Do you want to update now?\n\nRelease Notes:\n%s</string>
     <string name="update_now">Update Now</string>
