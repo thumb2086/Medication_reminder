@@ -22,6 +22,7 @@ import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
 import androidx.core.os.LocaleListCompat
@@ -153,8 +154,8 @@ class MainActivity : BaseActivity(), BluetoothLeManager.BleListener {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
-                    viewModel.bleStatus.collect { status ->
-                        viewModel.setBleStatus(status)
+                    viewModel.bleStatus.collect { statusResId ->
+                        viewModel.setBleStatus(statusResId)
                     }
                 }
 
@@ -274,8 +275,8 @@ class MainActivity : BaseActivity(), BluetoothLeManager.BleListener {
 
     // --- BluetoothLeManager.BleListener Callbacks ---
 
-    override fun onStatusUpdate(message: String) {
-        viewModel.setBleStatus(message)
+    override fun onStatusUpdate(@StringRes messageResId: Int, vararg formatArgs: Any) {
+        viewModel.setBleStatus(messageResId)
     }
 
     override fun onDeviceConnected() {

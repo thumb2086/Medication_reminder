@@ -19,6 +19,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.widget.Toast
+import androidx.annotation.StringRes
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -34,7 +35,7 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
     var listener: BleListener? = null
 
     interface BleListener {
-        fun onStatusUpdate(message: String)
+        fun onStatusUpdate(@StringRes messageResId: Int, vararg formatArgs: Any)
         fun onDeviceConnected()
         fun onDeviceDisconnected()
         fun onProtocolVersionReported(version: Int)
@@ -78,7 +79,7 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
                     Log.d(TAG, "Connected to $deviceAddress")
-                    listener?.onStatusUpdate("已連接至 $deviceAddress，正在搜尋服務...")
+                    listener?.onStatusUpdate(R.string.ble_status_connected_searching, deviceAddress)
                     handler.post { gatt.discoverServices() }
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                     Log.d(TAG, "Disconnected from $deviceAddress")
@@ -96,7 +97,7 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
                 isCommandInProgress = false
                 commandQueue.clear()
                 protocolVersion = 1 // Reset on disconnect
-                listener?.onStatusUpdate("連接失敗，狀態碼: $status")
+                listener?.onStatusUpdate(R.string.ble_status_connect_error, status)
                 listener?.onDeviceDisconnected()
             }
         }
@@ -106,7 +107,7 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
                 val service = gatt.getService(SERVICE_UUID)
                 if (service == null) {
                     Log.e(TAG, "Service not found: $SERVICE_UUID")
-                    listener?.onStatusUpdate("找不到指定的服務 UUID")
+                    listener?.onStatusUpdate(R.string.ble_status_service_not_found)
                     disconnect()
                     return
                 }
@@ -114,15 +115,15 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
                 notifyCharacteristic = service.getCharacteristic(NOTIFY_CHARACTERISTIC_UUID)
                 if (writeCharacteristic == null || notifyCharacteristic == null) {
                     Log.e(TAG, "Characteristics not found")
-                    listener?.onStatusUpdate("找不到指定的特徵 UUID")
+                    listener?.onStatusUpdate(R.string.ble_status_char_not_found)
                     disconnect()
                     return
                 }
-                listener?.onStatusUpdate("服務和特徵已找到，正在啟用通知...")
+                listener?.onStatusUpdate(R.string.ble_status_enabling_notifications)
                 enableNotifications()
             } else {
                 Log.e(TAG, "Service discovery failed: $status")
-                listener?.onStatusUpdate("服務搜尋失敗，狀態碼: $status")
+                listener?.onStatusUpdate(R.string.ble_status_service_discovery_failed, status)
                 disconnect()
             }
         }
@@ -150,14 +151,14 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
         override fun onDescriptorWrite(gatt: BluetoothGatt?, descriptor: BluetoothGattDescriptor?, status: Int) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 Log.d(TAG, "Notifications enabled")
-                listener?.onStatusUpdate("通知已成功啟用")
+                listener?.onStatusUpdate(R.string.ble_status_notifications_enabled)
                 listener?.onDeviceConnected()
                 // Connection is established, now query for protocol version and enable realtime data
                 requestProtocolVersion()
                 enableRealtimeSensorData() // New: Automatically enable realtime sensor data
             } else {
                 Log.e(TAG, "Descriptor write failed: $status")
-                listener?.onStatusUpdate("啟用通知失敗，狀態碼: $status")
+                listener?.onStatusUpdate(R.string.ble_status_notification_enable_failed, status)
                 disconnect()
             }
         }
@@ -169,7 +170,7 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
                     processNextCommand()
                 } else {
                     Log.e(TAG, "Characteristic write failed: $status")
-                    listener?.onStatusUpdate("寫入命令失敗")
+                    listener?.onStatusUpdate(R.string.ble_status_write_failed)
                     commandQueue.clear()
                 }
             }, 150)
@@ -270,7 +271,7 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
                             else -> "未知錯誤: $errorCode"
                         }
                         Log.e(TAG, "Device Error: $errorMsg")
-                        listener?.onStatusUpdate("裝置錯誤: $errorMsg")
+                        listener?.onStatusUpdate(R.string.ble_status_device_error, errorMsg)
                         listener?.onError(errorCode)
                     }
                 }
@@ -283,25 +284,25 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
             if (result.device.name == DEVICE_NAME) {
                 stopScan()
                 Log.d(TAG, "Found device: ${result.device.address}")
-                listener?.onStatusUpdate("找到藥盒，正在連接...")
+                listener?.onStatusUpdate(R.string.ble_status_found_connecting)
                 connect(result.device)
             }
         }
         override fun onScanFailed(errorCode: Int) {
             isScanning = false
             Log.e(TAG, "Scan failed: $errorCode")
-            listener?.onStatusUpdate("掃描失敗，錯誤碼: $errorCode")
+            listener?.onStatusUpdate(R.string.ble_status_scan_failed, errorCode)
         }
     }
 
     fun startScan() {
         if (isScanning) return
-        listener?.onStatusUpdate("正在掃描智慧藥盒...")
+        listener?.onStatusUpdate(R.string.ble_status_scanning)
         isScanning = true
         handler.postDelayed({
             if (isScanning) {
                 stopScan()
-                listener?.onStatusUpdate("掃描超時，未找到藥盒")
+                listener?.onStatusUpdate(R.string.ble_status_scan_timeout)
             }
         }, 10000)
         val scanSettings = ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build()

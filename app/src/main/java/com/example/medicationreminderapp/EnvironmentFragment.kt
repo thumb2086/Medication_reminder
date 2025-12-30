@@ -196,7 +196,7 @@ class EnvironmentFragment : Fragment() {
 
                 launch {
                     viewModel.bleStatus.collect {
-                        if (it == "Historic data sync complete" && binding.swipeRefreshLayout.isRefreshing) {
+                        if (it.toString() == getString(R.string.historic_data_sync_complete) && binding.swipeRefreshLayout.isRefreshing) {
                             binding.swipeRefreshLayout.isRefreshing = false
                         }
                     }
