@@ -119,10 +119,16 @@
 
 # ESP32 Firmware Roadmap
 
+## Epic F0: Technical Debt & Refactoring
+此史詩專注於改善程式碼品質與可維護性。
+
+### v22.1.1: Code Cleanup
+- [ ] **重構:** 移除 `esp32/src/config.h` 中關於 `v22.7` 的多餘註解，避免版本號混淆。
+
 ## Epic F1: Core BLE Communication
 此史詩專注於實現智慧藥盒與 App 的核心藍牙通訊協議。
 
-### v1.0.0: Motor & Button Communication
+### v22.1.0: Motor & Button Communication
 - [ ] **馬達控制:** 實作藍牙協議，使馬達能根據 App 發送的指令，精準轉動到對應的藥倉角度。
 - [ ] **按鈕回報:** 實作藍牙協議，當使用者按下藥盒上的實體按鈕時，能主動發送「已服藥」訊號給 App。
 - [ ] **基礎建設:** 建立穩定的藍牙連線、廣播與服務基礎框架。
@@ -130,7 +136,7 @@
 ## Epic F2: System & Updates
 此史詩專注於韌體的系統層級功能，如 OTA 與環境監測。
 
-### v1.1.0: OTA & Environment Sensing
+### v22.1.1: OTA & Environment Sensing
 - [ ] **韌體OTA:** 建立並測試 BLE OTA (空中升級) 功能，允許 App 安全地更新韌體，為後續功能迭代打下基礎。
 - [ ] **環境回報:** 實作讀取溫濕度感測器 (DHT) 數據的邏輯，並透過藍牙協議定時回報給 App。
 
