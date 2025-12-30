@@ -67,6 +67,7 @@
     <string name="ble_status_scan_failed">掃描失敗，錯誤碼: %d</string>
     <string name="ble_status_scanning">正在掃描智慧藥盒…</string>
     <string name="ble_status_scan_timeout">掃描超時，未找到藥盒</string>
+    <string name="historic_data_sync_complete">歷史資料同步完成</string>
 
     <!-- User Input & Validation -->
     <string name="fill_all_fields">請填寫所有必填欄位</string>

@@ -66,6 +66,7 @@
     <string name="ble_status_scan_failed">Scan failed, error code: %d</string>
     <string name="ble_status_scanning">Scanning for smart pillbox…</string>
     <string name="ble_status_scan_timeout">Scan timed out, pillbox not found</string>
+    <string name="historic_data_sync_complete">Historic data sync complete</string>
 
     <!-- User Input & Validation -->
     <string name="fill_all_fields">Please fill all required fields</string>
