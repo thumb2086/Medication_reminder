@@ -145,7 +145,7 @@ android {
     val finalApplicationId = when {
         isProduction -> baseApplicationId
         isDev -> "$baseApplicationId.dev"
-        else -> "$baseApplicationId.$safeBranchName"
+        else -> "$baseApplicationId.nightly"
     }
     
     val finalAppName = if (isProduction) appName else "$appName ($branchName)"

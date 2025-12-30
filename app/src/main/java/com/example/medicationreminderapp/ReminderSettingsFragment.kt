@@ -109,7 +109,7 @@ class ReminderSettingsFragment : Fragment() {
 
                 launch {
                     viewModel.bleStatus.collect { status ->
-                        binding.bleStatusTextView.text = status.toString()
+                        binding.bleStatusTextView.text = getString(status)
                     }
                 }
 

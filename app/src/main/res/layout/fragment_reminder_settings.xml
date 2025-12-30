@@ -116,7 +116,9 @@
                 android:layout_weight="1"
                 android:layout_marginEnd="8dp"
                 android:text="@string/edit_reminder"
-                app:icon="@drawable/ic_edit"/>
+                android:textColor="?attr/colorPrimary"
+                app:icon="@drawable/ic_edit"
+                app:iconTint="?attr/colorPrimary"/>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/deleteReminderButton"
@@ -125,7 +127,9 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="@string/delete_reminder"
-                app:icon="@drawable/ic_delete"/>
+                android:textColor="?attr/colorPrimary"
+                app:icon="@drawable/ic_delete"
+                app:iconTint="?attr/colorPrimary"/>
         </LinearLayout>
         
         <ImageView
