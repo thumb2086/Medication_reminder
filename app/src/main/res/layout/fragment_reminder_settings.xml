@@ -24,39 +24,45 @@
             app:cardElevation="4dp"
             android:layout_marginBottom="16dp">
 
-            <LinearLayout
+            <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
                 android:padding="16dp">
 
                 <Button
                     android:id="@+id/connectButton"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/connect_box"
                     app:icon="@drawable/ic_bluetooth"
-                    style="@style/Widget.MaterialComponents.Button.TextButton"/>
-                
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
                 <Button
                     android:id="@+id/disconnectButton"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/disconnect_box"
                     app:icon="@drawable/ic_bluetooth_disabled"
-                    style="@style/Widget.MaterialComponents.Button.TextButton" />
+                    app:layout_constraintStart_toEndOf="@id/connectButton"
+                    app:layout_constraintTop_toTopOf="parent" />
 
                 <TextView
                     android:id="@+id/bleStatusTextView"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
                     android:layout_marginStart="16dp"
                     android:text="@string/disconnected"
                     android:textAppearance="?attr/textAppearanceBody1"
-                    android:textColor="?attr/colorOnSurface"/>
-            </LinearLayout>
+                    android:textColor="?attr/colorOnSurface"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toEndOf="@id/disconnectButton"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
         </com.google.android.material.card.MaterialCardView>
 
         <!-- Medication Count Spinner -->
@@ -65,7 +71,6 @@
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="@string/how_many_meds_prompt"
             android:layout_marginBottom="16dp">
 
             <AutoCompleteTextView
@@ -73,6 +78,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:inputType="none"
+                android:hint="@string/how_many_meds_prompt"
                 android:padding="16dp"/>
 
         </com.google.android.material.textfield.TextInputLayout>
@@ -110,7 +116,9 @@
                 android:layout_weight="1"
                 android:layout_marginEnd="8dp"
                 android:text="@string/edit_reminder"
-                app:icon="@drawable/ic_edit"/>
+                android:textColor="?attr/colorPrimary"
+                app:icon="@drawable/ic_edit"
+                app:iconTint="?attr/colorPrimary"/>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/deleteReminderButton"
@@ -119,7 +127,9 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="@string/delete_reminder"
-                app:icon="@drawable/ic_delete"/>
+                android:textColor="?attr/colorPrimary"
+                app:icon="@drawable/ic_delete"
+                app:iconTint="?attr/colorPrimary"/>
         </LinearLayout>
         
         <ImageView

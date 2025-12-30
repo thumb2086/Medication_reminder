@@ -61,6 +61,7 @@
         <Preference
             app:key="check_for_updates"
             app:title="@string/check_for_updates"
+            app:summary="@string/check_for_updates_summary"
             app:icon="@drawable/ic_update"/>
     </PreferenceCategory>
 

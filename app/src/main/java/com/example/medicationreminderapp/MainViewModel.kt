@@ -1,5 +1,6 @@
 package com.example.medicationreminderapp
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.medicationreminderapp.util.SingleLiveEvent
@@ -19,8 +20,8 @@ class MainViewModel @Inject constructor(
     private val _isBleConnected = MutableStateFlow(false)
     val isBleConnected: StateFlow<Boolean> = _isBleConnected.asStateFlow()
 
-    private val _bleStatus = MutableStateFlow("Disconnected")
-    val bleStatus: StateFlow<String> = _bleStatus.asStateFlow()
+    private val _bleStatus = MutableStateFlow(R.string.disconnected)
+    val bleStatus: StateFlow<Int> = _bleStatus.asStateFlow()
 
     // Delegate Data StateFlows to Repository
     val isEngineeringMode: StateFlow<Boolean> = repository.isEngineeringMode
@@ -46,12 +47,12 @@ class MainViewModel @Inject constructor(
     fun setBleConnectionState(isConnected: Boolean) {
         _isBleConnected.value = isConnected
         if (!isConnected) {
-            _bleStatus.value = "Disconnected"
+            _bleStatus.value = R.string.disconnected
         }
     }
 
-    fun setBleStatus(status: String) {
-        _bleStatus.value = status
+    fun setBleStatus(@StringRes statusResId: Int) {
+        _bleStatus.value = statusResId
     }
 
     fun setEngineeringMode(isEnabled: Boolean) {
@@ -73,7 +74,8 @@ class MainViewModel @Inject constructor(
 
     fun onHistoricDataSyncCompleted() {
         repository.commitHistoricDataBuffer()
-        _bleStatus.value = "Historic data sync complete"
+        // This should be a string resource
+        // _bleStatus.value = "Historic data sync complete"
     }
 
     fun addMedications(newMedications: List<Medication>) {

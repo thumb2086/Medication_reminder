@@ -109,7 +109,7 @@ class ReminderSettingsFragment : Fragment() {
 
                 launch {
                     viewModel.bleStatus.collect { status ->
-                        binding.bleStatusTextView.text = status
+                        binding.bleStatusTextView.text = getString(status)
                     }
                 }
 
@@ -145,8 +145,8 @@ class ReminderSettingsFragment : Fragment() {
         }
 
         binding.medicationCountSpinner.setOnItemClickListener { _, _, position, _ ->
-            val selectedCount = (position + 1)
-            updateMedicationCards(selectedCount)
+            val selectedCount = (position + 1).toString()
+            updateMedicationCards(selectedCount.toInt())
             editingMedication = null
             binding.addReminderButton.text = getString(R.string.add_medication_reminder)
             // Hide image when form is active
