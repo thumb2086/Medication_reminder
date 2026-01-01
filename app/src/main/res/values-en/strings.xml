@@ -310,6 +310,7 @@
     <string name="install_file_not_found">Installation file not found</string>
     <string name="install_file_corrupted">Installation file corrupted</string>
     <string name="install_failed">Installation failed</string>
+    <string name="signature_mismatch_warning">If installation fails, please manually uninstall the current version before reinstalling.</string>
 
     <!-- Engineering Mode -->
     <string name="developer_settings">Developer Settings</string>
