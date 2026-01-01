@@ -3,26 +3,6 @@
 ## Epic 2: 智慧互動核心 (Smart Interaction Core)
 此史詩專注於實現 App 與智慧藥盒的核心互動，包含連線穩定性、放藥引導與服藥確認，打造無縫的硬體整合體驗。
 
-### v1.3.0: 藍牙自動重連
-- [x] **體驗優化: 藍牙自動重連**
-  - **詳細步驟:**
-    - [x] 在 `BluetoothLeManager` 的斷線邏輯中，新增一個 flag 來判斷是否為意外斷線。
-    - [x] 建立一個 `startReconnectSequence()` 方法，使用協程的 `delay` 實現有次數限制、有延遲的重連嘗試。
-    - [x] 在 `BleListener` 介面新增 `onReconnectStarted` 和 `onReconnectFailed` 回調。
-    - [x] 在 `ViewModel` 中實作新的回調，更新 UI 狀態以告知使用者「正在嘗試重連...」。
-
-### v1.3.1: 智慧放藥引導
-- [x] **App 端: 智慧放藥引導**
-  - **詳細步驟:**
-    - [x] 在新增/編輯藥物的流程中，增加一個「引導」按鈕。
-    - [x] 點擊「引導」後，App 透過藍牙傳送指令到 ESP32。
-    - [x] 在 `BluetoothLeManager` 中新增對應的 BLE 通訊方法 (`guidePillbox`)。
-- [x] **ESP32 端: 馬達控制**
-  - **詳細步驟:**
-    - [x] 在 `ble_handler.cpp` 中新增對 `0x42` (CMD_GUIDE_PILLBOX) 指令的處理。
-    - [x] 在 `config.h` 中定義 `CMD_GUIDE_PILLBOX`。
-    - [x] 在 `hardware.cpp` 中實作 `guideToSlot(int slot)` 函式，驅動馬達轉動到指定藥倉。
-
 ### v1.3.2: 硬體確認服藥
 - [ ] **App 端: 硬體確認服藥**
   - **詳細步驟:**
@@ -114,12 +94,6 @@
     - **詳細步驟:**
       - [ ] 在 `hardware.cpp` 中，實作讀取溫濕度感測器 (DHT) 數據的邏輯。
       - [ ] 透過 `ble_handler.cpp` 中的 `sendSensorDataReport()` 或 `sendRealtimeSensorData()` 函式，將數據定時回報給 App。
-
-## Epic 5: 韌體重構與維護 (Firmware Refactoring & Maintenance)
-此史詩專注於改善 ESP32 韌體的程式碼品質與可維護性。
-
-### v22.1.1: Code Cleanup
-- [x] **重構:** 移除 `esp32/src/config.h` 中關於 `v22.7` 的多餘註解，避免版本號混淆。
 
 ---
 
