@@ -145,3 +145,67 @@ This project uses GitHub Actions for continuous integration and automated versio
 ## License
 
 [MIT License](LICENSE)
+
+---
+
+## Project Structure
+
+This project consists of two main parts: the Android application (`app/`) and the ESP32 firmware (`esp32/`).
+
+#### Android Application (`app/`)
+
+-   **`app/src/main/AndroidManifest.xml`**: Defines the application's core properties, permissions, and components (activities, services, receivers).
+-   **`app/src/main/java/com/example/medicationreminderapp/`**: Contains the Kotlin source code for the Android application, organized into several sub-packages and top-level files:
+    -   **`di/`**: Dependency Injection setup (using Hilt).
+        -   `AppModule.kt`: Defines modules for providing dependencies across the application.
+    -   **`ui/`**: UI-related components, primarily Fragments and ViewModels.
+        -   `LogFragment.kt`: Displays application logs.
+        -   `MainViewModel.kt`: ViewModel for `MainActivity`, managing UI-related data and logic.
+        -   `ReminderFragment.kt`: Fragment for displaying medication reminders.
+        -   `ViewPagerAdapter.kt`: Adapter for managing fragments in a ViewPager.
+        -   `EnvironmentFragment.kt`: Displays real-time environmental data from the ESP32.
+    -   **`adapter/`**: Adapters for RecyclerViews and other list-based UI components.
+        -   `MedicationListAdapter.kt`: Adapter for displaying the list of medications.
+    -   **`util/`**: Utility classes for various helper functions.
+        -   `UpdateManager.kt`: Handles in-app update logic, including fetching and installing updates.
+        -   `SingleLiveEvent.kt`: A custom LiveData implementation for one-time events.
+    -   **`Medication.kt`**: Data class representing a medication.
+    -   **`BaseActivity.kt`**: A base Activity class providing common functionality (e.g., theme application, font size adjustment).
+    -   **`BootReceiver.kt`**: BroadcastReceiver that re-schedules alarms after device reboot.
+    -   **`MainActivity.kt`**: The main entry point of the application, hosting various fragments and managing overall UI flow.
+    -   **`AlarmReceiver.kt`**: BroadcastReceiver for handling scheduled medication alarms.
+    -   **`AppRepository.kt`**: The central data repository, abstracting data sources (e.g., local database, Bluetooth).
+    -   **`AlarmScheduler.kt`**: Manages scheduling and canceling medication alarms.
+    -   **`SnoozeReceiver.kt`**: BroadcastReceiver for handling snooze actions from notifications.
+    -   **`HistoryFragment.kt`**: Displays the user's medication intake history.
+    -   **`SensorDataPoint.kt`**: Data class for environmental sensor readings (temperature, humidity, timestamp).
+    -   **`SettingsFragment.kt`**: Displays and manages application settings (e.g., theme, language, update channel).
+    -   **`BluetoothLeManager.kt`**: Manages Bluetooth Low Energy (BLE) communication with the ESP32 smart pillbox.
+    -   **`WiFiConfigFragment.kt`**: Fragment for configuring Wi-Fi settings on the ESP32 device.
+    -   **`ImagePickerPreference.kt`**: Custom Preference class for selecting images in settings.
+    -   **`MedicationListFragment.kt`**: Fragment for displaying and managing the list of medications.
+    -   **`MedicationTakenReceiver.kt`**: BroadcastReceiver for handling "medication taken" events from the ESP32.
+    -   **`ReminderSettingsFragment.kt`**: Fragment for configuring specific reminder settings.
+    -   **`MedicationReminderApplication.kt`**: Custom `Application` class, primarily used for Hilt initialization and global application setup.
+-   **`app/src/main/res/`**: Contains all application resources (layouts, drawables, values, etc.).
+    -   **`drawable/`**: Drawable resources (icons, images, XML drawables).
+    -   **`layout/`**: XML layout files for activities, fragments, and list items.
+    -   **`menu/`**: XML files defining application menus.
+    -   **`xml/`**: XML files for preferences and other configurations (e.g., `preferences.xml`).
+    -   **`values/`**: Default string, color, style, and theme definitions.
+    -   **`values-en/`**: English translations for strings.
+    -   **`values-night/`**: Resources specific to dark theme mode.
+    -   **`mipmap-*/`**: Launcher icons for different densities.
+
+#### ESP32 Firmware (`esp32/`)
+
+-   **`esp32/src/`**: Contains the C++ source code for the ESP32 firmware, organized into modular components.
+    -   **`main.ino`**: The main entry point of the ESP32 program, coordinating the other modules.
+    -   **`ble_handler.cpp/.h`**: Manages Bluetooth Low Energy (BLE) communication.
+    -   **`display.cpp/.h`**: Handles OLED display drawing and UI logic.
+    -   **`hardware.cpp/.h`**: Controls hardware peripherals (motor, buzzer, sensors).
+    -   **`input.cpp/.h`**: Manages user input from the rotary encoder and buttons.
+    -   **`storage.cpp/.h`**: Handles persistent storage operations (SPIFFS, Preferences).
+    -   **`wifi_ota.cpp/.h`**: Manages Wi-Fi connectivity, NTP synchronization, and Over-The-Air (OTA) updates.
+    -   **`config.h`**: Centralized header for hardware pin definitions, constants, and other configurations.
+    -   **`globals.h`**: Header for global variable declarations.

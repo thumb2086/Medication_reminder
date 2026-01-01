@@ -5,7 +5,7 @@
 
 ### v1.3.4: Proactive Bug Fixes & Robustness
 - [x] **UI修正 (Dialog Theming):** 修正角色選擇對話框中，新增的蠟筆小新跟多拉a夢選項 (Radio Button) 旁面沒有圖示
-- [ ] **更新readme.md以及readme_cn.md說明整個app的文件架構與負責的功能**
+- [x] **更新readme.md以及readme_cn.md說明整個app的文件架構與負責的功能**
 
 ## Epic 3: 架構與數據 (Architecture & Data)
 此史詩專注於升級 App 的底層架構，並基於新的資料庫結構提供更豐富的數據管理與洞察功能。
@@ -123,7 +123,7 @@
 
 ### 安全與隱私
 - [ ] **過量服用警報 (Overdose Alert):** 當系統偵測到短時間內重複服藥，將觸發高優先級警報。
-- [ ] **緊急資訊卡 (Emergency Info Card):** 生成可分享的數位緊急資訊卡，包含藥物與過敏史。
+- [ ] **緊急資訊卡 (Emergency Info Card)::** 生成可分享的數位緊急資訊卡，包含藥物與過敏史。
 - [ ] [- [ ] **生物辨識取藥授權 (Biometric Dispense Authorization):** 針對管制藥物，增加指紋或臉部辨識安全防線。
 - [ ] **藍牙設備綁定 (Device Binding):** 首次配對後，記住裝置 MAC 位址，後續提供一鍵快速連線。
 - [ ] **照顧者模式 (Caregiver Mode):** 建立獨立的照顧者模式，可遠端監控並協助管理。
