@@ -8,13 +8,16 @@ A smart medication reminder application integrated with an ESP32-based smart pil
 
 *   **Smart Reminders:** customizable medication schedules with frequency and time settings.
 *   **Hardware Integration:** seamless connection with an ESP32 smart pillbox via Bluetooth Low Energy (BLE).
+*   **Hardware-Confirmed Intake:** When the pillbox alarm rings, confirm your dose simply by pressing the physical button on the box. The signal is sent back to the app via BLE, automatically updating your pill inventory and medication log without touching your phone.
+*   **Smart Pillbox Guidance:** Remotely guide the pillbox to rotate to the correct compartment by selecting a medication in the app. The corresponding LED will light up, providing clear visual guidance for pill retrieval.
 *   **Real-time Monitoring:** displays real-time temperature and humidity data from the pillbox sensors.
 *   **Adherence Tracking:** Visualizes medication history with multi-status indicators and calculates a 30-day compliance rate.
     *   **Green Dot:** All doses taken as scheduled.
     *   **Yellow Dot:** Partially taken (missed some doses).
     *   **Red Dot:** No doses taken on a scheduled day.
 *   **Font Size Adjustment:** Users can choose between Small, Medium, and Large font sizes in the settings menu to improve readability. The app theme updates instantly to reflect the chosen size.
-*   **Character Themes:** Choose between "Kuromi" and "Chibi Maruko-chan" themes for a personalized experience.
+*   **Character Themes:** Choose between "Kuromi", "Chibi Maruko-chan", "Crayon Shin-chan", and "Doraemon" themes for a personalized experience.
+*   **Unified UI:** Consistent button styles across the app for a more cohesive user experience.
 *   **Engineering Mode:** toggle hardware engineering mode directly from the app for diagnostics.
 *   **Wi-Fi Configuration:** Configure the ESP32's Wi-Fi credentials directly from the app via BLE. The interface is now enhanced with Material Design visuals, input validation, and clear instructions.
 *   **Alarm System:** Set up to 4 alarms on the ESP32 pillbox for standalone reminders.
@@ -91,6 +94,7 @@ The communication between the App and the ESP32 Smart Pillbox relies on a custom
 | **Get Historic Data** | `0x31` | None | Requests stored environmental history (Returns series of `0x91`, ends with `0x92`). |
 | **Subscribe Realtime** | `0x32` | None | Enables automatic pushing of environmental data. |
 | **Set Alarm** | `0x41` | `Slot(1B)`, `Hour(1B)`, `Minute(1B)`, `Enable(1B)` | Sets a hardware alarm. `Slot`: 0-3, `Enable`: 1/0. |
+| **Guide Pillbox** | `0x42` | `Slot(1B)` | Rotates the pillbox to the specified slot (1-8). |
 
 ### Response Reference (ESP32 -> App)
 
@@ -98,7 +102,7 @@ The communication between the App and the ESP32 Smart Pillbox relies on a custom
 | :--- | :---: | :--- | :--- |
 | **Protocol Report** | `0x71` | `Version(1B)` | Reports protocol version (e.g., `0x03`). |
 | **Status Report** | `0x80` | `SlotMask(1B)` | Bitmask of medication slots status. |
-| **Medication Taken** | `0x81` | `SlotID(1B)` | Notification when a pill is taken. |
+| **Medication Taken** | `0x81` | `SlotID(1B)` | Triggered by the physical pillbox button to report a dose was taken. |
 | **Time Sync Ack** | `0x82` | None | Acknowledges time synchronization. |
 | **Eng. Mode Report** | `0x83` | `Status(1B)` | `0x01`: Enabled, `0x00`: Disabled. |
 | **Env Data** | `0x90` | `Temp(2B)`, `Hum(2B)` | Real-time sensor data. Values are `Short` (x100). |

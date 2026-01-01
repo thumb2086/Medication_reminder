@@ -3,17 +3,14 @@
 ## Epic 2: 智慧互動核心 (Smart Interaction Core)
 此史詩專注於實現 App 與智慧藥盒的核心互動，包含連線穩定性、放藥引導與服藥確認，打造無縫的硬體整合體驗。
 
-### v1.3.2: 硬體確認服藥
-- [ ] **App 端: 硬體確認服藥**
-  - **詳細步驟:**
-    - [ ] 在 `BluetoothLeManager` 中新增監聽來自 ESP32「已服藥」訊號的邏輯。
-    - [ ] 當收到訊號時，App 自動將對應的藥物標記為「已服用」，並更新 UI。
-    - [ ] 考慮邊界情況，例如在非服藥時間按下按鈕的處理。
-- [ ] **ESP32 端: 按鈕回報**
-  - **詳細步驟:**
-    - [ ] 在 `hardware.cpp` 或 `input.cpp` 中實作讀取藥盒實體按鈕狀態的邏輯。
-    - [ ] 當按鈕被按下時，透過 `ble_handler.cpp` 中的 `sendMedicationTaken()` 函式，主動發送「已服藥」訊號給 App。
+### v1.3.3: Bug Fixes
+- [x] **穩定性修正 (Stability):** 修正 v1.3.0 按下「立即更新」時發生的 `BadTokenException` 崩潰問題。
 
+### v1.3.4: Proactive Bug Fixes & Robustness
+- [ ] **APK安裝修正 (FileUriExposedException):** 確保 `UpdateManager.kt` 使用 `FileProvider` 來安裝 APK，避免在 Android 7.0+ 上安裝失敗。
+- [ ] **資源洩漏修正 (Resource Leak):** 檢查 `UpdateManager.kt` 中的網路請求，確保所有 `ResponseBody` 都被正確關閉，防止記憶體洩漏。
+- [ ] **權限補全 (Permissions):** 針對 Android 13+，在適當時機請求 `POST_NOTIFICATIONS` 權限，確保提醒功能正常。
+- [ ] **資料庫遷移準備 (DB Migration):** 檢查 `AppDatabase.kt`，為未來的資料庫架構變更預留遷移路徑，防止更新後崩潰。
 
 ## Epic 3: 架構與數據 (Architecture & Data)
 此史詩專注於升級 App 的底層架構，並基於新的資料庫結構提供更豐富的數據管理與洞察功能。
@@ -96,7 +93,7 @@
       - [ ] 透過 `ble_handler.cpp` 中的 `sendSensorDataReport()` 或 `sendRealtimeSensorData()` 函式，將數據定時回報給 App。
 
 ---
-
+1.2.3
 ## 未來規劃 (Future Considerations)
 
 ### 核心體驗 & UI/UX
@@ -131,7 +128,7 @@
 ### 安全與隱私
 - [ ] **過量服用警報 (Overdose Alert):** 當系統偵測到短時間內重複服藥，將觸發高優先級警報。
 - [ ] **緊急資訊卡 (Emergency Info Card):** 生成可分享的數位緊急資訊卡，包含藥物與過敏史。
-- [- [ ] **生物辨識取藥授權 (Biometric Dispense Authorization):** 針對管制藥物，增加指紋或臉部辨識安全防線。
+- [ ] [- [ ] **生物辨識取藥授權 (Biometric Dispense Authorization):** 針對管制藥物，增加指紋或臉部辨識安全防線。
 - [ ] **藍牙設備綁定 (Device Binding):** 首次配對後，記住裝置 MAC 位址，後續提供一鍵快速連線。
 - [ ] **照顧者模式 (Caregiver Mode):** 建立獨立的照顧者模式，可遠端監控並協助管理。
 

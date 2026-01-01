@@ -69,8 +69,9 @@ class MainActivity : BaseActivity(), BluetoothLeManager.BleListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
-        applyCharacterTheme()
         super.onCreate(savedInstanceState)
+        applyCharacterTheme()
+
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -86,7 +87,7 @@ class MainActivity : BaseActivity(), BluetoothLeManager.BleListener {
 
         alarmManager = getSystemService(ALARM_SERVICE) as? AlarmManager
         bluetoothLeManager.listener = this
-        updateManager = UpdateManager(this)
+        updateManager = UpdateManager(this.applicationContext)
 
         createNotificationChannel()
         requestAppPermissions()
@@ -110,10 +111,10 @@ class MainActivity : BaseActivity(), BluetoothLeManager.BleListener {
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.update_available_title))
             .setMessage(getString(R.string.update_available_message, updateInfo.version, updateInfo.releaseNotes))
-            .setPositiveButton(R.string.update_now) { _, _ ->
-                updateManager.downloadAndInstall(updateInfo.downloadUrl, "MedicationReminderApp-${updateInfo.version}.apk")
+            .setPositiveButton(getString(R.string.update_now)) { _, _ ->
+                updateManager.downloadAndInstall(this, updateInfo.downloadUrl, "MedicationReminderApp-${updateInfo.version}.apk")
             }
-            .setNegativeButton(R.string.update_later, null)
+            .setNegativeButton(getString(R.string.update_later), null)
             .show()
     }
 
@@ -145,6 +146,8 @@ class MainActivity : BaseActivity(), BluetoothLeManager.BleListener {
         val themeResId = when (character) {
             "kuromi" -> R.style.Theme_MedicationReminderApp_Kuromi
             "maruko" -> R.style.Theme_MedicationReminderApp_MyMelody
+            "crayon_shin_chan" -> R.style.Theme_MedicationReminderApp_CrayonShinChan
+            "doraemon" -> R.style.Theme_MedicationReminderApp_Doraemon
             else -> R.style.Theme_MedicationReminderApp
         }
         setTheme(themeResId)

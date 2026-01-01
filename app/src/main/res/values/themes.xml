@@ -112,4 +112,28 @@
         <item name="android:popupMenuStyle">@style/Widget.App.PopupMenu</item>
         <item name="actionBarTheme">@style/ThemeOverlay.App.Toolbar</item>
     </style>
+
+    <style name="Theme.MedicationReminderApp.CrayonShinChan" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">@color/primary_crayon_shin_chan</item>
+        <item name="colorOnPrimary">@color/onPrimary_crayon_shin_chan</item>
+        <item name="colorPrimaryContainer">@color/primaryContainer_crayon_shin_chan</item>
+        <item name="colorOnPrimaryContainer">@color/onPrimaryContainer_crayon_shin_chan</item>
+
+        <item name="actionOverflowMenuStyle">@style/Widget.App.PopupMenu.Overflow</item>
+        <item name="popupMenuStyle">@style/Widget.App.PopupMenu</item>
+        <item name="android:popupMenuStyle">@style/Widget.App.PopupMenu</item>
+        <item name="actionBarTheme">@style/ThemeOverlay.App.Toolbar</item>
+    </style>
+
+    <style name="Theme.MedicationReminderApp.Doraemon" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">@color/primary_doraemon</item>
+        <item name="colorOnPrimary">@color/onPrimary_doraemon</item>
+        <item name="colorPrimaryContainer">@color/primaryContainer_doraemon</item>
+        <item name="colorOnPrimaryContainer">@color/onPrimaryContainer_doraemon</item>
+
+        <item name="actionOverflowMenuStyle">@style/Widget.App.PopupMenu.Overflow</item>
+        <item name="popupMenuStyle">@style/Widget.App.PopupMenu</item>
+        <item name="android:popupMenuStyle">@style/Widget.App.PopupMenu</item>
+        <item name="actionBarTheme">@style/ThemeOverlay.App.Toolbar</item>
+    </style>
 </resources>

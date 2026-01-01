@@ -75,6 +75,8 @@ class ReminderSettingsFragment : Fragment() {
         val character = sharedPreferences.getString("character", "kuromi")
         return when (character) {
             "chibi_maruko_chan" -> R.drawable.chibi_maruko_chan
+            "crayon_shin_chan" -> R.drawable.crayon_shin_chan
+            "doraemon" -> R.drawable.doraemon
             else -> R.drawable.kuromi
         }
     }

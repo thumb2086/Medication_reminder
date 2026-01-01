@@ -1,5 +1,6 @@
 package com.example.medicationreminderapp.util
 
+import android.app.Activity
 import android.app.AlertDialog
 import android.app.DownloadManager
 import android.content.BroadcastReceiver
@@ -7,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
+import android.os.Build
 import android.os.Environment
 import android.provider.Settings
 import android.util.Log
@@ -246,24 +248,30 @@ class UpdateManager(private val context: Context) {
         return remoteSuffix > localSuffix
     }
 
-    fun downloadAndInstall(url: String, fileName: String) {
+    fun downloadAndInstall(context: Context, url: String, fileName: String) {
+        if (context is Activity && (context.isFinishing || context.isDestroyed)) {
+            return // Activity is not running, do not show dialog
+        }
+
         val isDebuggable = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
         if (isDebuggable) {
             Toast.makeText(context, R.string.debug_build_warning, Toast.LENGTH_LONG).show()
         }
 
-        if (!context.packageManager.canRequestPackageInstalls()) {
-             AlertDialog.Builder(context)
-                .setTitle(R.string.install_permission_title)
-                .setMessage(R.string.install_permission_message)
-                .setPositiveButton(R.string.go_to_settings) { _, _ ->
-                    val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
-                    intent.data = "package:${context.packageName}".toUri()
-                    context.startActivity(intent)
-                }
-                .setNegativeButton(R.string.cancel, null)
-                .show()
-            return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (!context.packageManager.canRequestPackageInstalls()) {
+                AlertDialog.Builder(context)
+                    .setTitle(R.string.install_permission_title)
+                    .setMessage(R.string.install_permission_message)
+                    .setPositiveButton(R.string.go_to_settings) { _, _ ->
+                        val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
+                        intent.data = "package:${context.packageName}".toUri()
+                        context.startActivity(intent)
+                    }
+                    .setNegativeButton(R.string.cancel, null)
+                    .show()
+                return
+            }
         }
 
         val existingFile = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName)
