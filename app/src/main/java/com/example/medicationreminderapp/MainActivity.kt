@@ -112,7 +112,7 @@ class MainActivity : BaseActivity(), BluetoothLeManager.BleListener {
             .setTitle(getString(R.string.update_available_title))
             .setMessage(getString(R.string.update_available_message, updateInfo.version, updateInfo.releaseNotes))
             .setPositiveButton(getString(R.string.update_now)) { _, _ ->
-                updateManager.downloadAndInstall(updateInfo.downloadUrl, "MedicationReminderApp-${updateInfo.version}.apk")
+                updateManager.downloadAndInstall(this, updateInfo.downloadUrl, "MedicationReminderApp-${updateInfo.version}.apk")
             }
             .setNegativeButton(getString(R.string.update_later), null)
             .show()
