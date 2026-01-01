@@ -82,19 +82,19 @@ App 與 ESP32 智慧藥盒之間的通訊基於自訂的二進位協定，透過
 
 ### 指令參考 (App -> ESP32)
 
-| 指令名稱 | OpCode | 參數 | 說明 |
-| :--- | :---: | :--- | :--- |
-| **取得協定版本** | `0x01` | 無 | 請求裝置回報協定版本 (回傳 `0x71`)。 |
-| **同步時間** | `0x11` | `年(1B)`, `月(1B)`, `日(1B)`, `時(1B)`, `分(1B)`, `秒(1B)` | 同步 RTC 時間。年份為相對於 2000 年的值 (例如 24 代表 2024)。 |
-| **設定 Wi-Fi** | `0x12` | `SSID長度(1B)`, `SSID(...)`, `密碼長度(1B)`, `密碼(...)` | 傳送 Wi-Fi 連線資訊至裝置。 |
-| **設定工程模式** | `0x13` | `啟用(1B)` | `0x01`：啟用，`0x00`：停用。 |
-| **取得工程模式狀態** | `0x14` | 無 | 查詢目前工程模式是否啟用 (回傳 `0x83`)。 |
-| **取得狀態** | `0x20` | 無 | 請求目前藥盒狀態 (回傳 `0x80`)。 |
-| **取得環境數據** | `0x30` | 無 | 單次請求目前溫濕度 (回傳 `0x90`)。 |
-| **取得歷史數據** | `0x31` | 無 | 請求儲存的環境歷史記錄 (回傳一系列 `0x91`，以 `0x92` 結束)。 |
-| **訂閱即時數據** | `0x32` | 無 | 啟用環境數據自動推送。 |
-| **設定鬧鐘** | `0x41` | `Slot(1B)`, `時(1B)`, `分(1B)`, `啟用(1B)` | 設定硬體鬧鐘。`Slot`：0-3，`啟用`：1/0。 |
-| **引導藥盒** | `0x42` | `Slot(1B)` | 指示藥盒旋轉至指定藥槽 (1-8)。 |
+| 指令名稱         | OpCode | 參數                                                   | 說明                                         |
+|:-------------|:------:|:-----------------------------------------------------|:-------------------------------------------|
+| **取得協定版本**   | `0x01` | 無                                                    | 請求裝置回報協定版本 (回傳 `0x71`)。                    |
+| **同步時間**     | `0x11` | `年(1B)`, `月(1B)`, `日(1B)`, `時(1B)`, `分(1B)`, `秒(1B)` | 同步 RTC 時間。年份為相對於 2000 年的值 (例如 24 代表 2024)。 |
+| **設定 Wi-Fi** | `0x12` | `SSID長度(1B)`, `SSID(...)`, `密碼長度(1B)`, `密碼(...)`     | 傳送 Wi-Fi 連線資訊至裝置。                          |
+| **設定工程模式**   | `0x13` | `啟用(1B)`                                             | `0x01`：啟用，`0x00`：停用。                       |
+| **取得工程模式狀態** | `0x14` | 無                                                    | 查詢目前工程模式是否啟用 (回傳 `0x83`)。                  |
+| **取得狀態**     | `0x20` | 無                                                    | 請求目前藥盒狀態 (回傳 `0x80`)。                      |
+| **取得環境數據**   | `0x30` | 無                                                    | 單次請求目前溫濕度 (回傳 `0x90`)。                     |
+| **取得歷史數據**   | `0x31` | 無                                                    | 請求儲存的環境歷史記錄 (回傳一系列 `0x91`，以 `0x92` 結束)。    |
+| **訂閱即時數據**   | `0x32` | 無                                                    | 啟用環境數據自動推送。                                |
+| **設定鬧鐘**     | `0x41` | `Slot(1B)`, `時(1B)`, `分(1B)`, `啟用(1B)`               | 設定硬體鬧鐘。`Slot`：0-3，`啟用`：1/0。                |
+| **引導藥盒**     | `0x42` | `Slot(1B)`                                           | 指示藥盒旋轉至指定藥槽 (1-8)。                         |
 
 ### 回應參考 (ESP32 -> App)
 
@@ -145,3 +145,67 @@ App 與 ESP32 智慧藥盒之間的通訊基於自訂的二進位協定，透過
 ## 授權條款
 
 [MIT License](LICENSE)
+
+---
+
+## 專案架構
+
+本專案主要包含兩大部分：Android 應用程式 (`app/`) 和 ESP32 韌體 (`esp32/`)。
+
+#### Android 應用程式 (`app/`)
+
+-   **`app/src/main/AndroidManifest.xml`**：定義應用程式的核心屬性、權限和元件（活動、服務、廣播接收器）。
+-   **`app/src/main/java/com/example/medicationreminderapp/`**：包含 Android 應用程式的 Kotlin 原始碼，組織成多個子套件和頂層檔案：
+    -   **`di/`**：依賴注入設定（使用 Hilt）。
+        -   `AppModule.kt`：定義用於在應用程式中提供依賴的模組。
+    -   **`ui/`**：與 UI 相關的元件，主要為 Fragments 和 ViewModels。
+        -   `LogFragment.kt`：顯示應用程式日誌。
+        -   `MainViewModel.kt`：`MainActivity` 的 ViewModel，管理與 UI 相關的數據和邏輯。
+        -   `ReminderFragment.kt`：用於顯示藥物提醒的 Fragment。
+        -   `ViewPagerAdapter.kt`：用於管理 ViewPager 中 Fragment 的適配器。
+        -   `EnvironmentFragment.kt`：顯示來自 ESP32 的即時環境數據。
+    -   **`adapter/`**：用於 RecyclerView 和其他基於列表的 UI 元件的適配器。
+        -   `MedicationListAdapter.kt`：用於顯示藥物列表的適配器。
+    -   **`util/`**：用於各種輔助功能的工具類。
+        -   `UpdateManager.kt`：處理應用程式內更新邏輯，包括獲取和安裝更新。
+        -   `SingleLiveEvent.kt`：用於一次性事件的自訂 LiveData 實作。
+    -   **`Medication.kt`**：表示藥物的數據類。
+    -   **`BaseActivity.kt`**：提供通用功能（例如主題應用、字體大小調整）的基本 Activity 類。
+    -   **`BootReceiver.kt`**：在裝置重新啟動後重新排程鬧鐘的 BroadcastReceiver。
+    -   **`MainActivity.kt`**：應用程式的主要入口點，託管各種 Fragment 並管理整體 UI 流程。
+    -   **`AlarmReceiver.kt`**：用於處理排程藥物鬧鐘的 BroadcastReceiver。
+    -   **`AppRepository.kt`**：中央數據儲存庫，抽象化數據源（例如本地數據庫、藍牙）。
+    -   **`AlarmScheduler.kt`**：管理藥物鬧鐘的排程和取消。
+    -   **`SnoozeReceiver.kt`**：用於處理通知中貪睡操作的 BroadcastReceiver。
+    -   **`HistoryFragment.kt`**：顯示使用者的服藥歷史記錄。
+    -   **`SensorDataPoint.kt`**：環境感測器讀數（溫度、濕度、時間戳）的數據類。
+    -   **`SettingsFragment.kt`**：顯示和管理應用程式設定（例如主題、語言、更新頻道）。
+    -   **`BluetoothLeManager.kt`**：管理與 ESP32 智慧藥盒的藍牙低功耗 (BLE) 通訊。
+    -   **`WiFiConfigFragment.kt`**：用於在 ESP32 裝置上配置 Wi-Fi 設定的 Fragment。
+    -   **`ImagePickerPreference.kt`**：用於在設定中選擇圖像的自訂 Preference 類。
+    -   **`MedicationListFragment.kt`**：用於顯示和管理藥物列表的 Fragment。
+    -   **`MedicationTakenReceiver.kt`**：用於處理來自 ESP32 的「已服藥」事件的 BroadcastReceiver。
+    -   **`ReminderSettingsFragment.kt`**：用於配置特定提醒設定的 Fragment。
+    -   **`MedicationReminderApplication.kt`**：自訂 `Application` 類，主要用於 Hilt 初始化和全域應用程式設定。
+-   **`app/src/main/res/`**：包含所有應用程式資源（佈局、可繪製資源、值等）。
+    -   **`drawable/`**：可繪製資源（圖示、圖像、XML 可繪製資源）。
+    -   **`layout/`**：活動、Fragment 和列表項目的 XML 佈局檔案。
+    -   **`menu/`**：定義應用程式選單的 XML 檔案。
+    -   **`xml/`**：用於偏好設定和其他配置的 XML 檔案（例如 `preferences.xml`）。
+    -   **`values/`**：預設字串、顏色、樣式和主題定義。
+    -   **`values-en/`**：字串的英文翻譯。
+    -   **`values-night/`**：深色主題模式特有的資源。
+    -   **`mipmap-*/`**：不同密度的啟動器圖示。
+
+#### ESP32 韌體 (`esp32/`)
+
+-   **`esp32/src/`**：包含 ESP32 韌體的 C++ 原始碼，組織成模組化元件。
+    -   **`main.ino`**：ESP32 程式的主要進入點，協調其他模組的運作。
+    -   **`ble_handler.cpp/.h`**：管理藍牙低功耗 (BLE) 通訊。
+    -   **`display.cpp/.h`**：處理 OLED 顯示螢幕繪圖和 UI 邏輯。
+    -   **`hardware.cpp/.h`**：控制硬體周邊設備（馬達、蜂鳴器、感測器）。
+    -   **`input.cpp/.h`**：管理來自旋轉編碼器和按鈕的使用者輸入。
+    -   **`storage.cpp/.h`**：處理持久性儲存操作（SPIFFS、Preferences）。
+    -   **`wifi_ota.cpp/.h`**：管理 Wi-Fi 連接、NTP 同步和無線 (OTA) 更新。
+    -   **`config.h`**：用於硬體腳位定義、常數和其他配置的中央標頭檔。
+    -   **`globals.h`**：用於全域變數宣告的標頭檔。
