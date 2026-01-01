@@ -109,6 +109,7 @@
     <string name="time_label_default">時間</string>
     <string name="medication_list_item_details">藥倉: %1$d | 時間: %2$s</string>
     <string name="medication_taken_indicator">藥物已服用標示</string>
+    <string name="guide_button_text">引導</string>
 
 
     <!-- Permissions -->

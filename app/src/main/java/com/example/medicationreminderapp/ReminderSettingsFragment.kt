@@ -282,6 +282,10 @@ class ReminderSettingsFragment : Fragment() {
         cardBinding.startDateEditText.setOnClickListener { showDatePickerDialog(cardBinding, cardState, isStartDate = true) }
         cardBinding.endDateEditText.setOnClickListener { showDatePickerDialog(cardBinding, cardState, isStartDate = false) }
         cardBinding.timePickerButton.setOnClickListener { showTimePickerDialog(cardBinding, cardState) }
+        
+        cardBinding.guideButton.setOnClickListener {
+            sendGuideCommand(cardState)
+        }
 
         cardBinding.slotNumberSpinner.setOnItemClickListener { _, _, position, _ ->
             val adapter = cardBinding.slotNumberSpinner.adapter
@@ -299,6 +303,22 @@ class ReminderSettingsFragment : Fragment() {
 
         // Initialize character image for the new card
         cardBinding.kuromiImageView.setImageResource(getCharacterImageRes())
+    }
+
+    private fun sendGuideCommand(cardState: MedicationCardState) {
+        val slot = cardState.selectedSlot
+        if (slot == null) {
+            Toast.makeText(requireContext(), "Please select a slot first", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val activity = activity as? MainActivity
+        if (activity?.bluetoothLeManager?.isConnected() == true) {
+            activity.bluetoothLeManager.guidePillbox(slot)
+            Toast.makeText(requireContext(), "Guiding to slot #$slot", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(requireContext(), getString(R.string.connect_box_first), Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun updateAllSlotSpinners() {

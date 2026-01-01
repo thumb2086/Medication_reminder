@@ -32,6 +32,21 @@ void runServo(int angle) {
     ledcDetach(SERVO_PIN);
 }
 
+void guideToSlot(int slot) {
+    if (slot < 1 || slot > 8) {
+        Serial.printf("Error: Invalid slot number %d for guide.\n", slot);
+        return;
+    }
+    // Assuming 8 slots spread over 180 degrees.
+    // Slot 1 -> 0 deg, Slot 8 -> 180 deg.
+    // Angle per slot = 180 / 7 = ~25.71
+    int angle = map(slot, 1, 8, 0, 180);
+    angle = constrain(angle, 0, 180);
+    
+    Serial.printf("Guiding to slot %d (angle: %d)\n", slot, angle);
+    runServo(angle);
+}
+
 void runPOST() {
     Serial.println("DEBUG: runPOST - Starting Power-On Self-Test");
     // Initialize low-power components
