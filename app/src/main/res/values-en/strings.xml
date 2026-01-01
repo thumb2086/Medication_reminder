@@ -67,6 +67,8 @@
     <string name="ble_status_scanning">Scanning for smart pillbox…</string>
     <string name="ble_status_scan_timeout">Scan timed out, pillbox not found</string>
     <string name="historic_data_sync_complete">Historic data sync complete</string>
+    <string name="ble_status_reconnecting">Bluetooth Status: Reconnecting…</string>
+    <string name="ble_status_reconnect_failed">Bluetooth Status: Reconnect failed</string>
 
     <!-- User Input & Validation -->
     <string name="fill_all_fields">Please fill all required fields</string>

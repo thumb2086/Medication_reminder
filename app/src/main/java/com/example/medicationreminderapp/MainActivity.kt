@@ -168,6 +168,14 @@ class MainActivity : BaseActivity(), BluetoothLeManager.BleListener {
                     }
                 }
 
+                 launch {
+                    viewModel.isReconnecting.collect { _ ->
+                        // You can add UI changes here based on the reconnecting state if needed
+                        // For example, showing/hiding a progress bar
+                    }
+                }
+
+
                 viewModel.requestBleAction.observe(this@MainActivity) { action ->
                     if (viewModel.isBleConnected.value) {
                         when (action) {
@@ -291,7 +299,15 @@ class MainActivity : BaseActivity(), BluetoothLeManager.BleListener {
     override fun onDeviceDisconnected() {
          viewModel.setBleConnectionState(false)
     }
-    
+
+    override fun onReconnectStarted() {
+        viewModel.onReconnectStarted()
+    }
+
+    override fun onReconnectFailed() {
+        viewModel.onReconnectFailed()
+    }
+
     override fun onProtocolVersionReported(version: Int) {
         runOnUiThread {
             Toast.makeText(this, "藥盒協定版本: $version", Toast.LENGTH_LONG).show()
@@ -364,10 +380,10 @@ class MainActivity : BaseActivity(), BluetoothLeManager.BleListener {
 
     private fun createNotificationChannel() {
         val name = getString(R.string.notification_channel_name)
+        val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
         val channel = NotificationChannel(CHANNEL_ID, name, NotificationManager.IMPORTANCE_HIGH).apply {
             description = getString(R.string.notification_channel_description)
             enableVibration(true)
-            val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
             val audioAttributes = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build()
             setSound(soundUri, audioAttributes)
         }

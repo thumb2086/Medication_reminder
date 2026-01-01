@@ -4,12 +4,12 @@
 此史詩專注於實現 App 與智慧藥盒的核心互動，包含連線穩定性、放藥引導與服藥確認，打造無縫的硬體整合體驗。
 
 ### v1.3.0: 藍牙自動重連
-- [ ] **體驗優化: 藍牙自動重連**
+- [x] **體驗優化: 藍牙自動重連**
   - **詳細步驟:**
-    - [ ] 在 `BluetoothLeManager` 的斷線邏輯中，新增一個 flag 來判斷是否為意外斷線。
-    - [ ] 建立一個 `startReconnectSequence()` 方法，使用協程的 `delay` 實現有次數限制、有延遲的重連嘗試。
-    - [ ] 在 `BleListener` 介面新增 `onReconnectStarted` 和 `onReconnectFailed` 回調。
-    - [ ] 在 `ViewModel` 中實作新的回調，更新 UI 狀態以告知使用者「正在嘗試重連...」。
+    - [x] 在 `BluetoothLeManager` 的斷線邏輯中，新增一個 flag 來判斷是否為意外斷線。
+    - [x] 建立一個 `startReconnectSequence()` 方法，使用協程的 `delay` 實現有次數限制、有延遲的重連嘗試。
+    - [x] 在 `BleListener` 介面新增 `onReconnectStarted` 和 `onReconnectFailed` 回調。
+    - [x] 在 `ViewModel` 中實作新的回調，更新 UI 狀態以告知使用者「正在嘗試重連...」。
 
 ### v1.3.1: 智慧放藥引導
 - [ ] **App 端: 智慧放藥引導**

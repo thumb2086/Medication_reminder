@@ -16,43 +16,63 @@ class MainViewModel @Inject constructor(
     private val repository: AppRepository
 ) : ViewModel() {
 
-    // StateFlow for UI state (BLE logic remains in ViewModel as it's transient UI state)
+    // --- UI State for BLE Connection ---
     private val _isBleConnected = MutableStateFlow(false)
     val isBleConnected: StateFlow<Boolean> = _isBleConnected.asStateFlow()
 
     private val _bleStatus = MutableStateFlow(R.string.disconnected)
     val bleStatus: StateFlow<Int> = _bleStatus.asStateFlow()
 
-    // Delegate Data StateFlows to Repository
+    private val _isReconnecting = MutableStateFlow(false)
+    val isReconnecting: StateFlow<Boolean> = _isReconnecting.asStateFlow()
+
+    // --- Delegated Data StateFlows from Repository ---
     val isEngineeringMode: StateFlow<Boolean> = repository.isEngineeringMode
     val historicSensorData: StateFlow<List<SensorDataPoint>> = repository.historicSensorData
     val medicationList: StateFlow<List<Medication>> = repository.medicationList
     val dailyStatusMap: StateFlow<Map<String, Int>> = repository.dailyStatusMap
     val complianceRate: StateFlow<Float> = repository.complianceRate
 
-    // Event for triggering BLE actions in Activity
+    // Event for triggering BLE actions in Activity/Fragment
     val requestBleAction = SingleLiveEvent<BleAction>()
 
     init {
-        // Data loading is now handled by Repository's init
+        // Data loading is handled by Repository's init
     }
 
-    // --- Helper to avoid constant expression warnings in UI ---
+    // --- Helper to get build-time constants ---
     fun getCurrentUpdateChannel(): String {
         return BuildConfig.UPDATE_CHANNEL
     }
 
-    // --- Public Methods to update state ---
+    // --- Public Methods to Update State from UI/Service ---
 
     fun setBleConnectionState(isConnected: Boolean) {
         _isBleConnected.value = isConnected
-        if (!isConnected) {
-            _bleStatus.value = R.string.disconnected
+        if (isConnected) {
+            _isReconnecting.value = false // Successfully connected, stop showing reconnecting UI
+        } else {
+            // If not connected and not in the process of reconnecting, show disconnected.
+            if (!_isReconnecting.value) {
+                _bleStatus.value = R.string.disconnected
+            }
         }
     }
 
     fun setBleStatus(@StringRes statusResId: Int) {
         _bleStatus.value = statusResId
+    }
+
+    fun onReconnectStarted() {
+        _isReconnecting.value = true
+        _isBleConnected.value = false
+        _bleStatus.value = R.string.ble_status_reconnecting
+    }
+
+    fun onReconnectFailed() {
+        _isReconnecting.value = false
+        _isBleConnected.value = false
+        _bleStatus.value = R.string.ble_status_reconnect_failed
     }
 
     fun setEngineeringMode(isEnabled: Boolean) {
@@ -74,8 +94,6 @@ class MainViewModel @Inject constructor(
 
     fun onHistoricDataSyncCompleted() {
         repository.commitHistoricDataBuffer()
-        // This should be a string resource
-        // _bleStatus.value = "Historic data sync complete"
     }
 
     fun addMedications(newMedications: List<Medication>) {
@@ -97,10 +115,10 @@ class MainViewModel @Inject constructor(
     }
 
     fun processMedicationTaken(slotNumber: Int) {
-        // This can still be called from UI if needed, delegating to repo
         repository.processMedicationTaken(slotNumber)
     }
 
+    // Enum to represent BLE actions requested by the ViewModel
     enum class BleAction {
         REQUEST_ENV_DATA,
         REQUEST_HISTORIC_ENV_DATA
