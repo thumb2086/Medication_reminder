@@ -1,35 +1,48 @@
 # 更新日誌
 
-## 2025-01-01
-### v1.3.0: 藍牙自動重連
+## 2026-01-01
+### v1.3.2: 硬體確認服藥
+*   **硬體互動 (Pillbox Integration):** 
+    *   **ESP32 端:** 在 `input.cpp` 的 `handleButtons()` 函式中新增邏輯。當鬧鐘響起時，短按確認按鈕不僅會停止鬧鐘，還會觸發 `sendMedicationTaken(0)`，透過藍牙向 App 發送「已服藥」訊號。
+    *   **App 端:** 檢視並確認了 App 的接收鏈路 (`BluetoothLeManager` -> `MainActivity` -> `MainViewModel` -> `AppRepository`) 已正確實作。收到訊號後，`AppRepository` 中的 `processMedicationTaken` 會自動執行，將對應藥物的庫存減一、新增服藥時間紀錄，並更新日曆與相關 UI，無需額外修改。
+
+### v1.3.0: 智慧藥盒引導 & 藍牙重連
+*   **核心功能 (Pillbox Guidance):**
+    *   **App 端:** 在 `Medication` 資料模型中新增 `slotNumber: Int` 欄位，並在新增/編輯藥物流程中加入對應的 UI 輸入。`BluetoothLeManager` 新增 `guidePillbox(slot: Int)` 方法，用以發送 `0x42` 指令。
+    *   **ESP32 端:** 新增 `CMD_GUIDE_PILLBOX (0x42)` 指令處理邏輯。收到指令後，ESP32 會計算目標角度並驅動伺服馬達，將藥盒旋轉至指定藥槽，同時 `display.cpp` 會顯示引導文字，`hardware.cpp` 則透過 `ledcWrite` 控制 LED 燈條，僅點亮對應藥槽的 LED，提供清晰的視覺引導。
 *   **體驗優化 (Robustness):** 
-    *   **意外斷線自動重連:** 在 `BluetoothLeManager` 中導入了自動重連機制。當藍牙非使用者手動斷開時 (例如超出範圍)，App 會自動嘗試重新連線，並設有 5 次的重試上限與 5 秒的延遲，以避免造成系統負擔。
-    *   **UI 狀態回饋:** 在 `MainViewModel` 中新增了對應的 `StateFlow`，並在 `strings.xml` 中加入了「正在嘗試重連...」與「重連失敗」的狀態文字。這讓使用者能清楚了解 App 當前的連線狀態，提升了使用者體驗。
-    *   **介面與旗標:** 在 `BleListener` 中新增了 `onReconnectStarted` 與 `onReconnectFailed` 回調，並透過 `shouldAutoReconnect` 旗標來區分是「手動斷線」還是「意外斷線」，確保只在需要時觸發重連。
+    *   **意外斷線自動重連:** 在 `BluetoothLeManager` 中導入了自動重連機制。當藍牙非使用者手動斷開時，App 會自動嘗試重新連線，並設有 5 次的重試上限與 5 秒的延遲。
+    *   **UI 狀態回饋:** 在 `MainViewModel` 中新增了對應的 `StateFlow` (`isReconnecting`)，並在 `strings.xml` 中加入了「正在嘗試重連...」與「重連失敗」的狀態文字。
 
 ## 2025-12-31
-### v1.2.7: Update Process Hotfix
-*   **更新流程重構 (In-App Updates API):**
-    *   為了解決使用者看到「安裝」而非「更新」的體驗問題，導入了 Android 的 In-App Updates API。
-    *   重構 `UpdateManager`，根據 Google Play 回傳的更新類型，實作了 `FLEXIBLE` (彈性) 與 `IMMEDIATE` (立即) 兩種更新流程。
-    *   在更新過程中，加入了清晰的 UI 狀態回饋，例如下載進度條與安裝提示，提升了整體更新體驗的流暢度與專業性。
+### v1.2.7: 更新與鬧鐘排程優化
+*   **更新流程優化 (Update Flow):**
+    *   在 `UpdateManager` 中新增邏輯，當偵測到新舊 App 的簽名不匹配時 (例如從 Dev 版更新到 Official 版)，會跳出明確的警告，告知使用者需要先卸載舊版，避免安裝失敗。
+*   **架構重構 (Alarm Scheduling):**
+    *   為符合 Android 12+ 的精確鬧鐘權限要求，重構了鬧鐘設定邏輯。在 `MainActivity` 中，會檢查 `SCHEDULE_EXACT_ALARM` 權限，若未授予，則引導使用者至系統設定頁面開啟。
 
-### v1.2.6
-*   **版本維護:** 一般性維護與準備更新。
-
-### v1.2.5: Channel & Stability Hotfix
+### v1.2.5: UI 與本地化修正 (Hotfix)
 *   **UI/UX 優化:**
     *   將主畫面的 `TabLayout` 的 `tabMode` 改為 `scrollable`，解決在英文語系下，文字過長導致換行的排版問題。
 *   **本地化修正:**
     *   在 `strings.xml (zh-TW)` 中，為 `check_for_updates_summary` 補上中文翻譯，提升更新設定頁面的完整性。
+*   **按鈕風格統一:**
+    *   更新 `themes.xml`，統一 App 內所有按鈕 (`MaterialButton`) 的視覺風格，確保外觀一致性。
 
-### v1.2.4: UI/UX Hotfixes
+### v1.2.4: BLE & UI 穩定性更新
+*   **建置設定 (Build Config):**
+    *   修改 `app/build.gradle.kts`，為非正式版 (`main` 或 `dev` 以外的分支) 的 `applicationId` 自動添加 `.branch-name` 後綴。這使得開發版本可以與正式版同時安裝在同一裝置上，方便測試。
+*   **藍牙狀態管理重構:**
+    *   將 `BluetoothLeManager` 中所有硬編碼的狀態字串 (如 "正在掃描...") 全部替換為 `R.string` 資源引用。`MainViewModel` 現在只處理 `StringRes` ID，實現了狀態顯示的完全本地化。
 *   **UI/UX 修復 (多國語言):**
     *   調整了 Tab 標籤的 `textSize` 以避免在英文語系下換行。
     *   修正了 `CONNECT PILLBOX` 按鈕與 `Disconnected` 狀態文字的約束，確保在不同螢幕尺寸下皆能正確對齊。
     *   加寬了下拉式選單的寬度，確保 "How many medications to..." 文字能完整顯示。
 *   **本地化修正:**
     *   在 `strings.xml (zh-TW)` 中新增 "disconnected" 的翻譯 "已斷線"，並確保藍牙連線狀態的更新會使用此資源。
+
+### v1.2.3: Agent Workflow 更新
+*   **開發流程文件化:** 更新 `agent.md`，明確定義了「規劃模式 (Mode A)」與「執行模式 (Mode B)」，並強制要求在執行程式碼修改後，必須同步更新所有相關文件 (`log.md`, `todo.md`, `README.md`)，確保文件與程式碼的一致性。
 
 ### Bug Fixes & UI Improvements
 *   **徹底修復字體大小無法縮放問題 (根本原因)**: 將字體縮放邏輯從 `attachBaseContext` 移至 `MainActivity.kt` 的 `onCreate` 方法中，並確保在 `super.onCreate` 之前執行。這確保了我們的自訂 `Configuration` (包含 `fontScale`) 會在系統套用主題之前生效，從而避免了被主題中寫死的字體大小覆寫的問題。同時，也將縮放比例調整為 `0.8f`, `1.0f`, `1.5f`，以提供更顯著的視覺效果。

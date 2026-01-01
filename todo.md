@@ -4,16 +4,21 @@
 此史詩專注於實現 App 與智慧藥盒的核心互動，包含連線穩定性、放藥引導與服藥確認，打造無縫的硬體整合體驗。
 
 ### v1.3.2: 硬體確認服藥
-- [ ] **App 端: 硬體確認服藥**
+- [x] **App 端: 硬體確認服藥**
   - **詳細步驟:**
-    - [ ] 在 `BluetoothLeManager` 中新增監聽來自 ESP32「已服藥」訊號的邏輯。
-    - [ ] 當收到訊號時，App 自動將對應的藥物標記為「已服用」，並更新 UI。
-    - [ ] 考慮邊界情況，例如在非服藥時間按下按鈕的處理。
-- [ ] **ESP32 端: 按鈕回報**
+    - [x] 在 `BluetoothLeManager` 中新增監聽來自 ESP32「已服藥」訊號的邏輯。
+    - [x] 當收到訊號時，App 自動將對應的藥物標記為「已服用」，並更新 UI。
+    - [x] 考慮邊界情況，例如在非服藥時間按下按鈕的處理。
+- [x] **ESP32 端: 按鈕回報**
   - **詳細步驟:**
-    - [ ] 在 `hardware.cpp` 或 `input.cpp` 中實作讀取藥盒實體按鈕狀態的邏輯。
-    - [ ] 當按鈕被按下時，透過 `ble_handler.cpp` 中的 `sendMedicationTaken()` 函式，主動發送「已服藥」訊號給 App。
+    - [x] 在 `hardware.cpp` 或 `input.cpp` 中實作讀取藥盒實體按鈕狀態的邏輯。
+    - [x] 當按鈕被按下時，透過 `ble_handler.cpp` 中的 `sendMedicationTaken()` 函式，主動發送「已服藥」訊號給 App。
 
+### v1.3.3: 主題擴充
+- [ ] **核心功能: 新增主題**
+  - **詳細步驟:**
+    - [ ] 新增主題：蠟筆小新
+    - [ ] 新增主題：多拉a夢
 
 ## Epic 3: 架構與數據 (Architecture & Data)
 此史詩專注於升級 App 的底層架構，並基於新的資料庫結構提供更豐富的數據管理與洞察功能。
@@ -96,7 +101,7 @@
       - [ ] 透過 `ble_handler.cpp` 中的 `sendSensorDataReport()` 或 `sendRealtimeSensorData()` 函式，將數據定時回報給 App。
 
 ---
-
+1.2.3
 ## 未來規劃 (Future Considerations)
 
 ### 核心體驗 & UI/UX
