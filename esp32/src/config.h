@@ -10,7 +10,7 @@
 #define MAX_HISTORY 4800
 #define HISTORY_WINDOW_SIZE 60
 
-// ==================== 腳位定義 (v22.7 - C6 LEDC 馬達修正) ====================
+// ==================== 腳位定義 ====================
 #define I2C_SDA_PIN 22
 #define I2C_SCL_PIN 21
 #define ENCODER_A_PIN GPIO_NUM_19
@@ -54,6 +54,7 @@ extern const int DAYLIGHT_OFFSET;
 #define CMD_ENABLE_REALTIME         0x32 // 啟用即時數據
 #define CMD_DISABLE_REALTIME        0x33 // 禁用即時數據
 #define CMD_SET_ALARM               0x41 // 設定鬧鐘
+#define CMD_GUIDE_PILLBOX           0x42 // 引導藥盒轉動
 #define CMD_REPORT_PROTO_VER        0x71 // 回報協議版本
 #define CMD_REPORT_STATUS           0x80 // 回報裝置狀態
 #define CMD_REPORT_TAKEN            0x81 // 回報藥物已取

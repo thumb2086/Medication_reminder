@@ -1,4 +1,4 @@
-# Medication Reminder App - Development Roadmap
+# Medication Reminder - Unified Development Roadmap
 
 ## Epic 2: 智慧互動核心 (Smart Interaction Core)
 此史詩專注於實現 App 與智慧藥盒的核心互動，包含連線穩定性、放藥引導與服藥確認，打造無縫的硬體整合體驗。
@@ -12,11 +12,16 @@
     - [x] 在 `ViewModel` 中實作新的回調，更新 UI 狀態以告知使用者「正在嘗試重連...」。
 
 ### v1.3.1: 智慧放藥引導
-- [ ] **App 端: 智慧放藥引導**
+- [x] **App 端: 智慧放藥引導**
   - **詳細步驟:**
-    - [ ] 在新增/編輯藥物的流程中，增加一個「引導」按鈕。
-    - [ ] 點擊「引導」後，App 透過藍牙傳送指令到 ESP32。
-    - [ ] 在 `BluetoothLeManager` 中新增對應的 BLE 通訊方法。
+    - [x] 在新增/編輯藥物的流程中，增加一個「引導」按鈕。
+    - [x] 點擊「引導」後，App 透過藍牙傳送指令到 ESP32。
+    - [x] 在 `BluetoothLeManager` 中新增對應的 BLE 通訊方法 (`guidePillbox`)。
+- [x] **ESP32 端: 馬達控制**
+  - **詳細步驟:**
+    - [x] 在 `ble_handler.cpp` 中新增對 `0x42` (CMD_GUIDE_PILLBOX) 指令的處理。
+    - [x] 在 `config.h` 中定義 `CMD_GUIDE_PILLBOX`。
+    - [x] 在 `hardware.cpp` 中實作 `guideToSlot(int slot)` 函式，驅動馬達轉動到指定藥倉。
 
 ### v1.3.2: 硬體確認服藥
 - [ ] **App 端: 硬體確認服藥**
@@ -24,6 +29,10 @@
     - [ ] 在 `BluetoothLeManager` 中新增監聽來自 ESP32「已服藥」訊號的邏輯。
     - [ ] 當收到訊號時，App 自動將對應的藥物標記為「已服用」，並更新 UI。
     - [ ] 考慮邊界情況，例如在非服藥時間按下按鈕的處理。
+- [ ] **ESP32 端: 按鈕回報**
+  - **詳細步驟:**
+    - [ ] 在 `hardware.cpp` 或 `input.cpp` 中實作讀取藥盒實體按鈕狀態的邏輯。
+    - [ ] 當按鈕被按下時，透過 `ble_handler.cpp` 中的 `sendMedicationTaken()` 函式，主動發送「已服藥」訊號給 App。
 
 
 ## Epic 3: 架構與數據 (Architecture & Data)
@@ -59,13 +68,18 @@
 ## Epic 4: 便利性與擴展 (Convenience & Expansion)
 此史詩專注於提供更多便利工具，並擴展 App 的保護網，提升整體使用價值。
 
-### v1.5.0: App 端 - 韌體空中升級 (OTA)
+### v1.5.0: 韌體空中升級 (OTA)
 - [ ] **App 端: 韌體空中升級 (OTA)**
   - **詳細步驟:**
     - [ ] 在設定中建立新的韌體更新頁面。
     - [ ] 實作選擇 `.bin` 韌體檔案的邏輯。
     - [ ] 在 `BluetoothLeManager` 新增 `startOtaUpdate(firmware: ByteArray)` 方法，將韌體分塊寫入 ESP32。
     - [ ] 實作 UI 上的進度條來顯示更新進度。
+- [ ] **ESP32 端: 韌體 OTA 功能**
+  - **詳細步驟:**
+    - [ ] 整合 `ArduinoOTA` 或自訂的 BLE OTA 函式庫。
+    - [ ] 建立一個 BLE 特徵，用於接收韌體檔案的分塊數據。
+    - [ ] 實作韌體驗證與寫入 Flash 的安全邏輯。
 
 ### v1.5.1: 便利工具 - 桌面小工具
 - [ ] **便利工具: 桌面小工具 (Widget)**
@@ -96,31 +110,16 @@
     - [ ] **App 端:** 在新增/編輯藥物時，允許使用者選擇特定藥物 (如：胰島素)，並連結到其儲存條件。
     - [ ] **App 端:** 在 `BluetoothLeManager` 中新增邏輯，當收到溫濕度數據時，檢查是否超出與該藥物關聯的安全範圍。
     - [ ] **App 端:** 若超出範圍，觸發一個高優先級的本地通知警告使用者。
+  - [ ] **ESP32 端: 環境回報**
+    - **詳細步驟:**
+      - [ ] 在 `hardware.cpp` 中，實作讀取溫濕度感測器 (DHT) 數據的邏輯。
+      - [ ] 透過 `ble_handler.cpp` 中的 `sendSensorDataReport()` 或 `sendRealtimeSensorData()` 函式，將數據定時回報給 App。
 
----
-
-# ESP32 Firmware Roadmap
-
-## Epic F0: Technical Debt & Refactoring
-此史詩專注於改善程式碼品質與可維護性。
+## Epic 5: 韌體重構與維護 (Firmware Refactoring & Maintenance)
+此史詩專注於改善 ESP32 韌體的程式碼品質與可維護性。
 
 ### v22.1.1: Code Cleanup
-- [ ] **重構:** 移除 `esp32/src/config.h` 中關於 `v22.7` 的多餘註解，避免版本號混淆。
-
-## Epic F1: Core BLE Communication
-此史詩專注於實現智慧藥盒與 App 的核心藍牙通訊協議。
-
-### v22.1.0: Motor & Button Communication
-- [ ] **馬達控制:** 實作藍牙協議，使馬達能根據 App 發送的指令，精準轉動到對應的藥倉角度。
-- [ ] **按鈕回報:** 實作藍牙協議，當使用者按下藥盒上的實體按鈕時，能主動發送「已服藥」訊號給 App。
-- [ ] **基礎建設:** 建立穩定的藍牙連線、廣播與服務基礎框架。
-
-## Epic F2: System & Updates
-此史詩專注於韌體的系統層級功能，如 OTA 與環境監測。
-
-### v22.1.1: OTA & Environment Sensing
-- [ ] **韌體OTA:** 建立並測試 BLE OTA (空中升級) 功能，允許 App 安全地更新韌體，為後續功能迭代打下基礎。
-- [ ] **環境回報:** 實作讀取溫濕度感測器 (DHT) 數據的邏輯，並透過藍牙協議定時回報給 App。
+- [x] **重構:** 移除 `esp32/src/config.h` 中關於 `v22.7` 的多餘註解，避免版本號混淆。
 
 ---
 
