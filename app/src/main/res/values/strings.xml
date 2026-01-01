@@ -280,7 +280,7 @@
     </string-array>
     <string name="update_channel_summary">目前所在頻道: %s</string>
     <string name="check_for_updates">檢查更新</string>
-    <string name="check_for_updates_summary">Check for new app versions</string>
+    <string name="check_for_updates_summary">檢查應用程式新版本</string>
     <string name="update_available_title">發現新版本</string>
     <string name="update_available_message">發現新版本 %s。您想要現在更新嗎？\n\n更新內容：\n%s</string>
     <string name="update_now">立即更新</string>
