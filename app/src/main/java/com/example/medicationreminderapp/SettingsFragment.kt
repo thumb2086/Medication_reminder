@@ -103,7 +103,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                     val releases = gson.fromJson(jsonStr, JsonArray::class.java)
                     
                     val remoteChannels = mutableSetOf<String>()
-                    val regex = Regex(".*-nightly-(.+)-\\d+")
+                    val regex = Regex(".*-nightly-(.+)-\d+")
                     
                     releases.forEach { element ->
                         val release = element.asJsonObject
@@ -232,7 +232,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
     }
 
     private fun checkForUpdates() {
-        val updateManager = UpdateManager(requireContext())
+        val updateManager = UpdateManager(requireContext().applicationContext)
         
         lifecycleScope.launch {
             Toast.makeText(requireContext(), getString(R.string.checking_for_updates), Toast.LENGTH_SHORT).show()

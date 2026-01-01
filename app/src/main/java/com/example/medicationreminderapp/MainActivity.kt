@@ -87,7 +87,7 @@ class MainActivity : BaseActivity(), BluetoothLeManager.BleListener {
 
         alarmManager = getSystemService(ALARM_SERVICE) as? AlarmManager
         bluetoothLeManager.listener = this
-        updateManager = UpdateManager(this)
+        updateManager = UpdateManager(this.applicationContext)
 
         createNotificationChannel()
         requestAppPermissions()
