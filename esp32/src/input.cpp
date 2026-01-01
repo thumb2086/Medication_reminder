@@ -108,7 +108,14 @@ void handleButtons() {
         if (millis() - confirmPressStartTime < 3000) { 
             Serial.println("DEBUG: Confirm button short press detected.");
             lastConfirmPressTime = millis(); 
-            playConfirmSound(); 
+            playConfirmSound();
+            if (isAlarmRinging) {
+                Serial.println("DEBUG: Alarm confirmed. Sending medication taken signal.");
+                sendMedicationTaken(0); // Assuming slot 0 for now
+                isAlarmRinging = false;
+                pixels.clear();
+                pixels.show();
+            }
             returnToMainScreen(); 
         }
         confirmButtonPressed = false;
