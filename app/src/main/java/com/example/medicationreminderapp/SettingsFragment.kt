@@ -103,7 +103,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                     val releases = gson.fromJson(jsonStr, JsonArray::class.java)
                     
                     val remoteChannels = mutableSetOf<String>()
-                    val regex = Regex(".*-nightly-(.+)-\d+")
+                    val regex = Regex(".*-nightly-(.+)-\\d+")
                     
                     releases.forEach { element ->
                         val release = element.asJsonObject
