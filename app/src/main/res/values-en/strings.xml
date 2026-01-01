@@ -108,6 +108,7 @@
     <string name="time_label_default">Time</string>
     <string name="medication_list_item_details">Slot: %1$d | Time: %2$s</string>
     <string name="medication_taken_indicator">Medication Taken</string>
+    <string name="guide_button_text">Guide</string>
 
 
     <!-- Permissions -->

@@ -8,6 +8,7 @@
 
 // Pre-declare functions from other modules that are used here
 void updateScreens();
+void guideToSlot(int slot);
 
 class MyServerCallbacks: public BLEServerCallbacks {
     void onConnect(BLEServer* pServer) {
@@ -138,6 +139,13 @@ void handleCommand(uint8_t* data, size_t length) {
             }
             sendTimeSyncAck();
             break;
+        case CMD_GUIDE_PILLBOX:
+            if (length == 2) {
+                uint8_t slot = data[1];
+                Serial.printf("DEBUG: CMD_GUIDE_PILLBOX received for slot %d\n", slot);
+                guideToSlot(slot);
+            }
+            break;            
         case CMD_REQUEST_STATUS:
             Serial.println("DEBUG: CMD_REQUEST_STATUS received.");
             sendBoxStatus();
