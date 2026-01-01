@@ -240,13 +240,19 @@
     <string name="character">Character</string>
     <string name="character_kuromi">Kuromi</string>
     <string name="character_chibi_maruko_chan">Chibi Maruko-chan</string>
+    <string name="character_crayon_shin_chan">Crayon Shin-chan</string>
+    <string name="character_doraemon">Doraemon</string>
     <string-array name="character_entries">
         <item>@string/character_kuromi</item>
         <item>@string/character_chibi_maruko_chan</item>
+        <item>@string/character_crayon_shin_chan</item>
+        <item>@string/character_doraemon</item>
     </string-array>
     <string-array name="character_values">
         <item>kuromi</item>
         <item>chibi_maruko_chan</item>
+        <item>crayon_shin_chan</item>
+        <item>doraemon</item>
     </string-array>
 
     <string name="kuromi_image_description">Kuromi image</string>

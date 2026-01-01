@@ -232,7 +232,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
     }
 
     private fun checkForUpdates() {
-        val updateManager = UpdateManager(requireContext())
+        val updateManager = UpdateManager(requireActivity())
         
         lifecycleScope.launch {
             Toast.makeText(requireContext(), getString(R.string.checking_for_updates), Toast.LENGTH_SHORT).show()
@@ -263,7 +263,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                     .setTitle(title)
                     .setMessage(sb.toString())
                     .setPositiveButton(if (updateInfo.isNewer || updateInfo.isDifferentAppId) R.string.update_now else R.string.ok) { _, _ ->
-                        updateManager.downloadAndInstall(updateInfo.downloadUrl, "MedicationReminderApp-${updateInfo.version}.apk")
+                        updateManager.downloadAndInstall(requireActivity(), updateInfo.downloadUrl, "MedicationReminderApp-${updateInfo.version}.apk")
                     }
                     .setNegativeButton(R.string.cancel, null)
                     .show()

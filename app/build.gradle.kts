@@ -116,7 +116,7 @@ android {
     // Old logic: replaced - with _ (Mismatch!)
     // New logic: replace / and _ with - (Match!)
     val normalizedBranchName = branchName.replace("/", "-").replace("_", "-")
-    val safeBranchName = normalizedBranchName.replace(Regex("[^a-zA-Z0-9-]"), "")
+    val safeBranchName = normalizedBranchName.replace(Regex("[^a-zA-Z0-9-.]"), "")
 
     // Treat main, master, and unknown as production/default
     val isProduction = safeBranchName == "main" || safeBranchName == "master"

@@ -68,6 +68,18 @@
     <color name="primaryContainer_cinnamoroll">#A0E6FF</color>
     <color name="onPrimaryContainer_cinnamoroll">#000000</color>
 
+    <!-- Crayon Shin-chan -->
+    <color name="primary_crayon_shin_chan">#E53935</color>
+    <color name="onPrimary_crayon_shin_chan">#FFFFFF</color>
+    <color name="primaryContainer_crayon_shin_chan">#FFB300</color>
+    <color name="onPrimaryContainer_crayon_shin_chan">#000000</color>
+
+    <!-- Doraemon -->
+    <color name="primary_doraemon">#0083C5</color>
+    <color name="onPrimary_doraemon">#FFFFFF</color>
+    <color name="primaryContainer_doraemon">#E53935</color>
+    <color name="onPrimaryContainer_doraemon">#FFFFFF</color>
+
     <!-- Chart Colors -->
     <color name="temp_color">#B3261E</color>
     <color name="humidity_color">#006CBA</color>

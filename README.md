@@ -16,7 +16,8 @@ A smart medication reminder application integrated with an ESP32-based smart pil
     *   **Yellow Dot:** Partially taken (missed some doses).
     *   **Red Dot:** No doses taken on a scheduled day.
 *   **Font Size Adjustment:** Users can choose between Small, Medium, and Large font sizes in the settings menu to improve readability. The app theme updates instantly to reflect the chosen size.
-*   **Character Themes:** Choose between "Kuromi" and "Chibi Maruko-chan" themes for a personalized experience.
+*   **Character Themes:** Choose between "Kuromi", "Chibi Maruko-chan", "Crayon Shin-chan", and "Doraemon" themes for a personalized experience.
+*   **Unified UI:** Consistent button styles across the app for a more cohesive user experience.
 *   **Engineering Mode:** toggle hardware engineering mode directly from the app for diagnostics.
 *   **Wi-Fi Configuration:** Configure the ESP32's Wi-Fi credentials directly from the app via BLE. The interface is now enhanced with Material Design visuals, input validation, and clear instructions.
 *   **Alarm System:** Set up to 4 alarms on the ESP32 pillbox for standalone reminders.

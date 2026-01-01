@@ -1,10 +1,23 @@
 # 更新日誌
 
-## 2026-01-01
+
+### v1.3.3: Bug Fixes & Stability
+*   **國際化資源修復 (i18n Resource Fix):**
+    *   **根源分析:** 發現 `values-en/strings.xml` 中 `character_entries` 和 `character_values` 陣列的項目數量 (2) 少於預設 `values/strings.xml` (4)，且缺少對應的 `character_crayon_shin_chan` 與 `character_doraemon` 字串。
+    *   **問題影響:** 此資源不一致導致在英文語系下，讀取角色設定時發生 `ArrayIndexOutOfBoundsException`，是造成按下「檢查更新」按鈕後立即崩潰的根本原因。
+    *   **解決方案:** 補齊 `values-en/strings.xml` 中缺少的字串翻譯，並將陣列項目數量擴充至與中文版一致，徹底解決崩潰問題。
+*   **啟動流程修正 (Initialization Flow Fix):**
+    *   **根源分析:** `MainActivity.kt` 的 `onCreate` 方法中，`applyCharacterTheme()` 在 `super.onCreate()` 之前被呼叫。這導致由 `BaseActivity` 在 `attachBaseContext` 中套用的字體大小設定，被角色主題 `setTheme()` 的呼叫完全覆蓋。
+    *   **問題影響:** 每次 App 啟動時，使用者設定的字體大小都會被角色主題的預設值重設，導致「初始字體大小不正確」。
+    *   **解決方案:** 將 `applyCharacterTheme()` 的呼叫時機點，移至 `super.onCreate()` **之後**、`setContentView()` **之前**。此舉確保了字體設定先生效，然後角色主題再被應用，兩者不再衝突。
+
 ### v1.3.2: 硬體確認服藥
 *   **硬體互動 (Pillbox Integration):** 
     *   **ESP32 端:** 在 `input.cpp` 的 `handleButtons()` 函式中新增邏輯。當鬧鐘響起時，短按確認按鈕不僅會停止鬧鐘，還會觸發 `sendMedicationTaken(0)`，透過藍牙向 App 發送「已服藥」訊號。
     *   **App 端:** 檢視並確認了 App 的接收鏈路 (`BluetoothLeManager` -> `MainActivity` -> `MainViewModel` -> `AppRepository`) 已正確實作。收到訊號後，`AppRepository` 中的 `processMedicationTaken` 會自動執行，將對應藥物的庫存減一、新增服藥時間紀錄，並更新日曆與相關 UI，無需額外修改。
+
+### v1.3.1: 智慧放藥引導
+*   **文件整理:** 根據 Git 歷史紀錄，此版本主要為「智慧放藥引導 (Smart pill placement guide)」功能的收尾與文件整理，在 `todo.md` 中將其標示為已完成。
 
 ### v1.3.0: 智慧藥盒引導 & 藍牙重連
 *   **核心功能 (Pillbox Guidance):**
@@ -14,12 +27,14 @@
     *   **意外斷線自動重連:** 在 `BluetoothLeManager` 中導入了自動重連機制。當藍牙非使用者手動斷開時，App 會自動嘗試重新連線，並設有 5 次的重試上限與 5 秒的延遲。
     *   **UI 狀態回饋:** 在 `MainViewModel` 中新增了對應的 `StateFlow` (`isReconnecting`)，並在 `strings.xml` 中加入了「正在嘗試重連...」與「重連失敗」的狀態文字。
 
-## 2025-12-31
 ### v1.2.7: 更新與鬧鐘排程優化
 *   **更新流程優化 (Update Flow):**
     *   在 `UpdateManager` 中新增邏輯，當偵測到新舊 App 的簽名不匹配時 (例如從 Dev 版更新到 Official 版)，會跳出明確的警告，告知使用者需要先卸載舊版，避免安裝失敗。
 *   **架構重構 (Alarm Scheduling):**
     *   為符合 Android 12+ 的精確鬧鐘權限要求，重構了鬧鐘設定邏輯。在 `MainActivity` 中，會檢查 `SCHEDULE_EXACT_ALARM` 權限，若未授予，則引導使用者至系統設定頁面開啟。
+
+### v1.2.6: Android 12+ 鬧鐘排程優化
+*   **架構重構 (Alarm Scheduling):** 為符合 Android 12+ 的精確鬧鐘權限要求，重構了鬧鐘設定邏輯。
 
 ### v1.2.5: UI 與本地化修正 (Hotfix)
 *   **UI/UX 優化:**
