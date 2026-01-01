@@ -1,6 +1,12 @@
 # 更新日誌
 
 ## 2025-12-31
+### v1.2.7: Update Process Hotfix
+*   **更新流程重構 (In-App Updates API):**
+    *   為了解決使用者看到「安裝」而非「更新」的體驗問題，導入了 Android 的 In-App Updates API。
+    *   重構 `UpdateManager`，根據 Google Play 回傳的更新類型，實作了 `FLEXIBLE` (彈性) 與 `IMMEDIATE` (立即) 兩種更新流程。
+    *   在更新過程中，加入了清晰的 UI 狀態回饋，例如下載進度條與安裝提示，提升了整體更新體驗的流暢度與專業性。
+
 ### v1.2.6
 *   **版本維護:** 一般性維護與準備更新。
 
@@ -18,7 +24,6 @@
 *   **本地化修正:**
     *   在 `strings.xml (zh-TW)` 中新增 "disconnected" 的翻譯 "已斷線"，並確保藍牙連線狀態的更新會使用此資源。
 
-## 2025-02-02
 ### Bug Fixes & UI Improvements
 *   **徹底修復字體大小無法縮放問題 (根本原因)**: 將字體縮放邏輯從 `attachBaseContext` 移至 `MainActivity.kt` 的 `onCreate` 方法中，並確保在 `super.onCreate` 之前執行。這確保了我們的自訂 `Configuration` (包含 `fontScale`) 會在系統套用主題之前生效，從而避免了被主題中寫死的字體大小覆寫的問題。同時，也將縮放比例調整為 `0.8f`, `1.0f`, `1.5f`，以提供更顯著的視覺效果。
 *   **優化「頻道失效」通知**: 在 `SettingsFragment.kt` 中加入靜態旗標 `hasShownInvalidChannelWarning`，確保「頻道失效」的彈出式警告在單次 App 生命週期中只會顯示一次，避免在設定頁面中因重複讀取遠端頻道列表而反覆跳出通知，提升使用者體驗。
