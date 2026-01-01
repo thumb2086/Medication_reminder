@@ -19,6 +19,8 @@ class ImagePickerPreference(context: Context, attrs: AttributeSet?) : ListPrefer
             when (it) {
                 "酷洛米" -> R.drawable.kuromi
                 "櫻桃小丸子" -> R.drawable.chibi_maruko_chan
+                "蠟筆小新" -> R.drawable.crayon_shin_chan
+                "哆啦A夢" -> R.drawable.doraemon
                 else -> R.drawable.ic_face // A default icon
             }
         }?.toTypedArray() ?: emptyArray()
