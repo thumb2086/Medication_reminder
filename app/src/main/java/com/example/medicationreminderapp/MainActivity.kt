@@ -110,7 +110,7 @@ class MainActivity : BaseActivity(), BluetoothLeManager.BleListener {
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.update_available_title))
             .setMessage(getString(R.string.update_available_message, updateInfo.version, updateInfo.releaseNotes))
-            .setPositiveButton(R.string.update_now) { _, _ ->
+            .setPositiveButton(getString(R.string.update_now)) { _, _ ->
                 updateManager.downloadAndInstall(updateInfo.downloadUrl, "MedicationReminderApp-${updateInfo.version}.apk")
             }
             .setNegativeButton(R.string.update_later, null)
@@ -145,6 +145,8 @@ class MainActivity : BaseActivity(), BluetoothLeManager.BleListener {
         val themeResId = when (character) {
             "kuromi" -> R.style.Theme_MedicationReminderApp_Kuromi
             "maruko" -> R.style.Theme_MedicationReminderApp_MyMelody
+            "crayon_shin_chan" -> R.style.Theme_MedicationReminderApp_CrayonShinChan
+            "doraemon" -> R.style.Theme_MedicationReminderApp_Doraemon
             else -> R.style.Theme_MedicationReminderApp
         }
         setTheme(themeResId)
