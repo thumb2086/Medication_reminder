@@ -1,5 +1,6 @@
 package com.example.medicationreminderapp.util
 
+import android.app.Activity
 import android.app.AlertDialog
 import android.app.DownloadManager
 import android.content.BroadcastReceiver
@@ -247,7 +248,11 @@ class UpdateManager(private val context: Context) {
         return remoteSuffix > localSuffix
     }
 
-    fun downloadAndInstall(url: String, fileName: String) {
+    fun downloadAndInstall(context: Context, url: String, fileName: String) {
+        if (context is Activity && (context.isFinishing || context.isDestroyed)) {
+            return // Activity is not running, do not show dialog
+        }
+
         val isDebuggable = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
         if (isDebuggable) {
             Toast.makeText(context, R.string.debug_build_warning, Toast.LENGTH_LONG).show()
