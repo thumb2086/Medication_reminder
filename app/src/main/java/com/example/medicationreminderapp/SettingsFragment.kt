@@ -241,22 +241,24 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
             if (updateInfo != null) {
                 val sb = StringBuilder()
                 val title: String
-                
+
                 if (updateInfo.isDifferentAppId) {
                     title = getString(R.string.install_different_version_title)
+                    // Add a detailed explanation about signatures
                     sb.append(getString(R.string.install_different_version_message))
+                    sb.append("\n\n").append(getString(R.string.signature_mismatch_warning))
                 } else if (updateInfo.isNewer) {
                     title = getString(R.string.update_available_title)
                 } else {
                     title = getString(R.string.reinstall_title)
                     sb.append(getString(R.string.reinstall_message))
                 }
-                
+
                 sb.append("\n\n${getString(R.string.version_label)}: ${updateInfo.version}")
                 if (updateInfo.releaseNotes.isNotEmpty()) {
                     sb.append("\n\n${getString(R.string.release_notes_label)}:\n${updateInfo.releaseNotes}")
                 }
-                
+
                 AlertDialog.Builder(requireContext())
                     .setTitle(title)
                     .setMessage(sb.toString())
@@ -271,6 +273,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
             }
         }
     }
+
 
     override fun onResume() {
         super.onResume()

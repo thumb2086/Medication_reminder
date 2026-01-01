@@ -1,5 +1,23 @@
 # 更新日誌
 
+## 2025-12-31
+### v1.2.6
+*   **版本維護:** 一般性維護與準備更新。
+
+### v1.2.5: Channel & Stability Hotfix
+*   **UI/UX 優化:**
+    *   將主畫面的 `TabLayout` 的 `tabMode` 改為 `scrollable`，解決在英文語系下，文字過長導致換行的排版問題。
+*   **本地化修正:**
+    *   在 `strings.xml (zh-TW)` 中，為 `check_for_updates_summary` 補上中文翻譯，提升更新設定頁面的完整性。
+
+### v1.2.4: UI/UX Hotfixes
+*   **UI/UX 修復 (多國語言):**
+    *   調整了 Tab 標籤的 `textSize` 以避免在英文語系下換行。
+    *   修正了 `CONNECT PILLBOX` 按鈕與 `Disconnected` 狀態文字的約束，確保在不同螢幕尺寸下皆能正確對齊。
+    *   加寬了下拉式選單的寬度，確保 "How many medications to..." 文字能完整顯示。
+*   **本地化修正:**
+    *   在 `strings.xml (zh-TW)` 中新增 "disconnected" 的翻譯 "已斷線"，並確保藍牙連線狀態的更新會使用此資源。
+
 ## 2025-02-02
 ### Bug Fixes & UI Improvements
 *   **徹底修復字體大小無法縮放問題 (根本原因)**: 將字體縮放邏輯從 `attachBaseContext` 移至 `MainActivity.kt` 的 `onCreate` 方法中，並確保在 `super.onCreate` 之前執行。這確保了我們的自訂 `Configuration` (包含 `fontScale`) 會在系統套用主題之前生效，從而避免了被主題中寫死的字體大小覆寫的問題。同時，也將縮放比例調整為 `0.8f`, `1.0f`, `1.5f`，以提供更顯著的視覺效果。
@@ -9,7 +27,6 @@
 *   **調整字體縮放比例**: 將「大字體」模式的縮放比例從 `1.1f` 提升至 `1.2f`，使字體放大的效果更為顯著，提升視覺可讀性。
 *   **徹底修復字體大小無法縮放問題**: 移除 `activity_main.xml` 中 `Toolbar` 的 `TextView` 上寫死的 `textAppearance` 屬性。此屬性會覆蓋 `attachBaseContext` 中設定的 `fontScale`，導致字體大小設定無效。移除後，`Toolbar` 的標題大小將能正確地隨著系統字體縮放設定而改變。
 
-## 2025-02-01
 ### Bug Fixes & Code Quality
 *   **修正 `strings.xml` 編譯錯誤:** 修正了 `strings.xml` 中因 `update_channel_entries` 引起的 "not found in default locale" 編譯錯誤，確保多國語言資源的一致性。
 *   **修正 App 內更新檢查邏輯:**
@@ -18,7 +35,6 @@
 *   **程式碼品質提升:** 
     *   **可讀性:** 修正了 `MainActivity.kt` 中多餘的程式碼限定詞，提升了程式碼的可讀性。
 
-## 2025-01-31
 ### Bug Fixes & Improvements
 *   **修正跨頻道更新檢查:** 修改了 `UpdateManager.kt` 的更新邏輯，移除了會自動檢查 Stable 頻道的行為。現在 App 只會檢查當前所選的更新頻道，解決了在 Nightly 版本下，仍然會提示有新版 (Stable) 的問題。
 *   **修正 `strings.xml` 編譯錯誤:** 修正了 `strings.xml` 中因 `update_channel_entries` 引起的 "not found in default locale" 編譯錯誤，確保多國語言資源的一致性。
@@ -26,7 +42,6 @@
     *   **國際化 (i18n):** 將 `downloadAndInstall()` 和 `installApk()` 中所有硬編碼的 Toast 和對話框訊息，全部抽取至字串資源，並提供了完整的英文翻譯。
     *   **可讀性:** 修正了 `MainActivity.kt` 中多餘的程式碼限定詞，提升了程式碼的可讀性。
 
-## 2025-01-30
 ### Code Quality & Bug Fixes
 *   **全面國際化 (i18n) 修正:**
     *   **硬編碼字串移除:** 修正了 `SettingsFragment.kt` 中多處硬編碼的中文字串，包含「頻道已失效」的提示、更新檢查流程中的各種對話框標題與訊息，以及更新頻道的選項文字 (Stable, Current, Dev)。
@@ -36,7 +51,6 @@
     *   **還原設定頁面:** 透過 Git 歷史紀錄，將被意外重構的 `SettingsFragment.kt` 還原為 `PreferenceFragmentCompat` 版本，恢復了所有遺失的設定選項 (主題、語言、更新頻道等)。
     *   **整合字體大小設定:** 將字體大小調整功能，以 `ListPreference` 的形式重新整合至 `preferences.xml`，使其與其他設定項目的風格和操作保持一致。
 
-## 2025-01-29
 ### Features
 *   **字體大小調整功能:**
     *   **多尺寸主題:** 在 `themes.xml` 中新增了 `Small`, `Medium`, `Large` 三種字體大小的樣式與主題，方便使用者根據視力需求調整。
@@ -45,21 +59,18 @@
     *   **偏好儲存:** 使用者的字體大小選擇會儲存在 `SharedPreferences` 中，確保下次啟動 App 時能自動套用上次的設定。
     *   **程式碼整合:** 在 `MainActivity` 中新增 `applyFontSize()` 函式，並在 `onCreate()` 中呼叫，確保在 App 生命週期早期階段就能正確套用主題。同時，也將 `SettingsFragment` 的導覽功能整合到 `onOptionsItemSelected()` 中。
 
-## 2025-12-30
 ### Docs
 *   **文件更新 (Documentation Update):**
     *   更新 `README.md` 與 `readme_cn.md`，以反映最新的 ESP32 韌體變更。
     *   具體來說，文件現在闡明了馬達控制邏輯已重構，從 `ESP32Servo` 函式庫改為使用原生的 `LEDC` 周邊，以確保與 ESP32-C6 的完全相容性。
     *   同時更新了腳位配置表，將伺服馬達腳位標示為 `8` 並註明 `ESP32-C6 compatible (LEDC)`。
 
-## 2025-12-29
 ### ESP32
 *   **馬達控制重構 (Motor Control Refactor):**
     *   **問題診斷:** 使用者回報在更換為 ESP32-C6 開發板並更新腳位配置後，伺服馬達在開機自檢時沒有反應。
     *   **根源分析:** 初步將 `SERVO_PIN` 更換至 `GPIO 8` 後問題依舊。經分析，根本原因極可能為 `ESP32Servo` 函式庫對新款 ESP32-C6 晶片的 PWM 功能支援不完整。
     *   **解決方案:** 為徹底解決相容性問題，重構了馬達控制邏輯。棄用 `ESP32Servo` 函式庫，改為使用 ESP32 原生的 `LEDC` (LED Control) 周邊來直接產生精準的 50Hz PWM 訊號。此方法跳過了有相容性疑慮的函式庫，直接由底層硬體產生訊號，確保了在 ESP32-C6 上的可靠性。
 
-## 2025-12-28
 ### ESP32
 *   **韌體優化 (Firmware Optimization):**
     *   **除錯日誌優化:** 調整了 `handleWiFiConnection` 函式中的除錯訊息邏輯，從無條件印出改為僅在 Wi-Fi 處於 `WIFI_CONNECTING` 狀態時才印出，大幅減少了序列埠的訊息洗版問題，使日誌更具可讀性。
@@ -72,7 +83,6 @@
         *   `SERVO_PIN`: `27` -> **`3`** (移至存在的安全腳位)
     *   此更新確保了韌體與使用者當前硬體的完全相容性。
 
-## 2025-12-27
 ### ESP32
 *   **腳位衝突修復 (USB Unrecognized Fix):**
     *   **問題診斷:** 使用者回報 ESP32 連接電腦時會出現「USB 裝置無法辨識」的錯誤，且序列埠無任何輸出。此問題被診斷為程式在極早期因腳位衝突而崩潰並陷入無限重啟循環。
@@ -84,15 +94,13 @@
         *   `BUZZER_PIN_2` -> **GPIO 5**
         *   `BUTTON_BACK_PIN` -> **GPIO 13**
         *   為避免衝突，原先使用 `GPIO 13` 的 `DHT_PIN` 被移動至 **GPIO 32**。
-*   **除錯資訊植入:** 為協助問題排查，在所有 `esp32` 韌體的 `.cpp` 和 `.ino` 檔案中加入了詳細的 `Serial.println` 除錯日誌。
+*   **除錯資訊植入:** 為協助問題排查，在所有 `esp32` 韌體的 `.cpp` 和 `.h` 檔案中加入了詳細的 `Serial.println` 除錯日誌。
 
-## 2025-12-26
 
 - 確認 ESP32 韌體已完成模組化重構。
 - 清理 `todo.md`。
 - 更新 `README.md` 和 `README_cn.md` 以反映新的韌體架構。
 
-## 2025-01-29
 ### ESP32 Refactor
 *   **程式碼模組化 (Code Modularization):** 
     *   將 `esp32.ino` 的所有程式碼重構並分解為多個獨立的模組，存放於 `esp32/src/` 目錄下。
@@ -102,7 +110,6 @@
     *   清空了根目錄下已過時的 `esp32.ino` 檔案，因為其功能已完全轉移至新模組。
 *   **版本更新:** ESP32 韌體版本號更新至 `v22.0`。
 
-## 2025-01-28
 ### Features
 *   **日曆紀錄功能重構 (History Calendar Enhancement):**
     *   **精準狀態計算:** 重構 `AppRepository` 的核心邏輯。現在，日曆上的每日狀態會根據每種藥物的服用計畫 (開始/結束日期、每日次數) 與詳細的服藥時間紀錄 (`MedicationTakenRecord`) 動態計算，取代了先前過於簡化的判斷方式。
@@ -118,7 +125,6 @@
     *   **`AppRepository.kt`:** 移除了未被使用的 `loadDailyStatusData` 和 `saveDailyStatusData` 函式。由於日曆狀態現在是動態產生，不再需要獨立儲存。
     *   **`HistoryFragment.kt`:** 移除了未使用的 `LocalDate` import，保持程式碼乾淨。
 
-## 2025-01-27
 ### Configuration
 *   **Gradle Deprecation 修復 (Final):**
     *   **Build Config:** 再次修正 `app/build.gradle.kts`。雖然 `installation { installOptions(...) }` 被標記為 Deprecated，但為了相容性與正確運作，並解決 `Val cannot be reassigned` 及類型不匹配錯誤，決定採用直接呼叫方法 `installOptions("-r", "--no-incremental")` 的方式。這消除了編譯錯誤，並保留了對舊版 AGP 的相容性 (雖然 IDE 仍會顯示警告，但這是目前唯一能通過編譯的解法)。
