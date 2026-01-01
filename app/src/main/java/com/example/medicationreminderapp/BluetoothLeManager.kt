@@ -38,6 +38,8 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
         fun onStatusUpdate(@StringRes messageResId: Int, vararg formatArgs: Any)
         fun onDeviceConnected()
         fun onDeviceDisconnected()
+        fun onReconnectStarted()
+        fun onReconnectFailed()
         fun onProtocolVersionReported(version: Int)
         fun onMedicationTaken(slotNumber: Int)
         fun onBoxStatusUpdate(slotMask: Byte)
@@ -62,7 +64,14 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
     private val handler = Handler(Looper.getMainLooper())
     private val commandQueue = ConcurrentLinkedQueue<ByteArray>()
     private var isCommandInProgress = false
-    private var protocolVersion: Int = 1 // Default to legacy protocol version
+    private var protocolVersion: Int = 1
+
+    private var shouldAutoReconnect = false
+    private var lastConnectedDevice: BluetoothDevice? = null
+    private val reconnectHandler = Handler(Looper.getMainLooper())
+    private var reconnectAttempts = 0
+    private val maxReconnectAttempts = 5
+    private val reconnectDelayMillis = 5000L
 
     companion object {
         private const val TAG = "BluetoothLeManager"
@@ -76,38 +85,41 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
     private val gattCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             val deviceAddress = gatt.device.address
-            if (status == BluetoothGatt.GATT_SUCCESS) {
-                if (newState == BluetoothProfile.STATE_CONNECTED) {
-                    Log.d(TAG, "Connected to $deviceAddress")
-                    listener?.onStatusUpdate(R.string.ble_status_connected_searching, deviceAddress)
-                    handler.post { gatt.discoverServices() }
-                } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                    Log.d(TAG, "Disconnected from $deviceAddress")
-                    this@BluetoothLeManager.gatt?.close()
-                    this@BluetoothLeManager.gatt = null
-                    isCommandInProgress = false
-                    commandQueue.clear()
-                    protocolVersion = 1 // Reset on disconnect
-                    listener?.onDeviceDisconnected()
+            if (newState == BluetoothProfile.STATE_CONNECTED && status == BluetoothGatt.GATT_SUCCESS) {
+                Log.d(TAG, "Connected to $deviceAddress")
+                stopReconnectSequence()
+                lastConnectedDevice = gatt.device
+                handler.post { gatt.discoverServices() }
+            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                Log.d(TAG, "Disconnected from $deviceAddress with status: $status")
+                val wasConnected = this@BluetoothLeManager.gatt != null
+                cleanupConnection()
+                handler.post { listener?.onDeviceDisconnected() }
+
+                if (wasConnected && shouldAutoReconnect) {
+                    Log.i(TAG, "Unexpected disconnect detected. Starting reconnect sequence.")
+                    startReconnectSequence()
                 }
-            } else {
+            } else if (status != BluetoothGatt.GATT_SUCCESS) {
                 Log.e(TAG, "Connection state change error: $status")
-                gatt.close()
-                this@BluetoothLeManager.gatt = null
-                isCommandInProgress = false
-                commandQueue.clear()
-                protocolVersion = 1 // Reset on disconnect
-                listener?.onStatusUpdate(R.string.ble_status_connect_error, status)
-                listener?.onDeviceDisconnected()
+                cleanupConnection()
+                handler.post { listener?.onStatusUpdate(R.string.ble_status_connect_error, status) }
+                handler.post { listener?.onDeviceDisconnected() }
+
+                if (shouldAutoReconnect) {
+                    Log.i(TAG, "Connection error. Starting reconnect sequence.")
+                    startReconnectSequence()
+                }
             }
         }
+
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 val service = gatt.getService(SERVICE_UUID)
                 if (service == null) {
                     Log.e(TAG, "Service not found: $SERVICE_UUID")
-                    listener?.onStatusUpdate(R.string.ble_status_service_not_found)
+                    handler.post { listener?.onStatusUpdate(R.string.ble_status_service_not_found) }
                     disconnect()
                     return
                 }
@@ -115,15 +127,15 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
                 notifyCharacteristic = service.getCharacteristic(NOTIFY_CHARACTERISTIC_UUID)
                 if (writeCharacteristic == null || notifyCharacteristic == null) {
                     Log.e(TAG, "Characteristics not found")
-                    listener?.onStatusUpdate(R.string.ble_status_char_not_found)
+                    handler.post { listener?.onStatusUpdate(R.string.ble_status_char_not_found) }
                     disconnect()
                     return
                 }
-                listener?.onStatusUpdate(R.string.ble_status_enabling_notifications)
+                handler.post { listener?.onStatusUpdate(R.string.ble_status_enabling_notifications) }
                 enableNotifications()
             } else {
                 Log.e(TAG, "Service discovery failed: $status")
-                listener?.onStatusUpdate(R.string.ble_status_service_discovery_failed, status)
+                handler.post { listener?.onStatusUpdate(R.string.ble_status_service_discovery_failed, status) }
                 disconnect()
             }
         }
@@ -150,15 +162,17 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
 
         override fun onDescriptorWrite(gatt: BluetoothGatt?, descriptor: BluetoothGattDescriptor?, status: Int) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                Log.d(TAG, "Notifications enabled")
-                listener?.onStatusUpdate(R.string.ble_status_notifications_enabled)
-                listener?.onDeviceConnected()
-                // Connection is established, now query for protocol version and enable realtime data
+                Log.d(TAG, "Notifications enabled. Connection fully established.")
+                reconnectAttempts = 0
+                handler.post {
+                    listener?.onStatusUpdate(R.string.ble_status_notifications_enabled)
+                    listener?.onDeviceConnected()
+                }
                 requestProtocolVersion()
-                enableRealtimeSensorData() // New: Automatically enable realtime sensor data
+                enableRealtimeSensorData()
             } else {
                 Log.e(TAG, "Descriptor write failed: $status")
-                listener?.onStatusUpdate(R.string.ble_status_notification_enable_failed, status)
+                handler.post { listener?.onStatusUpdate(R.string.ble_status_notification_enable_failed, status) }
                 disconnect()
             }
         }
@@ -170,7 +184,7 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
                     processNextCommand()
                 } else {
                     Log.e(TAG, "Characteristic write failed: $status")
-                    listener?.onStatusUpdate(R.string.ble_status_write_failed)
+                    handler.post { listener?.onStatusUpdate(R.string.ble_status_write_failed) }
                     commandQueue.clear()
                 }
             }, 150)
@@ -193,39 +207,37 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
             Log.d(TAG, "RX: $hexString")
 
             when (data[0].toInt() and 0xFF) {
-                0x71 -> { // Protocol version report
+                0x71 -> {
                     if (data.size > 1) {
                         protocolVersion = data[1].toInt()
                         Log.d(TAG, "Protocol Version: $protocolVersion")
-                        listener?.onProtocolVersionReported(protocolVersion)
+                        handler.post { listener?.onProtocolVersionReported(protocolVersion) }
                     }
                 }
-                0x80 -> { if (data.size > 1) listener?.onBoxStatusUpdate(data[1]) }
-                0x81 -> { if (data.size > 1) listener?.onMedicationTaken(data[1].toInt()) }
-                0x82 -> { listener?.onTimeSyncAcknowledged() }
-                0x83 -> { 
-                    if (data.size > 1) listener?.onEngineeringModeUpdate(data[1].toInt() == 0x01)
+                0x80 -> { if (data.size > 1) handler.post { listener?.onBoxStatusUpdate(data[1]) } }
+                0x81 -> { if (data.size > 1) handler.post { listener?.onMedicationTaken(data[1].toInt()) } }
+                0x82 -> { handler.post { listener?.onTimeSyncAcknowledged() } }
+                0x83 -> {
+                    if (data.size > 1) handler.post { listener?.onEngineeringModeUpdate(data[1].toInt() == 0x01) }
                 }
-                0x84 -> { // Wi-Fi Status Update
+                0x84 -> {
                     if (data.size > 1) {
                         val wifiStatus = data[1].toInt()
                         Log.d(TAG, "Wi-Fi Status Update: $wifiStatus")
-                        listener?.onWifiStatusUpdate(wifiStatus)
+                        handler.post { listener?.onWifiStatusUpdate(wifiStatus) }
                     }
                 }
                 0x90 -> {
-                    // Protocol V2: Parse temp/humidity as 2-byte signed integers (value * 100)
                     if (data.size >= 5) {
                         val buffer = ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN)
                         val temperature = buffer.getShort(1) / 100.0f
                         val humidity = buffer.getShort(3) / 100.0f
                         Log.d(TAG, "Realtime Sensor (V2): T=$temperature, H=$humidity")
-                        listener?.onSensorData(temperature, humidity)
+                        handler.post { listener?.onSensorData(temperature, humidity) }
                     }
                 }
                 0x91 -> {
                     if (protocolVersion >= 2) {
-                        // Protocol V2: Batch processing
                         if (data.size < 9 || (data.size - 1) % 8 != 0) {
                             Log.w(TAG, "Invalid V2 historic data size: ${data.size}")
                             return
@@ -240,10 +252,9 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
                             val temp = buffer.getShort(offset + 4) / 100.0f
                             val hum = buffer.getShort(offset + 6) / 100.0f
                             Log.d(TAG, "Historic(V2) [$i]: TS=$timestamp, T=$temp, H=$hum")
-                            listener?.onHistoricSensorData(timestamp, temp, hum)
+                            handler.post { listener?.onHistoricSensorData(timestamp, temp, hum) }
                         }
                     } else {
-                        // Protocol V1: Single record processing
                         if (data.size < 9) {
                              Log.w(TAG, "Invalid V1 historic data size: ${data.size}")
                              return
@@ -253,12 +264,12 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
                         val temp = buffer.getShort(5) / 100.0f
                         val hum = buffer.getShort(7) / 100.0f
                         Log.d(TAG, "Historic(V1): TS=$timestamp, T=$temp, H=$hum")
-                        listener?.onHistoricSensorData(timestamp, temp, hum)
+                        handler.post { listener?.onHistoricSensorData(timestamp, temp, hum) }
                     }
                 }
-                0x92 -> { 
+                0x92 -> {
                     Log.d(TAG, "Historic data sync complete")
-                    listener?.onHistoricDataComplete() 
+                    handler.post { listener?.onHistoricDataComplete() }
                 }
                 0xEE -> {
                     if (data.size > 1) {
@@ -271,8 +282,10 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
                             else -> "未知錯誤: $errorCode"
                         }
                         Log.e(TAG, "Device Error: $errorMsg")
-                        listener?.onStatusUpdate(R.string.ble_status_device_error, errorMsg)
-                        listener?.onError(errorCode)
+                        handler.post {
+                            listener?.onStatusUpdate(R.string.ble_status_device_error, errorMsg)
+                            listener?.onError(errorCode)
+                        }
                     }
                 }
             }
@@ -284,25 +297,25 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
             if (result.device.name == DEVICE_NAME) {
                 stopScan()
                 Log.d(TAG, "Found device: ${result.device.address}")
-                listener?.onStatusUpdate(R.string.ble_status_found_connecting)
+                handler.post { listener?.onStatusUpdate(R.string.ble_status_found_connecting) }
                 connect(result.device)
             }
         }
         override fun onScanFailed(errorCode: Int) {
             isScanning = false
             Log.e(TAG, "Scan failed: $errorCode")
-            listener?.onStatusUpdate(R.string.ble_status_scan_failed, errorCode)
+            handler.post { listener?.onStatusUpdate(R.string.ble_status_scan_failed, errorCode) }
         }
     }
 
     fun startScan() {
         if (isScanning) return
-        listener?.onStatusUpdate(R.string.ble_status_scanning)
+        handler.post { listener?.onStatusUpdate(R.string.ble_status_scanning) }
         isScanning = true
         handler.postDelayed({
             if (isScanning) {
                 stopScan()
-                listener?.onStatusUpdate(R.string.ble_status_scan_timeout)
+                handler.post { listener?.onStatusUpdate(R.string.ble_status_scan_timeout) }
             }
         }, 10000)
         val scanSettings = ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build()
@@ -317,11 +330,13 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
     }
 
     private fun connect(device: BluetoothDevice) {
+        shouldAutoReconnect = true
         gatt = device.connectGatt(context, false, gattCallback)
     }
 
     fun disconnect() {
-        listener?.onDeviceDisconnected()
+        shouldAutoReconnect = false
+        stopReconnectSequence()
         gatt?.disconnect()
     }
 
@@ -360,13 +375,49 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
              isCommandInProgress = false
         }
     }
-    
-    // Request protocol version from the device
+
+    private fun startReconnectSequence() {
+        if (reconnectAttempts == 0) {
+            handler.post { listener?.onReconnectStarted() }
+        }
+
+        if (reconnectAttempts < maxReconnectAttempts) {
+            reconnectAttempts++
+            Log.d(TAG, "Scheduling reconnect attempt $reconnectAttempts in ${reconnectDelayMillis}ms")
+            reconnectHandler.postDelayed({
+                lastConnectedDevice?.let { device ->
+                    Log.i(TAG, "Attempting to reconnect to ${device.address} (Attempt $reconnectAttempts/$maxReconnectAttempts)")
+                    gatt = device.connectGatt(context, false, gattCallback)
+                } ?: run {
+                    Log.e(TAG, "Cannot reconnect, no last connected device.")
+                    handler.post { listener?.onReconnectFailed() }
+                }
+            }, reconnectDelayMillis)
+        } else {
+            Log.e(TAG, "Reconnect failed after $maxReconnectAttempts attempts.")
+            reconnectAttempts = 0
+            handler.post { listener?.onReconnectFailed() }
+        }
+    }
+
+    private fun stopReconnectSequence() {
+        Log.d(TAG, "Stopping reconnect sequence.")
+        reconnectHandler.removeCallbacksAndMessages(null)
+        reconnectAttempts = 0
+    }
+
+    private fun cleanupConnection() {
+        gatt?.close()
+        gatt = null
+        isCommandInProgress = false
+        commandQueue.clear()
+        protocolVersion = 1
+    }
+
     fun requestProtocolVersion() {
         sendCommand(byteArrayOf(0x01.toByte()))
     }
-    
-    // Enable realtime environment data push (CMD_SUBSCRIBE_ENV)
+
     fun enableRealtimeSensorData() {
         sendCommand(byteArrayOf(0x32.toByte()))
         Log.d(TAG, "TX: Enable Realtime ENV")
@@ -397,8 +448,7 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
         System.arraycopy(passBytes, 0, command, 3 + ssidBytes.size, passBytes.size)
         sendCommand(command)
     }
-    
-    // Set alarm on ESP32
+
     fun setAlarm(slot: Int, hour: Int, minute: Int, enable: Boolean) {
         val command = byteArrayOf(
             0x41.toByte(),
@@ -417,10 +467,12 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
         sendCommand(command)
         Toast.makeText(context, "工程模式狀態已發送", Toast.LENGTH_SHORT).show()
     }
-    
+
     fun requestEngineeringModeStatus() {
         sendCommand(byteArrayOf(0x14.toByte()))
     }
+
+
 
     fun requestStatus() {
         sendCommand(byteArrayOf(0x20.toByte()))

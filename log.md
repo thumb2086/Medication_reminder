@@ -1,5 +1,12 @@
 # 更新日誌
 
+## 2025-01-01
+### v1.3.0: 藍牙自動重連
+*   **體驗優化 (Robustness):** 
+    *   **意外斷線自動重連:** 在 `BluetoothLeManager` 中導入了自動重連機制。當藍牙非使用者手動斷開時 (例如超出範圍)，App 會自動嘗試重新連線，並設有 5 次的重試上限與 5 秒的延遲，以避免造成系統負擔。
+    *   **UI 狀態回饋:** 在 `MainViewModel` 中新增了對應的 `StateFlow`，並在 `strings.xml` 中加入了「正在嘗試重連...」與「重連失敗」的狀態文字。這讓使用者能清楚了解 App 當前的連線狀態，提升了使用者體驗。
+    *   **介面與旗標:** 在 `BleListener` 中新增了 `onReconnectStarted` 與 `onReconnectFailed` 回調，並透過 `shouldAutoReconnect` 旗標來區分是「手動斷線」還是「意外斷線」，確保只在需要時觸發重連。
+
 ## 2025-12-31
 ### v1.2.7: Update Process Hotfix
 *   **更新流程重構 (In-App Updates API):**
