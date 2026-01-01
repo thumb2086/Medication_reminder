@@ -1,31 +1,5 @@
 # Medication Reminder App - Development Roadmap
 
-## Epic 1: Bug Fixes & Immediate Improvements
-此史詩專注於修復現有的 UI 錯誤並提升核心體驗。
-
-### v1.2.4: UI/UX Hotfixes
-- [x] **Bug修復: 英文版本排版**
-  - **詳細步驟:**
-    - [x] 調整 Tab 標籤的 `textSize` 或 `maxWidth`，避免文字換行。
-    - [x] 檢查 `CONNECT PILLBOX` 與 `Disconnected` 的約束 (constraints)，確保在不同螢幕尺寸下對齊。
-    - [x] 調整下拉式選單的寬度，確保 "How many medications to..." 文字能完整顯示。
-- [x] **Bug修復: 中文頁面本地化**
-  - **詳細步驟:**
-    - [x] 在 `strings.xml (zh-TW)` 中新增 "disconnected" 的翻譯 "已斷線"。
-    - [x] 檢查 `BluetoothLeManager` 或相關 ViewModel，確保連線狀態的更新使用 R.string.disconnected 而非硬編碼的 "Disconnected"。
-
-### v1.2.5: Channel & Stability Hotfix
-- [x] **Bug修復: 預設更新頻道**
-  - **詳細步驟:**
-    - [x] 檢查 App 首次啟動的邏輯，確保 `UPDATE_CHANNEL` 根據 `BuildConfig` 被正確初始化。
-    - [x] 確保在設定頁面中，更新頻道的顯示能正確反映目前的預設值。
-- [x] **Bug修復: 更新設定本地化**
-  - **詳細步驟:**
-    - [x] 在 `strings.xml (zh-TW)` 中，為 `check_for_updates_summary` 加上中文翻譯。
-- [x] **Bug修復: TabLayout 英文排版**
-  - **詳細步驟:**
-    - [x] 將 `activity_main.xml` 中的 `TabLayout` 的 `tabMode` 改為 `scrollable`。
-
 ## Epic 2: 智慧互動核心 (Smart Interaction Core)
 此史詩專注於實現 App 與智慧藥盒的核心互動，包含連線穩定性、放藥引導與服藥確認，打造無縫的硬體整合體驗。
 
