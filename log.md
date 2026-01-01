@@ -1,5 +1,9 @@
 # 更新日誌
 
+### v1.3.4: Proactive Bug Fixes & Robustness
+*   **UI修正 (Dialog Theming):**
+    *   **根源分析:** `ImagePickerPreference.kt` 中的 `imageResources` 屬性只為「酷洛米」和「櫻桃小丸子」提供了圖示，其他角色都使用預設圖示。
+    *   **解決方案:** 在 `imageResources` 的 `when` 敘述中，為「蠟筆小新」和「哆啦A夢」新增對應的圖示資源 (`R.drawable.crayon_shin_chan` 和 `R.drawable.doraemon`)，確保所有角色在選擇對話框中都能正確顯示其代表圖示。
 
 ### v1.3.3: Bug Fixes & Stability
 *   **國際化資源修復 (i18n Resource Fix):**

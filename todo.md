@@ -3,19 +3,15 @@
 ## Epic 2: 智慧互動核心 (Smart Interaction Core)
 此史詩專注於實現 App 與智慧藥盒的核心互動，包含連線穩定性、放藥引導與服藥確認，打造無縫的硬體整合體驗。
 
-### v1.3.3: Bug Fixes
-- [x] **穩定性修正 (Stability):** 修正 v1.3.0 按下「立即更新」時發生的 `BadTokenException` 崩潰問題。
-
 ### v1.3.4: Proactive Bug Fixes & Robustness
-- [ ] **APK安裝修正 (FileUriExposedException):** 確保 `UpdateManager.kt` 使用 `FileProvider` 來安裝 APK，避免在 Android 7.0+ 上安裝失敗。
-- [ ] **資源洩漏修正 (Resource Leak):** 檢查 `UpdateManager.kt` 中的網路請求，確保所有 `ResponseBody` 都被正確關閉，防止記憶體洩漏。
-- [ ] **權限補全 (Permissions):** 針對 Android 13+，在適當時機請求 `POST_NOTIFICATIONS` 權限，確保提醒功能正常。
-- [ ] **資料庫遷移準備 (DB Migration):** 檢查 `AppDatabase.kt`，為未來的資料庫架構變更預留遷移路徑，防止更新後崩潰。
+- [x] **UI修正 (Dialog Theming):** 修正角色選擇對話框中，新增的蠟筆小新跟多拉a夢選項 (Radio Button) 旁面沒有圖示
+- [x] **更新readme.md以及readme_cn.md說明整個app的文件架構與負責的功能**
 
 ## Epic 3: 架構與數據 (Architecture & Data)
 此史詩專注於升級 App 的底層架構，並基於新的資料庫結構提供更豐富的數據管理與洞察功能。
 
 ### v1.4.0: 架構升級 - 資料庫遷移
+
 - [ ] **基礎架構: 資料庫遷移 (Room)**
   - **詳細步驟:**
     - [ ] 在 `app/build.gradle.kts` 中加入 Room 的依賴。
@@ -127,7 +123,7 @@
 
 ### 安全與隱私
 - [ ] **過量服用警報 (Overdose Alert):** 當系統偵測到短時間內重複服藥，將觸發高優先級警報。
-- [ ] **緊急資訊卡 (Emergency Info Card):** 生成可分享的數位緊急資訊卡，包含藥物與過敏史。
+- [ ] **緊急資訊卡 (Emergency Info Card)::** 生成可分享的數位緊急資訊卡，包含藥物與過敏史。
 - [ ] [- [ ] **生物辨識取藥授權 (Biometric Dispense Authorization):** 針對管制藥物，增加指紋或臉部辨識安全防線。
 - [ ] **藍牙設備綁定 (Device Binding):** 首次配對後，記住裝置 MAC 位址，後續提供一鍵快速連線。
 - [ ] **照顧者模式 (Caregiver Mode):** 建立獨立的照顧者模式，可遠端監控並協助管理。
