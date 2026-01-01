@@ -43,26 +43,26 @@ extern const int DAYLIGHT_OFFSET;
 #define DATA_EVENT_CHANNEL_UUID "c8c7c599-809c-43a5-b825-1038aa349e5d"
 
 // ==================== BLE 指令碼 ====================
-#define CMD_PROTOCOL_VERSION        0x01
-#define CMD_TIME_SYNC               0x11
-#define CMD_WIFI_CREDENTIALS        0x12
-#define CMD_SET_ENGINEERING_MODE    0x13
-#define CMD_REQUEST_ENG_MODE_STATUS 0x14
-#define CMD_REQUEST_STATUS          0x20
-#define CMD_REQUEST_ENV             0x30
-#define CMD_REQUEST_HISTORIC        0x31
-#define CMD_ENABLE_REALTIME         0x32
-#define CMD_DISABLE_REALTIME        0x33
-#define CMD_SET_ALARM               0x41
-#define CMD_REPORT_PROTO_VER        0x71
-#define CMD_REPORT_STATUS           0x80
-#define CMD_REPORT_TAKEN            0x81
-#define CMD_TIME_SYNC_ACK           0x82
-#define CMD_REPORT_ENG_MODE_STATUS  0x83
-#define CMD_REPORT_ENV              0x90
-#define CMD_REPORT_HISTORIC_POINT   0x91
-#define CMD_REPORT_HISTORIC_END     0x92
-#define CMD_ERROR                   0xEE
+#define CMD_PROTOCOL_VERSION        0x01 // 請求協議版本
+#define CMD_TIME_SYNC               0x11 // 時間同步
+#define CMD_WIFI_CREDENTIALS        0x12 // 設定Wi-Fi帳密
+#define CMD_SET_ENGINEERING_MODE    0x13 // 進入工程模式
+#define CMD_REQUEST_ENG_MODE_STATUS 0x14 // 請求工程模式狀態
+#define CMD_REQUEST_STATUS          0x20 // 請求裝置狀態
+#define CMD_REQUEST_ENV             0x30 // 請求環境數據
+#define CMD_REQUEST_HISTORIC        0x31 // 請求歷史紀錄
+#define CMD_ENABLE_REALTIME         0x32 // 啟用即時數據
+#define CMD_DISABLE_REALTIME        0x33 // 禁用即時數據
+#define CMD_SET_ALARM               0x41 // 設定鬧鐘
+#define CMD_REPORT_PROTO_VER        0x71 // 回報協議版本
+#define CMD_REPORT_STATUS           0x80 // 回報裝置狀態
+#define CMD_REPORT_TAKEN            0x81 // 回報藥物已取
+#define CMD_TIME_SYNC_ACK           0x82 // 時間同步確認
+#define CMD_REPORT_ENG_MODE_STATUS  0x83 // 回報工程模式狀態
+#define CMD_REPORT_ENV              0x90 // 回報環境數據
+#define CMD_REPORT_HISTORIC_POINT   0x91 // 回報單筆歷史紀錄
+#define CMD_REPORT_HISTORIC_END     0x92 // 歷史紀錄回報結束
+#define CMD_ERROR                   0xEE // 錯誤回報
 
 // ==================== 圖示 (XBM) ====================
 static const unsigned char icon_ble_bits[] U8X8_PROGMEM = {0x18, 0x24, 0x42, 0x5A, 0x5A, 0x42, 0x24, 0x18};
