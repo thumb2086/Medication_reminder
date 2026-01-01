@@ -69,8 +69,9 @@ class MainActivity : BaseActivity(), BluetoothLeManager.BleListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
-        applyCharacterTheme()
         super.onCreate(savedInstanceState)
+        applyCharacterTheme()
+
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -113,7 +114,7 @@ class MainActivity : BaseActivity(), BluetoothLeManager.BleListener {
             .setPositiveButton(getString(R.string.update_now)) { _, _ ->
                 updateManager.downloadAndInstall(updateInfo.downloadUrl, "MedicationReminderApp-${updateInfo.version}.apk")
             }
-            .setNegativeButton(R.string.update_later, null)
+            .setNegativeButton(getString(R.string.update_later), null)
             .show()
     }
 
