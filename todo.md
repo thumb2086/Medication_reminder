@@ -22,12 +22,12 @@
     - [x] 實作韌體驗證與寫入 Flash 的安全邏輯。
 
 ### v1.5.1: 便利工具 - 桌面小工具
-- [ ] **便利工具: 桌面小工具 (Widget)**
+- [x] **便利工具: 桌面小工具 (Widget)**
   - **詳細步驟:**
-    - [ ] 建立 `AppWidgetProvider` 類別。
-    - [ ] 設計 Widget 的 XML 佈局。
-    - [ ] 實作一個 `Service` 或 `Worker` 來定期更新 Widget 內容 (下次用藥時間等)。
-    - [ ] 處理 Widget 的點擊事件，例如點擊後打開 App。
+    - [x] 建立 `AppWidgetProvider` 類別。
+    - [x] 設計 Widget 的 XML 佈局。
+    - [x] 實作一個 `Service` 或 `Worker` 來定期更新 Widget 內容 (下次用藥時間等)。
+    - [x] 處理 Widget 的點擊事件，例如點擊後打開 App。
 
 ### v1.5.2: 智慧安全網路
 - [ ] **漏服藥轉發通知 (Missed Dose Alerts):**

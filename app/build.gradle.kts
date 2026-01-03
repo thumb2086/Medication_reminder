@@ -305,6 +305,7 @@ dependencies {
     implementation(libs.calendar.view)
     implementation(libs.mpandroidchart)
     implementation(libs.okhttp)
+    implementation("androidx.work:work-runtime-ktx:2.11.0")
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

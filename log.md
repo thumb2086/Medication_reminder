@@ -1,3 +1,11 @@
+### v1.5.1: 便利工具 - 桌面小工具
+*   **核心功能 (Widget):** 實作了桌面小工具，讓使用者可以在主畫面快速查看下一次的服藥時間。
+    *   **技術細節:**
+        *   **UI:** 建立了 `medication_widget.xml` 佈局檔案，並設計了顯示下次服藥時間、藥物名稱的介面。
+        *   **Provider:** 建立了 `MedicationWidgetProvider`，並在 `AndroidManifest.xml` 中註冊，以管理小工具的生命週期。
+        *   **資料更新:** 建立了 `WidgetUpdateWorker` (`CoroutineWorker`)，負責在背景執行緒中從 `SharedPreferences` 讀取所有藥物資料，並找出下一個最近的服藥時間。
+        *   **排程:** `MedicationWidgetProvider` 的 `onUpdate` 方法會使用 `WorkManager` 排程一次性的 `WidgetUpdateWorker` 來更新小工具內容，確保資訊的及時性。
+
 # 更新日誌
 
 ### v1.5.0: 韌體空中升級 (OTA) - App 端實作
