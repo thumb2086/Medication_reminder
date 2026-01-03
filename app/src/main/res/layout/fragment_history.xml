@@ -18,6 +18,34 @@
         android:paddingBottom="16dp"
         tools:text="January 2024" />
 
+    <RadioGroup
+        android:id="@+id/timeframe_selector"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginBottom="16dp">
+
+        <RadioButton
+            android:id="@+id/weekly_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/timeframe_week" />
+
+        <RadioButton
+            android:id="@+id/monthly_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/timeframe_month"
+            android:checked="true" />
+
+        <RadioButton
+            android:id="@+id/quarterly_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/timeframe_quarter" />
+    </RadioGroup>
+
     <com.kizitonwose.calendar.view.CalendarView
         android:id="@+id/calendarView"
         android:layout_width="match_parent"
@@ -32,5 +60,19 @@
         android:textColor="?android:attr/textColorPrimary"
         android:textAppearance="?attr/textAppearanceHeadline6"
         tools:text="Compliance Rate: 95%" />
+
+    <com.github.mikephil.charting.charts.BarChart
+        android:id="@+id/complianceChart"
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:layout_marginTop="16dp" />
+
+    <Button
+        android:id="@+id/share_report_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:layout_marginTop="16dp"
+        android:text="@string/share_report" />
 
 </LinearLayout>

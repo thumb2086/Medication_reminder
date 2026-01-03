@@ -1,10 +1,9 @@
-
 #pragma once
 
 #include <Arduino.h>
 
 // ==================== 韌體版本 ====================
-#define FIRMWARE_VERSION "v22.1"
+#define FIRMWARE_VERSION "v22.2"
 
 // ==================== 硬體與儲存常數 ====================
 #define MAX_HISTORY 4800
@@ -55,6 +54,12 @@ extern const int DAYLIGHT_OFFSET;
 #define CMD_DISABLE_REALTIME        0x33 // 禁用即時數據
 #define CMD_SET_ALARM               0x41 // 設定鬧鐘
 #define CMD_GUIDE_PILLBOX           0x42 // 引導藥盒轉動
+
+// --- BLE OTA Commands ---
+#define CMD_OTA_START               0x50 // 開始 OTA (附帶 4 字節總大小)
+#define CMD_OTA_DATA                0x51 // OTA 數據傳輸
+#define CMD_OTA_END                 0x52 // 結束 OTA
+
 #define CMD_REPORT_PROTO_VER        0x71 // 回報協議版本
 #define CMD_REPORT_STATUS           0x80 // 回報裝置狀態
 #define CMD_REPORT_TAKEN            0x81 // 回報藥物已取

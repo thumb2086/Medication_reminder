@@ -168,6 +168,7 @@
     <string name="medications_added_successfully">Medications added successfully</string>
     <string name="medication_history">Medication History</string>
     <string name="environment_monitor">Environment Monitor</string>
+    <string name="reminder_threshold">Reminder Threshold (pills)</string>
 
     <!-- Settings -->
     <string name="title_settings">Settings</string>
@@ -275,6 +276,15 @@
 
     <!-- Update -->
     <string name="update_settings">Update Settings</string>
+    <string name="firmware_update_title">Firmware Update</string>
+    <string name="firmware_update_summary">Check for and update the firmware of the smart pillbox</string>
+    <string name="firmware_select">Select Firmware (.bin)</string>
+    <string name="firmware_file_not_selected">No file selected</string>
+    <string name="firmware_start_update">Start Update</string>
+    <string name="timeframe_week">Week</string>
+    <string name="timeframe_month">Month</string>
+    <string name="timeframe_quarter">Quarter</string>
+    <string name="share_report">Share Report</string>
     <string name="update_channel">Update Channel</string>
     <string name="update_channel_current">Current (%s)</string>
     <string name="update_channel_dev">Dev</string>

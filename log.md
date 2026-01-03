@@ -1,4 +1,80 @@
+### v1.5.1: 便利工具 - 桌面小工具
+*   **核心功能 (Widget):** 實作了桌面小工具，讓使用者可以在主畫面快速查看下一次的服藥時間。
+    *   **技術細節:**
+        *   **UI:** 建立了 `medication_widget.xml` 佈局檔案，並設計了顯示下次服藥時間、藥物名稱的介面。
+        *   **Provider:** 建立了 `MedicationWidgetProvider`，並在 `AndroidManifest.xml` 中註冊，以管理小工具的生命週期。
+        *   **資料更新:** 建立了 `WidgetUpdateWorker` (`CoroutineWorker`)，負責在背景執行緒中從 `SharedPreferences` 讀取所有藥物資料，並找出下一個最近的服藥時間。
+        *   **排程:** `MedicationWidgetProvider` 的 `onUpdate` 方法會使用 `WorkManager` 排程一次性的 `WidgetUpdateWorker` 來更新小工具內容，確保資訊的及時性。
+
 # 更新日誌
+
+### v1.5.0: 韌體空中升級 (OTA) - App 端實作
+*   **核心功能 (App-Side OTA):** 實作了 App 端的韌體 OTA 更新功能，允許使用者從手機選擇 `.bin` 檔案並傳輸至智慧藥盒。
+    *   **技術細節:**
+        *   **檔案選擇:** `FirmwareUpdateFragment` 現在使用 `ActivityResultContracts` 讓使用者選擇韌體檔案。
+        *   **BLE 傳輸:** `BluetoothLeManager` 中新增了 `startOtaUpdate(firmware: ByteArray)` 方法。此方法會將韌體分塊，並透過新增的 BLE 指令 (`0x50` 開始, `0x51` 傳輸, `0x52` 結束) 逐塊發送。
+        *   **進度回饋:** `BluetoothLeManager` 新增 `onOtaProgressUpdate(progress: Int)` 回調，`FirmwareUpdateFragment` 實作此介面以更新 UI 上的進度條，提供即時視覺回饋。
+*   **UI/邏輯修正:**
+    *   **根源分析 (Root Cause Analysis):** 在 `FirmwareUpdateFragment.kt` 的初版實作中，錯誤地試圖從 `MainViewModel` 存取 `bluetoothLeManager` (`viewModel.bluetoothLeManager`)。然而 `bluetoothLeManager` 的實例是由 Hilt 注入並由 `MainActivity` 所持有，ViewModel 中並不存在其參考，導致了 `Unresolved reference 'bluetoothLeManager'` 的編譯錯誤。
+    *   **解決方案 (Solution):** 修正了 `FirmwareUpdateFragment.kt` 中的存取邏輯，改為透過 `(activity as? MainActivity)?.bluetoothLeManager` 來安全地從其所屬的 `MainActivity` 中取得 `bluetoothLeManager` 的實例，徹底解決了編譯錯誤。
+
+### v1.5.1: 穩定性修正 (Hotfix)
+*   **UI/邏輯修正:** 
+    *   **根源分析:** 在 `HistoryFragment.kt` 中，將一個不存在的顏色資源 `R.color.purple_500` 替換為 `R.color.colorPrimary`，但 `colorPrimary` 是主題屬性 (attribute)，並非顏色資源，導致了 `Unresolved reference 'colorPrimary'` 的編譯錯誤。
+    *   **解決方案:** 查閱 `colors.xml` 後，將顏色值修正為實際存在的 `R.color.primary_light`，確保圖表能正確載入顏色。
+*   **程式碼品質:**
+    *   **根源分析:** `ReportGenerator.kt` 中的 `generateCsv` 函式因其參數 `timeframe` 與 `data` 未被使用而產生編譯器警告。
+    *   **解決方案:** 為 `generateCsv` 函式加上 `@Suppress("UNUSED_PARAMETER")` 註解，在保留函式簽章以待未來實作的同時，消除了警告。
+
+### v1.5.0: 韌體空中升級 (OTA) - (進度 1)
+*   **UI/UX:**
+    *   在 `preferences.xml` 中新增了「韌體更新」選項，並為其建立了對應的字串資源。
+    *   建立了 `FirmwareUpdateFragment` 和其佈局 `fragment_firmware_update.xml`，其中包含選擇檔案按鈕、進度條和開始更新按鈕。
+*   **架構:**
+    *   在 `SettingsFragment.kt` 中加入了導航邏輯，當使用者點擊「韌體更新」時，會導航至 `FirmwareUpdateFragment`。
+
+### v1.4.2: 數據洞察 - 服藥報告
+*   **核心功能: 詳細服藥報告與圖表分析**
+    *   **UI/UX:** 
+        *   在「歷史記錄」頁面 (`fragment_history.xml`) 新增了 `RadioGroup`，讓使用者可以在「週」、「月」、「季度」三種時間範圍之間切換。
+        *   加入了 `MPAndroidChart` 圖表庫，並在頁面中新增了一個 `BarChart`，用於將服藥依從率數據視覺化。
+        *   新增「分享報告」按鈕，讓使用者可以匯出數據。
+    *   **架構與數據流:**
+        *   **DAO:** 在 `TakenRecordDao.kt` 中新增了 `getRecordsBetween(startTime: Long, endTime: Long)` 方法，以支援按時間區間查詢服藥記錄。
+        *   **Repository:** 
+            *   新增了 `ComplianceDataPoint` 資料類別，用於封裝圖表的數據點 (標籤與值)。
+            *   重構了 `getComplianceRateForTimeframe` 方法 (現為 `getComplianceDataForTimeframe`)，使其能夠根據不同的時間範圍 (週/月/季度) 計算並返回一組 `ComplianceDataPoint` 數據，為圖表提供精細的數據來源。
+        *   **ViewModel:** 
+            *   在 `MainViewModel.kt` 中，將 `reportComplianceRate` `StateFlow` 的類型從單一 `Float` 升級為 `List<ComplianceDataPoint>`。
+            *   更新了 `calculateComplianceRateForTimeframe` 方法，以獲取並更新詳細的圖表數據。
+    *   **報告與分享:**
+        *   在 `util` 包下建立了 `ReportGenerator.kt` 類別，為未來生成 CSV 或 PDF 報告奠定基礎。
+        *   在 `HistoryFragment.kt` 中實現了分享邏輯：點擊「分享」按鈕後，會使用 `Intent.ACTION_SEND` 將目前的報告數據 (暫以 CSV 格式) 分享出去。
+
+### v1.4.1: 數據管理 - 庫存提醒
+*   **核心功能: 藥物庫存管理與補充提醒**
+    *   **資料庫更新:** 在 `MedicationEntity` 中新增 `reminderThreshold: Int` 欄位，用於儲存藥物庫存的提醒閾值。
+    *   **UI 更新:** 在新增/編輯藥物的介面中，增加了設定提醒閾值的輸入框。
+    *   **邏輯實現:** 在 `AppRepository` 的 `processMedicationTaken` 方法中，加入了檢查藥物庫存是否低於設定閾值的邏輯。
+    *   **通知機制:** 若藥物庫存低於閾值，將觸發一個本地通知，提醒使用者及時補充。
+
+### v1.4.0: 架構升級 - 資料庫遷移 (Room)
+*   **架構核心重構 (Core Architecture Refactor):**
+    *   **目標:** 將 App 的核心數據持久層從 `SharedPreferences` + `Gson` 的組合，完全遷移至現代、高效且類型安全的 `Room` 資料庫架構，為未來的數據功能 (如庫存管理、服藥報告) 奠定穩固基礎。
+    *   **技術實現:**
+        1.  **新增依賴:** 在 `app/build.gradle.kts` 中加入了 `Room` 的運行時、協程擴展 (`ktx`) 及編譯器 (`kapt`) 依賴 (版本 `2.8.4`)。
+        2.  **建立資料實體 (Entities):** 建立了 `MedicationEntity` 與 `TakenRecordEntity`，並透過 `@Entity`、`@PrimaryKey` 等註解定義了資料庫的表結構與外鍵關聯。
+        3.  **建立資料存取物件 (DAOs):** 建立了 `MedicationDao` 與 `TakenRecordDao` 介面，定義了所有對資料庫的原子操作 (增、刪、改、查)，並使用 `Flow` 來提供響應式的數據讀取。
+        4.  **建立資料庫本體:** 建立了 `AppDatabase` 抽象類別，整合了所有 Entities 和 DAOs。同時，為了處理 `Map<Int, Long>` 這種複雜類型，額外建立了 `TypeConverters.kt`，利用 `Gson` 將其序列化為 String 進行儲存。
+        5.  **依賴注入 (Hilt):** 建立了 `DatabaseModule.kt`，透過 Hilt 將 `AppDatabase`、`MedicationDao`、`TakenRecordDao` 以單例模式注入到 `AppRepository`。
+        6.  **倉儲層重構 (Repository Refactor):** 全面重構了 `AppRepository.kt`。
+            *   移除了所有基於 `SharedPreferences` 的藥物存取邏輯。
+            *   將資料來源改為由 `MedicationDao` 提供的 `Flow`，實現了 UI 層與資料庫的自動同步。
+            *   所有寫入操作 (新增/更新/刪除藥物、記錄服藥) 都改為呼叫對應的 DAO 方法。
+        7.  **一次性資料遷移 (One-Time Migration):**
+            *   在 `AppRepository` 的 `init` 區塊中加入了 `checkAndMigrateData()` 邏輯。
+            *   此邏輯會在 App 首次更新後執行一次，讀取舊 `SharedPreferences` 中的藥物資料，轉換為 `MedicationEntity`，並寫入新的 Room 資料庫。
+            *   **特別處理:** 由於舊的服藥紀錄 (`MedicationTakenRecord`) 缺乏與藥物的關聯 ID，為保證數據準確性，遷移過程中有意**跳過**了對這部分舊紀錄的遷移。
 
 ### v1.3.4: Proactive Bug Fixes & Robustness
 *   **UI修正 (Dialog Theming):**
@@ -325,9 +401,6 @@
 ## 2025-01-20
 ### DevOps
 *   **App 內自動更新:** 新增 `UpdateManager`。
-
-### UI/UX
-*   **設定頁面優化:** 新增圖示。
 
 ## 2025-01-19
 ### DevOps

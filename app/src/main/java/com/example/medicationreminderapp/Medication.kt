@@ -9,5 +9,6 @@ data class Medication(
     val id: Int,
     val slotNumber: Int,
     var totalPills: Int,
-    var remainingPills: Int
+    var remainingPills: Int,
+    val reminderThreshold: Int
 )

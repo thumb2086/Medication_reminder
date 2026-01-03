@@ -3,64 +3,31 @@
 ## Epic 2: 智慧互動核心 (Smart Interaction Core)
 此史詩專注於實現 App 與智慧藥盒的核心互動，包含連線穩定性、放藥引導與服藥確認，打造無縫的硬體整合體驗。
 
-### v1.3.4: Proactive Bug Fixes & Robustness
-- [x] **UI修正 (Dialog Theming):** 修正角色選擇對話框中，新增的蠟筆小新跟多拉a夢選項 (Radio Button) 旁面沒有圖示
-- [x] **更新readme.md以及readme_cn.md說明整個app的文件架構與負責的功能**
-
 ## Epic 3: 架構與數據 (Architecture & Data)
 此史詩專注於升級 App 的底層架構，並基於新的資料庫結構提供更豐富的數據管理與洞察功能。
-
-### v1.4.0: 架構升級 - 資料庫遷移
-
-- [ ] **基礎架構: 資料庫遷移 (Room)**
-  - **詳細步驟:**
-    - [ ] 在 `app/build.gradle.kts` 中加入 Room 的依賴。
-    - [ ] 建立 `MedicationEntity` 和 `TakenRecordEntity`。
-    - [ ] 建立對應的 DAO 介面 (`MedicationDao`, `TakenRecordDao`)。
-    - [ ] 建立 `AppDatabase.kt`。
-    - [ ] 重構 `AppRepository`，改為呼叫 DAO。
-    - [ ] 實作一個一次性的資料遷移邏輯，將舊的 SharedPreferences 數據寫入 Room。
-
-### v1.4.1: 數據管理 - 庫存提醒
-- [ ] **核心功能: 藥物庫存管理與補充提醒**
-  - **詳細步驟:**
-    - [ ] 在 `MedicationEntity` 中新增 `reminderThreshold: Int` 欄位，並更新資料庫。
-    - [ ] 在新增/編輯藥物的介面中，增加設定提醒閾值的輸入框。
-    - [ ] 在 `AppRepository` 的 `processMedicationTaken` 方法中，增加檢查庫存是否低於閾值的邏輯。
-    - [ ] 若低於閾值，觸發一個本地通知提醒使用者。
-
-### v1.4.2: 數據洞察 - 服藥報告
-- [ ] **數據呈現: 詳細服藥報告 & 匯出與分享**
-  - **詳細步驟:**
-    - [ ] 在 `HistoryFragment` 中新增「週/月/季度」的切換按鈕。
-    - [ ] 在 `ViewModel`/`Repository` 新增方法，根據時間範圍從 Room 查詢聚合數據。
-    - [ ] 使用圖表庫將數據視覺化。
-    - [ ] 建立 `ReportGenerator` 類別，將數據格式化成 PDF 或 CSV。
-    - [ ] 新增「分享」按鈕，使用 `Intent.ACTION_SEND` 分享報告。
 
 ## Epic 4: 便利性與擴展 (Convenience & Expansion)
 此史詩專注於提供更多便利工具，並擴展 App 的保護網，提升整體使用價值。
 
 ### v1.5.0: 韌體空中升級 (OTA)
-- [ ] **App 端: 韌體空中升級 (OTA)**
+- [x] **App 端: 韌體空中升級 (OTA)**
   - **詳細步驟:**
-    - [ ] 在設定中建立新的韌體更新頁面。
-    - [ ] 實作選擇 `.bin` 韌體檔案的邏輯。
-    - [ ] 在 `BluetoothLeManager` 新增 `startOtaUpdate(firmware: ByteArray)` 方法，將韌體分塊寫入 ESP32。
-    - [ ] 實作 UI 上的進度條來顯示更新進度。
-- [ ] **ESP32 端: 韌體 OTA 功能**
+    - [x] 實作選擇 `.bin` 韌體檔案的邏輯。
+    - [x] 在 `BluetoothLeManager` 新增 `startOtaUpdate(firmware: ByteArray)` 方法，將韌體分塊寫入 ESP32。
+    - [x] 實作 UI 上的進度條來顯示更新進度。
+- [x] **ESP32 端: 韌體 OTA 功能**
   - **詳細步驟:**
-    - [ ] 整合 `ArduinoOTA` 或自訂的 BLE OTA 函式庫。
-    - [ ] 建立一個 BLE 特徵，用於接收韌體檔案的分塊數據。
-    - [ ] 實作韌體驗證與寫入 Flash 的安全邏輯。
+    - [x] 整合 `Update.h` 函式庫以處理 BLE OTA。
+    - [x] 建立一個 BLE 指令集 (`0x50`-`0x52`)，用於控制 OTA 流程。
+    - [x] 實作韌體驗證與寫入 Flash 的安全邏輯。
 
 ### v1.5.1: 便利工具 - 桌面小工具
-- [ ] **便利工具: 桌面小工具 (Widget)**
+- [x] **便利工具: 桌面小工具 (Widget)**
   - **詳細步驟:**
-    - [ ] 建立 `AppWidgetProvider` 類別。
-    - [ ] 設計 Widget 的 XML 佈局。
-    - [ ] 實作一個 `Service` 或 `Worker` 來定期更新 Widget 內容 (下次用藥時間等)。
-    - [ ] 處理 Widget 的點擊事件，例如點擊後打開 App。
+    - [x] 建立 `AppWidgetProvider` 類別。
+    - [x] 設計 Widget 的 XML 佈局。
+    - [x] 實作一個 `Service` 或 `Worker` 來定期更新 Widget 內容 (下次用藥時間等)。
+    - [x] 處理 Widget 的點擊事件，例如點擊後打開 App。
 
 ### v1.5.2: 智慧安全網路
 - [ ] **漏服藥轉發通知 (Missed Dose Alerts):**
@@ -88,6 +55,17 @@
       - [ ] 在 `hardware.cpp` 中，實作讀取溫濕度感測器 (DHT) 數據的邏輯。
       - [ ] 透過 `ble_handler.cpp` 中的 `sendSensorDataReport()` 或 `sendRealtimeSensorData()` 函式，將數據定時回報給 App。
 
+## Epic 5: 基礎設施與自動化 (Infrastructure & Automation)
+
+### v1.5.5: 韌體自動化建置 (Firmware CI/CD)
+- [ ] **基礎設施: 韌體自動化建置**
+  - **詳細步驟:**
+    - [ ] 在專案根目錄下建立 `firmware` 資料夾，並將 ESP32 的 `.ino` 專案移入。
+    - [ ] 修改根目錄的 `build.gradle.kts`，新增一個 `compileFirmware` 任務，使用 `platformio-ide` 或類似工具來編譯 `.ino` 檔案。
+    - [ ] 設定 `compileFirmware` 任務，將編譯好的 `.bin` 檔案複製到 App 的 `src/main/assets/` 目錄下。
+    - [ ] 設定 `app/build.gradle.kts`，讓 `assembleRelease` 任務依賴 `compileFirmware` 任務，確保發布時自動建置韌體。
+    - [ ] 在 `UpdateManager.kt` 中新增邏輯，檢查 `assets` 中是否存在新的韌體版本，並在適當的時候提示使用者更新。
+
 ---
 1.2.3
 ## 未來規劃 (Future Considerations)
@@ -114,7 +92,7 @@
 ### 生態系整合 & 擴充
 - [ ] **醫療院所系統串接 (Healthcare Provider Integration - via FHIR):** 串接電子病歷，自動同步處方與服藥紀錄。
 - [ ] **藥局合作與自動補充 (Pharmacy Integration & Automated Refills):** 與藥局 API 合作，一鍵自動補充藥物。
-- [ ] **語音互動整合 (Voice Integration):** 整合 Google 助理，用語音查詢或回報服藥狀態。
+- [ ] [- [ ] **語音互動整合 (Voice Integration):** 整合 Google 助理，用語音查詢或回報服藥狀態。
 - [ ] **智慧家庭場景連動 (Smart Home Routine Integration):** 融入 Google Home 的日常安排，自動觸發提醒。
 - [ ] **Wear OS 副應用 (Wear OS Companion App):** 在手錶上顯示下次服藥提醒，並可直接標記為已服用。
 - [ ] **健身追蹤器數據整合 (Fitness Tracker Integration):** 串接 Fitbit、Garmin 等裝置，交叉比對健康數據。

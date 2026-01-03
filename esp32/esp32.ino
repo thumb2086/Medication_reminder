@@ -1,4 +1,3 @@
-
 #include <Arduino.h>
 #include <Wire.h>
 #include <WiFi.h>
@@ -16,7 +15,7 @@
 #include "SPIFFS.h"
 #include <ESPmDNS.h>
 #include <ArduinoOTA.h>
-// #include <Servo.h> // No longer needed, using native LEDC for motor control
+#include <Update.h> // <--- 新增
 #include <Adafruit_NeoPixel.h>
 
 #include "src/config.h"
@@ -34,7 +33,6 @@
 U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 AiEsp32RotaryEncoder rotaryEncoder(ENCODER_A_PIN, ENCODER_B_PIN, ENCODER_PSH_PIN, -1, 4);
 DHT dht(DHT_PIN, DHT_TYPE);
-// Servo sg90; // No longer needed
 Adafruit_NeoPixel pixels(NUM_LEDS, WS2812_PIN, NEO_GRB + NEO_KHZ800);
 
 // ---- Wi-Fi & NTP & OTA 設定 ----
@@ -72,7 +70,11 @@ int historyCount = 0;
 int historyViewOffset = 0;
 bool bleDeviceConnected = false;
 bool isEngineeringMode = false;
-bool isOtaMode = false;
+bool isOtaMode = false; // Wi-Fi OTA
+bool isBleOtaInProgress = false; // <--- 新增
+unsigned long otaStartTime = 0; // <--- 新增
+size_t otaTotalSize = 0; // <--- 新增
+size_t otaBytesReceived = 0; // <--- 新增
 bool isSendingHistoricData = false;
 int historicDataIndexToSend = 0;
 unsigned long historicDataStartTime = 0;
@@ -116,7 +118,7 @@ void returnToMainScreen() {
 
 void setup() {
     Serial.begin(115200);
-    delay(3000); // Wait for PC to recognize USB, as per user's test code
+    delay(3000); 
     Serial.printf("\n--- SmartMedBox Firmware %s ---\n", FIRMWARE_VERSION);
     Serial.println("DEBUG: Starting setup().");
     pinMode(ENCODER_PSH_PIN, INPUT_PULLUP);
@@ -125,17 +127,11 @@ void setup() {
     Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
     u8g2.begin();
     u8g2.enableUTF8Print();
-
-    // Initialize sensor BEFORE power-hungry tasks
     Serial.println("DEBUG: Initializing DHT sensor.");
     dht.begin();
-
-    // Run hardware self-test (including motor)
     runPOST();
-
     if (!SPIFFS.begin(true)) {
         Serial.println("SPIFFS mount failed");
-        // return; // We might want to allow operation even if SPIFFS fails
     }
     Serial.println("DEBUG: SPIFFS mounted.");
     initializeHistoryFile();
@@ -163,7 +159,16 @@ void setup() {
 }
 
 void loop() {
-    // Serial.println("DEBUG: loop() start"); // This is very verbose
+    if (isBleOtaInProgress) { // 如果正在進行 BLE OTA，則不執行其他操作
+        // BLE 的指令處理是中斷驅動的，所以這裡不需要做任何事
+        // 可以加上超時邏輯
+        if (millis() - otaStartTime > 60000) { // 60 秒超時
+            Serial.println("ERROR: BLE OTA timed out!");
+            isBleOtaInProgress = false;
+        }
+        return;
+    }
+
     if (isOtaMode) {
         ArduinoOTA.handle();
         if (digitalRead(BUTTON_BACK_PIN) == LOW && (millis() - lastBackPressTime > 500)) {
@@ -181,22 +186,18 @@ void loop() {
     }
 
     if (isAlarmRinging) {
-        // Visual alarm indication
         if ((millis() / 200) % 2 == 0) {
             pixels.fill(pixels.Color(255, 0, 0));
         } else {
             pixels.clear();
         }
         pixels.show();
-
-        // Stop alarm with confirm button
         if (digitalRead(BUTTON_CONFIRM_PIN) == LOW) {
             isAlarmRinging = false;
             pixels.clear();
             pixels.show();
             Serial.println("DEBUG: Alarm stopped by user.");
-            Serial.println("Alarm Stopped by user.");
-            delay(500); // Debounce
+            delay(500); 
         }
     }
 
@@ -205,7 +206,6 @@ void loop() {
     handleRealtimeData();
     updateSensorReadings();
     checkAlarm();
-
     handleEncoder();
     handleEncoderPush();
 
@@ -222,7 +222,6 @@ void loop() {
     if (millis() - lastHistoryRecord > historyRecordInterval) {
         lastHistoryRecord = millis();
         if (sensorDataValid) {
-            // Serial.println("DEBUG: Recording history data."); // Can be verbose
             addDataToHistory(cachedTemp, cachedHum, WiFi.RSSI());
         }
     }
@@ -234,5 +233,4 @@ void loop() {
     if (millis() - lastDisplayUpdate >= displayInterval) {
         updateDisplay();
     }
-    // Serial.println("DEBUG: loop() end"); // This is very verbose
 }

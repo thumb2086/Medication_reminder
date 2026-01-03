@@ -169,6 +169,7 @@
     <string name="medications_added_successfully">藥物已成功新增</string>
     <string name="medication_history">服藥紀錄</string>
     <string name="environment_monitor">環境監測</string>
+    <string name="reminder_threshold">提醒閾值 (顆)</string>
 
     <!-- Settings -->
     <string name="title_settings">設定</string>
@@ -276,6 +277,15 @@
 
     <!-- Update -->
     <string name="update_settings">更新設定</string>
+    <string name="firmware_update_title">韌體更新</string>
+    <string name="firmware_update_summary">檢查並更新智慧藥盒的韌體</string>
+    <string name="firmware_select">選擇韌體 (.bin)</string>
+    <string name="firmware_file_not_selected">未選擇檔案</string>
+    <string name="firmware_start_update">開始更新</string>
+    <string name="timeframe_week">週</string>
+    <string name="timeframe_month">月</string>
+    <string name="timeframe_quarter">季度</string>
+    <string name="share_report">分享報告</string>
     <string name="update_channel">更新頻道</string>
     <string name="update_channel_current">目前 (%s)</string>
     <string name="update_channel_dev">開發版 (Dev)</string>
@@ -334,4 +344,5 @@
     <string name="about_version">版本</string>
 
     <string name="update_channel_stable">正式版 (Main)</string>
+    <string name="widget_next_medication_time">下次服藥時間</string>
 </resources>

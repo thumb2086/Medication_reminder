@@ -1,18 +1,25 @@
 package com.example.medicationreminderapp
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import android.content.SharedPreferences
+import android.media.AudioAttributes
+import android.media.RingtoneManager
 import android.util.Log
+import androidx.core.app.NotificationCompat
 import androidx.core.content.edit
+import com.example.medicationreminderapp.data.database.MedicationDao
+import com.example.medicationreminderapp.data.database.MedicationEntity
+import com.example.medicationreminderapp.data.database.TakenRecordDao
+import com.example.medicationreminderapp.data.database.TakenRecordEntity
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import com.google.gson.reflect.TypeToken
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -21,9 +28,13 @@ import javax.inject.Singleton
 
 data class MedicationTakenRecord(val timestamp: Long)
 
+data class ComplianceDataPoint(val label: String, val complianceRate: Float)
+
 @Singleton
 class AppRepository @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val medicationDao: MedicationDao,
+    private val takenRecordDao: TakenRecordDao
 ) {
 
     // Data StateFlows
@@ -52,51 +63,242 @@ class AppRepository @Inject constructor(
     private val scope = CoroutineScope(Dispatchers.IO) // Repository scope for IO operations
 
     init {
-        loadAllData()
+        scope.launch {
+            checkAndMigrateData()
+        }
+
+        // Now, the repository's data streams are powered by Room's Flows.
+        medicationDao.getAllMedications().onEach { entities ->
+            _medicationList.value = entities.map { it.toDomainModel() }
+            updateDailyStatusMap() // Update map whenever medication list changes
+        }.launchIn(scope)
+
+        // This part needs adjustment based on how records are fetched.
+        // For simplicity, we'll manually refresh records when needed for now.
     }
+
+    suspend fun getComplianceDataForTimeframe(timeframe: Timeframe): List<ComplianceDataPoint> {
+        val allMedications = medicationDao.getAllMedications().first().map { it.toDomainModel() }
+        val results = mutableListOf<ComplianceDataPoint>()
+
+        val calendar = Calendar.getInstance()
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val todayStart = calendar.timeInMillis
+
+        when (timeframe) {
+            Timeframe.WEEKLY -> {
+                // Last 7 days, including today
+                for (i in 6 downTo 0) { // 6 = 7 days ago, 0 = today
+                    calendar.timeInMillis = todayStart
+                    calendar.add(Calendar.DAY_OF_YEAR, -i)
+                    val dayStart = calendar.timeInMillis
+                    calendar.add(Calendar.DAY_OF_YEAR, 1)
+                    calendar.add(Calendar.MILLISECOND, -1)
+                    val dayEnd = calendar.timeInMillis
+
+                    val dayTakenRecords = takenRecordDao.getRecordsBetween(dayStart, dayEnd)
+                    var totalExpectedDoses = 0
+                    allMedications.forEach { med ->
+                        if (dayStart >= med.startDate && dayEnd <= med.endDate) {
+                            totalExpectedDoses += med.times.size
+                        }
+                    }
+
+                    val compliance = if (totalExpectedDoses > 0) {
+                        dayTakenRecords.size.toFloat() / totalExpectedDoses.toFloat()
+                    } else {
+                        0f
+                    }
+                    val label = SimpleDateFormat("EEE", Locale.getDefault()).format(Date(dayStart))
+                    results.add(ComplianceDataPoint(label, compliance * 100)) // Percentage
+                }
+            }
+            Timeframe.MONTHLY -> {
+                // Last 4 weeks
+                for (i in 3 downTo 0) { // 3 = 4 weeks ago, 0 = last week
+                    calendar.timeInMillis = todayStart
+                    calendar.add(Calendar.WEEK_OF_YEAR, -i)
+                    calendar.set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY)
+                    val weekStart = calendar.timeInMillis
+                    calendar.add(Calendar.WEEK_OF_YEAR, 1)
+                    calendar.add(Calendar.MILLISECOND, -1)
+                    val weekEnd = calendar.timeInMillis
+
+                    val weekTakenRecords = takenRecordDao.getRecordsBetween(weekStart, weekEnd)
+                    var totalExpectedDoses = 0
+                    // Iterate through each day of the week to calculate expected doses
+                    val tempCal = Calendar.getInstance()
+                    var currentDay = weekStart
+                    while (currentDay <= weekEnd) {
+                        tempCal.timeInMillis = currentDay
+                        allMedications.forEach { med ->
+                            if (currentDay >= med.startDate && currentDay <= med.endDate) {
+                                totalExpectedDoses += med.times.size
+                            }
+                        }
+                        tempCal.add(Calendar.DAY_OF_YEAR, 1)
+                        currentDay = tempCal.timeInMillis
+                    }
+
+                    val compliance = if (totalExpectedDoses > 0) {
+                        weekTakenRecords.size.toFloat() / totalExpectedDoses.toFloat()
+                    } else {
+                        0f
+                    }
+                    val label = "Week ${4 - i}"
+                    results.add(ComplianceDataPoint(label, compliance * 100)) // Percentage
+                }
+            }
+            Timeframe.QUARTERLY -> {
+                // Last 3 months
+                for (i in 2 downTo 0) { // 2 = 3 months ago, 0 = last month
+                    calendar.timeInMillis = todayStart
+                    calendar.add(Calendar.MONTH, -i)
+                    calendar.set(Calendar.DAY_OF_MONTH, 1)
+                    val monthStart = calendar.timeInMillis
+                    calendar.add(Calendar.MONTH, 1)
+                    calendar.add(Calendar.MILLISECOND, -1)
+                    val monthEnd = calendar.timeInMillis
+
+                    val monthTakenRecords = takenRecordDao.getRecordsBetween(monthStart, monthEnd)
+                    var totalExpectedDoses = 0
+                    // Iterate through each day of the month to calculate expected doses
+                    val tempCal = Calendar.getInstance()
+                    var currentDay = monthStart
+                    while (currentDay <= monthEnd) {
+                        tempCal.timeInMillis = currentDay
+                        allMedications.forEach { med ->
+                            if (currentDay >= med.startDate && currentDay <= med.endDate) {
+                                totalExpectedDoses += med.times.size
+                            }
+                        }
+                        tempCal.add(Calendar.DAY_OF_YEAR, 1)
+                        currentDay = tempCal.timeInMillis
+                    }
+
+                    val compliance = if (totalExpectedDoses > 0) {
+                        monthTakenRecords.size.toFloat() / totalExpectedDoses.toFloat()
+                    } else {
+                        0f
+                    }
+                    val label = SimpleDateFormat("MMM", Locale.getDefault()).format(Date(monthStart))
+                    results.add(ComplianceDataPoint(label, compliance * 100)) // Percentage
+                }
+            }
+        }
+
+        return results
+    }
+
+    private fun MedicationEntity.toDomainModel(): Medication {
+        val type = object : TypeToken<Map<Int, Long>>() {}.type
+        val timesMap: Map<Int, Long> = gson.fromJson(this.times, type)
+        return Medication(
+            id = this.id,
+            name = this.name,
+            dosage = this.dosage,
+            startDate = this.startDate,
+            endDate = this.endDate,
+            times = timesMap,
+            slotNumber = this.slotNumber,
+            totalPills = this.totalPills,
+            remainingPills = this.remainingPills,
+            reminderThreshold = this.reminderThreshold
+        )
+    }
+
+    private fun Medication.toEntity(): MedicationEntity {
+        return MedicationEntity(
+            id = this.id,
+            name = this.name,
+            dosage = this.dosage,
+            startDate = this.startDate,
+            endDate = this.endDate,
+            times = gson.toJson(this.times),
+            slotNumber = this.slotNumber,
+            totalPills = this.totalPills,
+            remainingPills = this.remainingPills,
+            reminderThreshold = this.reminderThreshold
+        )
+    }
+
 
     // --- Medication Management ---
 
     fun addMedications(newMedications: List<Medication>) {
-        val currentList = _medicationList.value
-        _medicationList.value = currentList + newMedications
-        saveMedicationData()
-        updateDailyStatusMap()
+         scope.launch {
+            newMedications.forEach { medication ->
+                medicationDao.insertMedication(medication.toEntity())
+            }
+        }
     }
 
     fun updateMedication(updatedMed: Medication) {
-        val currentList = _medicationList.value
-        _medicationList.value = currentList.map {
-            if (it.slotNumber == updatedMed.slotNumber) updatedMed else it
+        scope.launch {
+            medicationDao.updateMedication(updatedMed.toEntity())
         }
-        saveMedicationData()
-        updateDailyStatusMap()
     }
 
     fun deleteMedication(medToDelete: Medication) {
-        val currentList = _medicationList.value
-        _medicationList.value = currentList.filter { it.slotNumber != medToDelete.slotNumber }
-        saveMedicationData()
-        updateDailyStatusMap()
+        scope.launch {
+            medicationDao.deleteMedicationById(medToDelete.id)
+        }
     }
 
     fun processMedicationTaken(slotNumber: Int) {
         scope.launch {
-            val updatedList = _medicationList.value.map {
-                if (it.slotNumber == slotNumber && it.remainingPills > 0) {
-                    it.copy(remainingPills = it.remainingPills - 1)
-                } else {
-                    it
+            val medication = _medicationList.value.firstOrNull { it.slotNumber == slotNumber }
+            medication?.let {
+                if (it.remainingPills > 0) {
+                    val updatedMed = it.copy(remainingPills = it.remainingPills - 1)
+                    medicationDao.updateMedication(updatedMed.toEntity())
+                    takenRecordDao.insertTakenRecord(TakenRecordEntity(medicationId = it.id, takenTimestamp = System.currentTimeMillis()))
+
+                    if (updatedMed.remainingPills <= updatedMed.reminderThreshold) {
+                        sendLowStockNotification(updatedMed)
+                    }
+
+                    // Refresh taken records manually after adding a new one
+                    loadTakenRecordsForDateRange(it.id)
                 }
             }
-            _medicationList.value = updatedList
-            _takenRecords.value = _takenRecords.value + MedicationTakenRecord(System.currentTimeMillis())
-
-            saveMedicationData()
-            saveTakenRecords()
-            updateDailyStatusMap()
         }
     }
+
+    private fun sendLowStockNotification(medication: Medication) {
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channelId = "low_stock_channel"
+
+        val channel = NotificationChannel(channelId, "Low Stock Warnings", NotificationManager.IMPORTANCE_HIGH).apply {
+            description = "Notifications for when medication stock is running low"
+            enableVibration(true)
+            val audioAttributes = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).build()
+            setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION), audioAttributes)
+        }
+        notificationManager.createNotificationChannel(channel)
+
+        val title = context.getString(R.string.low_stock_warning_title)
+        val message = context.getString(R.string.low_stock_warning_message, medication.name, medication.remainingPills)
+
+        val notification = NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(R.drawable.ic_warning)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .build()
+
+        notificationManager.notify(medication.id, notification)
+    }
+    
+    private suspend fun loadTakenRecordsForDateRange(medicationId: Int) {
+        val records = takenRecordDao.getRecordsForMedication(medicationId).first()
+        _takenRecords.value = records.map { MedicationTakenRecord(it.takenTimestamp) }
+        updateDailyStatusMap()
+    }
+
 
     private fun updateDailyStatusMap() {
         val statusMap = mutableMapOf<String, Int>()
@@ -214,70 +416,51 @@ class AppRepository @Inject constructor(
 
     fun setEngineeringMode(isEnabled: Boolean) {
         _isEngineeringMode.value = isEnabled
-        saveEngineeringMode()
+        sharedPreferences.edit { putBoolean(KEY_ENGINEERING_MODE, isEnabled) }
     }
 
-    // --- Persistence ---
+    // --- Persistence & Migration ---
 
-    private fun loadAllData() {
-        loadMedicationData()
-        loadTakenRecords()
-        loadEngineeringMode()
-        updateDailyStatusMap()
-    }
+    private suspend fun checkAndMigrateData() {
+        val isMigrationDone = sharedPreferences.getBoolean(KEY_MIGRATION_DONE, false)
+        if (!isMigrationDone) {
+            Log.i("AppRepository", "Starting data migration from SharedPreferences to Room.")
 
-    private fun saveMedicationData() {
-        sharedPreferences.edit {
-            putString(KEY_MEDICATION_DATA, gson.toJson(_medicationList.value))
-        }
-    }
-
-    private fun loadMedicationData() {
-        sharedPreferences.getString(KEY_MEDICATION_DATA, null)?.let {
-            try {
-                val rawData: List<Medication> = gson.fromJson(it, object : TypeToken<List<Medication>>() {}.type) ?: emptyList()
-                
-                // A reasonable earliest date to prevent issues with zero/default timestamps (e.g. 1970)
-                val minValidTimestamp = 1577836800000L // January 1, 2020 UTC
-                val cleanedData = rawData.filter { med -> med.startDate > minValidTimestamp && med.endDate > minValidTimestamp }
-
-                _medicationList.value = cleanedData
-
-                // If data was cleaned, save it back to remove invalid entries from persistence.
-                if (rawData.size != cleanedData.size) {
-                    saveMedicationData()
+            // Migrate Medications
+            val medJson = sharedPreferences.getString(KEY_MEDICATION_DATA, null)
+            if (medJson != null) {
+                try {
+                    val oldMeds: List<Medication> = gson.fromJson(medJson, object : TypeToken<List<Medication>>() {}.type)
+                    oldMeds.forEach { medication ->
+                        medicationDao.insertMedication(medication.toEntity())
+                    }
+                    Log.i("AppRepository", "Migrated ${oldMeds.size} medications.")
+                } catch (e: JsonSyntaxException) {
+                    Log.e("AppRepository", "Failed to parse old medication data during migration.", e)
                 }
-            } catch (e: JsonSyntaxException) {
-                Log.e("AppRepository", "Failed to parse medication data", e)
             }
-        }
-    }
-    
-    private fun saveTakenRecords() {
-        sharedPreferences.edit {
-            putString(KEY_TAKEN_RECORDS, gson.toJson(_takenRecords.value))
-        }
-    }
 
-    private fun loadTakenRecords() {
-        sharedPreferences.getString(KEY_TAKEN_RECORDS, null)?.let {
-            try {
-                val data: List<MedicationTakenRecord> = gson.fromJson(it, object : TypeToken<List<MedicationTakenRecord>>() {}.type) ?: emptyList()
-                _takenRecords.value = data
-            } catch (e: JsonSyntaxException) {
-                Log.e("AppRepository", "Failed to parse taken records", e)
+            // Migrate Taken Records
+            val recordsJson = sharedPreferences.getString(KEY_TAKEN_RECORDS, null)
+            if (recordsJson != null) {
+                try {
+                    val oldRecords: List<MedicationTakenRecord> = gson.fromJson(recordsJson, object : TypeToken<List<MedicationTakenRecord>>() {}.type)
+                    // This is tricky because old records don't have a medication ID.
+                    // We will skip migrating records for simplicity.
+                    Log.w("AppRepository", "Skipping migration of ${oldRecords.size} taken records due to missing medication ID.")
+                } catch (e: JsonSyntaxException) {
+                     Log.e("AppRepository", "Failed to parse old taken records during migration.", e)
+                }
             }
-        }
-    }
 
-    private fun saveEngineeringMode() {
-        sharedPreferences.edit {
-            putBoolean(KEY_ENGINEERING_MODE, _isEngineeringMode.value)
+            sharedPreferences.edit {
+                putBoolean(KEY_MIGRATION_DONE, true)
+                // Optionally, remove old data after successful migration
+                // remove(KEY_MEDICATION_DATA)
+                // remove(KEY_TAKEN_RECORDS)
+            }
+            Log.i("AppRepository", "Data migration finished.")
         }
-    }
-
-    private fun loadEngineeringMode() {
-        _isEngineeringMode.value = sharedPreferences.getBoolean(KEY_ENGINEERING_MODE, false)
     }
 
     companion object {
@@ -285,6 +468,7 @@ class AppRepository @Inject constructor(
         const val KEY_MEDICATION_DATA = "medication_data"
         const val KEY_TAKEN_RECORDS = "taken_records"
         const val KEY_ENGINEERING_MODE = "engineering_mode"
+        const val KEY_MIGRATION_DONE = "migration_to_room_done"
         
         const val STATUS_NOT_APPLICABLE = 0
         const val STATUS_NONE_TAKEN = 1
