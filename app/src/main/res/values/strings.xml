@@ -344,4 +344,5 @@
     <string name="about_version">版本</string>
 
     <string name="update_channel_stable">正式版 (Main)</string>
+    <string name="widget_next_medication_time">下次服藥時間</string>
 </resources>
