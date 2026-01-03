@@ -1,9 +1,24 @@
 # 更新日誌
 
-### v1.4.1: refactor(database): Improve code style in migration
-*   **程式碼風格重構 (Code Style Refactor):**
-    *   **原因:** 在 Room 資料庫從版本 1 到 2 的遷移程式碼中，`migrate` 函數的 `SupportSQLiteDatabase` 參數使用了 `database` 這個名稱。
-    *   **解決方案:** 為了與 Android 開發的普遍慣例保持一致，將參數名稱更改為 `db`。此舉提高了程式碼的可讀性，但未改變任何實際功能。
+### v1.4.2: 數據洞察 - 服藥報告 (進度 1)
+*   **UI/UX:**
+    *   在 `fragment_history.xml` 中新增了一個 `RadioGroup`，包含「週」、「月」、「季度」三個選項，用於切換不同的時間範圍報告。
+*   **架構:**
+    *   **DAO:** 在 `TakenRecordDao.kt` 中新增了 `getRecordsBetween(startTime: Long, endTime: Long)` 方法，用於從資料庫查詢指定時間範圍內的服藥記錄。
+    *   **Repository:** 
+        *   在 `AppRepository.kt` 中新增了 `getComplianceRateForTimeframe(timeframe: Timeframe)` 方法，此方法會根據所選的時間範圍（週/月/季度），計算出總應服藥劑量與實際服藥劑量的比例。
+        *   新增了 `Timeframe.kt` enum 類別。
+    *   **ViewModel:** 在 `MainViewModel.kt` 中新增了 `calculateComplianceRateForTimeframe(timeframe: Timeframe)` 方法，該方法會呼叫 Repository 的方法並更新一個新的 `StateFlow` (`reportComplianceRate`)。
+*   **Fragment 連接:**
+    *   更新了 `HistoryFragment.kt`，使其在 `RadioGroup` 的選項變更時，能夠呼叫 `MainViewModel` 的新方法，並觀察 `reportComplianceRate` 來更新 `complianceRateTextView` 的顯示。
+
+### v1.4.1: 數據管理 - 庫存提醒
+*   **核心功能: 藥物庫存管理與補充提醒**
+    *   **資料庫更新:** 在 `MedicationEntity` 中新增 `reminderThreshold: Int` 欄位，用於儲存藥物庫存的提醒閾值。
+    *   **UI 更新:** 在新增/編輯藥物的介面中，增加了設定提醒閾值的輸入框。
+    *   **邏輯實現:** 在 `AppRepository` 的 `processMedicationTaken` 方法中，加入了檢查藥物庫存是否低於設定閾值的邏輯。
+    *   **通知機制:** 若藥物庫存低於閾值，將觸發一個本地通知，提醒使用者及時補充。
+
 
 ### v1.4.0: 架構升級 - 資料庫遷移 (Room)
 *   **架構核心重構 (Core Architecture Refactor):**
