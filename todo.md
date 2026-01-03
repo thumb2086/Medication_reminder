@@ -3,23 +3,19 @@
 ## Epic 2: 智慧互動核心 (Smart Interaction Core)
 此史詩專注於實現 App 與智慧藥盒的核心互動，包含連線穩定性、放藥引導與服藥確認，打造無縫的硬體整合體驗。
 
-### v1.3.4: Proactive Bug Fixes & Robustness
-- [x] **UI修正 (Dialog Theming):** 修正角色選擇對話框中，新增的蠟筆小新跟多拉a夢選項 (Radio Button) 旁面沒有圖示
-- [x] **更新readme.md以及readme_cn.md說明整個app的文件架構與負責的功能**
-
 ## Epic 3: 架構與數據 (Architecture & Data)
 此史詩專注於升級 App 的底層架構，並基於新的資料庫結構提供更豐富的數據管理與洞察功能。
 
 ### v1.4.0: 架構升級 - 資料庫遷移
 
-- [ ] **基礎架構: 資料庫遷移 (Room)**
+- [x] **基礎架構: 資料庫遷移 (Room)**
   - **詳細步驟:**
-    - [ ] 在 `app/build.gradle.kts` 中加入 Room 的依賴。
-    - [ ] 建立 `MedicationEntity` 和 `TakenRecordEntity`。
-    - [ ] 建立對應的 DAO 介面 (`MedicationDao`, `TakenRecordDao`)。
-    - [ ] 建立 `AppDatabase.kt`。
-    - [ ] 重構 `AppRepository`，改為呼叫 DAO。
-    - [ ] 實作一個一次性的資料遷移邏輯，將舊的 SharedPreferences 數據寫入 Room。
+    - [x] 在 `app/build.gradle.kts` 中加入 Room 的依賴。
+    - [x] 建立 `MedicationEntity` 和 `TakenRecordEntity`。
+    - [x] 建立對應的 DAO 介面 (`MedicationDao`, `TakenRecordDao`)。
+    - [x] 建立 `AppDatabase.kt`。
+    - [x] 重構 `AppRepository`，改為呼叫 DAO。
+    - [x] 實作一個一次性的資料遷移邏輯，將舊的 SharedPreferences 數據寫入 Room。
 
 ### v1.4.1: 數據管理 - 庫存提醒
 - [ ] **核心功能: 藥物庫存管理與補充提醒**

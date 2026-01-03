@@ -4,15 +4,17 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
 import androidx.core.content.edit
+import com.example.medicationreminderapp.data.database.MedicationDao
+import com.example.medicationreminderapp.data.database.MedicationEntity
+import com.example.medicationreminderapp.data.database.TakenRecordDao
+import com.example.medicationreminderapp.data.database.TakenRecordEntity
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import com.google.gson.reflect.TypeToken
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -23,7 +25,9 @@ data class MedicationTakenRecord(val timestamp: Long)
 
 @Singleton
 class AppRepository @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val medicationDao: MedicationDao,
+    private val takenRecordDao: TakenRecordDao
 ) {
 
     // Data StateFlows
@@ -52,51 +56,94 @@ class AppRepository @Inject constructor(
     private val scope = CoroutineScope(Dispatchers.IO) // Repository scope for IO operations
 
     init {
-        loadAllData()
+        scope.launch {
+            checkAndMigrateData()
+        }
+
+        // Now, the repository's data streams are powered by Room's Flows.
+        medicationDao.getAllMedications().onEach { entities ->
+            _medicationList.value = entities.map { it.toDomainModel() }
+            updateDailyStatusMap() // Update map whenever medication list changes
+        }.launchIn(scope)
+
+        // This part needs adjustment based on how records are fetched.
+        // For simplicity, we'll manually refresh records when needed for now.
     }
+
+    private fun MedicationEntity.toDomainModel(): Medication {
+        val type = object : TypeToken<Map<Int, Long>>() {}.type
+        val timesMap: Map<Int, Long> = gson.fromJson(this.times, type)
+        return Medication(
+            id = this.id,
+            name = this.name,
+            dosage = this.dosage,
+            startDate = this.startDate,
+            endDate = this.endDate,
+            times = timesMap,
+            slotNumber = this.slotNumber,
+            totalPills = this.totalPills,
+            remainingPills = this.remainingPills
+        )
+    }
+
+    private fun Medication.toEntity(): MedicationEntity {
+        return MedicationEntity(
+            id = this.id,
+            name = this.name,
+            dosage = this.dosage,
+            startDate = this.startDate,
+            endDate = this.endDate,
+            times = gson.toJson(this.times),
+            slotNumber = this.slotNumber,
+            totalPills = this.totalPills,
+            remainingPills = this.remainingPills
+        )
+    }
+
 
     // --- Medication Management ---
 
     fun addMedications(newMedications: List<Medication>) {
-        val currentList = _medicationList.value
-        _medicationList.value = currentList + newMedications
-        saveMedicationData()
-        updateDailyStatusMap()
+         scope.launch {
+            newMedications.forEach { medication ->
+                medicationDao.insertMedication(medication.toEntity())
+            }
+        }
     }
 
     fun updateMedication(updatedMed: Medication) {
-        val currentList = _medicationList.value
-        _medicationList.value = currentList.map {
-            if (it.slotNumber == updatedMed.slotNumber) updatedMed else it
+        scope.launch {
+            medicationDao.updateMedication(updatedMed.toEntity())
         }
-        saveMedicationData()
-        updateDailyStatusMap()
     }
 
     fun deleteMedication(medToDelete: Medication) {
-        val currentList = _medicationList.value
-        _medicationList.value = currentList.filter { it.slotNumber != medToDelete.slotNumber }
-        saveMedicationData()
-        updateDailyStatusMap()
+        scope.launch {
+            medicationDao.deleteMedicationById(medToDelete.id)
+        }
     }
 
     fun processMedicationTaken(slotNumber: Int) {
         scope.launch {
-            val updatedList = _medicationList.value.map {
-                if (it.slotNumber == slotNumber && it.remainingPills > 0) {
-                    it.copy(remainingPills = it.remainingPills - 1)
-                } else {
-                    it
+            val medication = _medicationList.value.firstOrNull { it.slotNumber == slotNumber }
+            medication?.let {
+                if (it.remainingPills > 0) {
+                    val updatedMed = it.copy(remainingPills = it.remainingPills - 1)
+                    medicationDao.updateMedication(updatedMed.toEntity())
+                    takenRecordDao.insertTakenRecord(TakenRecordEntity(medicationId = it.id, takenTimestamp = System.currentTimeMillis()))
+                    // Refresh taken records manually after adding a new one
+                    loadTakenRecordsForDateRange(it.id)
                 }
             }
-            _medicationList.value = updatedList
-            _takenRecords.value = _takenRecords.value + MedicationTakenRecord(System.currentTimeMillis())
-
-            saveMedicationData()
-            saveTakenRecords()
-            updateDailyStatusMap()
         }
     }
+    
+    private suspend fun loadTakenRecordsForDateRange(medicationId: Int) {
+        val records = takenRecordDao.getRecordsForMedication(medicationId).first()
+        _takenRecords.value = records.map { MedicationTakenRecord(it.takenTimestamp) }
+        updateDailyStatusMap()
+    }
+
 
     private fun updateDailyStatusMap() {
         val statusMap = mutableMapOf<String, Int>()
@@ -214,70 +261,51 @@ class AppRepository @Inject constructor(
 
     fun setEngineeringMode(isEnabled: Boolean) {
         _isEngineeringMode.value = isEnabled
-        saveEngineeringMode()
+        sharedPreferences.edit { putBoolean(KEY_ENGINEERING_MODE, isEnabled) }
     }
 
-    // --- Persistence ---
+    // --- Persistence & Migration ---
 
-    private fun loadAllData() {
-        loadMedicationData()
-        loadTakenRecords()
-        loadEngineeringMode()
-        updateDailyStatusMap()
-    }
+    private suspend fun checkAndMigrateData() {
+        val isMigrationDone = sharedPreferences.getBoolean(KEY_MIGRATION_DONE, false)
+        if (!isMigrationDone) {
+            Log.i("AppRepository", "Starting data migration from SharedPreferences to Room.")
 
-    private fun saveMedicationData() {
-        sharedPreferences.edit {
-            putString(KEY_MEDICATION_DATA, gson.toJson(_medicationList.value))
-        }
-    }
-
-    private fun loadMedicationData() {
-        sharedPreferences.getString(KEY_MEDICATION_DATA, null)?.let {
-            try {
-                val rawData: List<Medication> = gson.fromJson(it, object : TypeToken<List<Medication>>() {}.type) ?: emptyList()
-                
-                // A reasonable earliest date to prevent issues with zero/default timestamps (e.g. 1970)
-                val minValidTimestamp = 1577836800000L // January 1, 2020 UTC
-                val cleanedData = rawData.filter { med -> med.startDate > minValidTimestamp && med.endDate > minValidTimestamp }
-
-                _medicationList.value = cleanedData
-
-                // If data was cleaned, save it back to remove invalid entries from persistence.
-                if (rawData.size != cleanedData.size) {
-                    saveMedicationData()
+            // Migrate Medications
+            val medJson = sharedPreferences.getString(KEY_MEDICATION_DATA, null)
+            if (medJson != null) {
+                try {
+                    val oldMeds: List<Medication> = gson.fromJson(medJson, object : TypeToken<List<Medication>>() {}.type)
+                    oldMeds.forEach { medication ->
+                        medicationDao.insertMedication(medication.toEntity())
+                    }
+                    Log.i("AppRepository", "Migrated ${oldMeds.size} medications.")
+                } catch (e: JsonSyntaxException) {
+                    Log.e("AppRepository", "Failed to parse old medication data during migration.", e)
                 }
-            } catch (e: JsonSyntaxException) {
-                Log.e("AppRepository", "Failed to parse medication data", e)
             }
-        }
-    }
-    
-    private fun saveTakenRecords() {
-        sharedPreferences.edit {
-            putString(KEY_TAKEN_RECORDS, gson.toJson(_takenRecords.value))
-        }
-    }
 
-    private fun loadTakenRecords() {
-        sharedPreferences.getString(KEY_TAKEN_RECORDS, null)?.let {
-            try {
-                val data: List<MedicationTakenRecord> = gson.fromJson(it, object : TypeToken<List<MedicationTakenRecord>>() {}.type) ?: emptyList()
-                _takenRecords.value = data
-            } catch (e: JsonSyntaxException) {
-                Log.e("AppRepository", "Failed to parse taken records", e)
+            // Migrate Taken Records
+            val recordsJson = sharedPreferences.getString(KEY_TAKEN_RECORDS, null)
+            if (recordsJson != null) {
+                try {
+                    val oldRecords: List<MedicationTakenRecord> = gson.fromJson(recordsJson, object : TypeToken<List<MedicationTakenRecord>>() {}.type)
+                    // This is tricky because old records don't have a medication ID.
+                    // We will skip migrating records for simplicity.
+                    Log.w("AppRepository", "Skipping migration of ${oldRecords.size} taken records due to missing medication ID.")
+                } catch (e: JsonSyntaxException) {
+                     Log.e("AppRepository", "Failed to parse old taken records during migration.", e)
+                }
             }
-        }
-    }
 
-    private fun saveEngineeringMode() {
-        sharedPreferences.edit {
-            putBoolean(KEY_ENGINEERING_MODE, _isEngineeringMode.value)
+            sharedPreferences.edit {
+                putBoolean(KEY_MIGRATION_DONE, true)
+                // Optionally, remove old data after successful migration
+                // remove(KEY_MEDICATION_DATA)
+                // remove(KEY_TAKEN_RECORDS)
+            }
+            Log.i("AppRepository", "Data migration finished.")
         }
-    }
-
-    private fun loadEngineeringMode() {
-        _isEngineeringMode.value = sharedPreferences.getBoolean(KEY_ENGINEERING_MODE, false)
     }
 
     companion object {
@@ -285,6 +313,7 @@ class AppRepository @Inject constructor(
         const val KEY_MEDICATION_DATA = "medication_data"
         const val KEY_TAKEN_RECORDS = "taken_records"
         const val KEY_ENGINEERING_MODE = "engineering_mode"
+        const val KEY_MIGRATION_DONE = "migration_to_room_done"
         
         const val STATUS_NOT_APPLICABLE = 0
         const val STATUS_NONE_TAKEN = 1

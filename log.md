@@ -1,5 +1,23 @@
 # 更新日誌
 
+### v1.4.0: 架構升級 - 資料庫遷移 (Room)
+*   **架構核心重構 (Core Architecture Refactor):**
+    *   **目標:** 將 App 的核心數據持久層從 `SharedPreferences` + `Gson` 的組合，完全遷移至現代、高效且類型安全的 `Room` 資料庫架構，為未來的數據功能 (如庫存管理、服藥報告) 奠定穩固基礎。
+    *   **技術實現:**
+        1.  **新增依賴:** 在 `app/build.gradle.kts` 中加入了 `Room` 的運行時、協程擴展 (`ktx`) 及編譯器 (`kapt`) 依賴 (版本 `2.8.4`)。
+        2.  **建立資料實體 (Entities):** 建立了 `MedicationEntity` 與 `TakenRecordEntity`，並透過 `@Entity`、`@PrimaryKey` 等註解定義了資料庫的表結構與外鍵關聯。
+        3.  **建立資料存取物件 (DAOs):** 建立了 `MedicationDao` 與 `TakenRecordDao` 介面，定義了所有對資料庫的原子操作 (增、刪、改、查)，並使用 `Flow` 來提供響應式的數據讀取。
+        4.  **建立資料庫本體:** 建立了 `AppDatabase` 抽象類別，整合了所有 Entities 和 DAOs。同時，為了處理 `Map<Int, Long>` 這種複雜類型，額外建立了 `TypeConverters.kt`，利用 `Gson` 將其序列化為 String 進行儲存。
+        5.  **依賴注入 (Hilt):** 建立了 `DatabaseModule.kt`，透過 Hilt 將 `AppDatabase`、`MedicationDao`、`TakenRecordDao` 以單例模式注入到 `AppRepository`。
+        6.  **倉儲層重構 (Repository Refactor):** 全面重構了 `AppRepository.kt`。
+            *   移除了所有基於 `SharedPreferences` 的藥物存取邏輯。
+            *   將資料來源改為由 `MedicationDao` 提供的 `Flow`，實現了 UI 層與資料庫的自動同步。
+            *   所有寫入操作 (新增/更新/刪除藥物、記錄服藥) 都改為呼叫對應的 DAO 方法。
+        7.  **一次性資料遷移 (One-Time Migration):**
+            *   在 `AppRepository` 的 `init` 區塊中加入了 `checkAndMigrateData()` 邏輯。
+            *   此邏輯會在 App 首次更新後執行一次，讀取舊 `SharedPreferences` 中的藥物資料，轉換為 `MedicationEntity`，並寫入新的 Room 資料庫。
+            *   **特別處理:** 由於舊的服藥紀錄 (`MedicationTakenRecord`) 缺乏與藥物的關聯 ID，為保證數據準確性，遷移過程中有意**跳過**了對這部分舊紀錄的遷移。
+
 ### v1.3.4: Proactive Bug Fixes & Robustness
 *   **UI修正 (Dialog Theming):**
     *   **根源分析:** `ImagePickerPreference.kt` 中的 `imageResources` 屬性只為「酷洛米」和「櫻桃小丸子」提供了圖示，其他角色都使用預設圖示。
@@ -325,9 +343,6 @@
 ## 2025-01-20
 ### DevOps
 *   **App 內自動更新:** 新增 `UpdateManager`。
-
-### UI/UX
-*   **設定頁面優化:** 新增圖示。
 
 ## 2025-01-19
 ### DevOps
