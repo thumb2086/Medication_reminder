@@ -9,7 +9,6 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
 import com.example.medicationreminderapp.databinding.FragmentFirmwareUpdateBinding
 
 class FirmwareUpdateFragment : Fragment(), BluetoothLeManager.BleListener {
@@ -18,7 +17,10 @@ class FirmwareUpdateFragment : Fragment(), BluetoothLeManager.BleListener {
     private val binding get() = _binding!!
 
     private var selectedFirmwareUri: Uri? = null
-    private val viewModel: MainViewModel by activityViewModels()
+
+    private val bluetoothLeManager: BluetoothLeManager? by lazy {
+        (activity as? MainActivity)?.bluetoothLeManager
+    }
 
     private val selectFirmwareLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
@@ -40,7 +42,7 @@ class FirmwareUpdateFragment : Fragment(), BluetoothLeManager.BleListener {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        viewModel.bluetoothLeManager.listener = this
+        bluetoothLeManager?.listener = this
 
         binding.selectFirmwareButton.setOnClickListener {
             val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
@@ -53,7 +55,7 @@ class FirmwareUpdateFragment : Fragment(), BluetoothLeManager.BleListener {
             selectedFirmwareUri?.let { uri ->
                 val firmwareBytes = requireContext().contentResolver.openInputStream(uri)?.readBytes()
                 firmwareBytes?.let {
-                    viewModel.bluetoothLeManager.startOtaUpdate(it)
+                    bluetoothLeManager?.startOtaUpdate(it)
                 }
             }
         }
@@ -61,7 +63,7 @@ class FirmwareUpdateFragment : Fragment(), BluetoothLeManager.BleListener {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        viewModel.bluetoothLeManager.listener = null
+        bluetoothLeManager?.listener = null
         _binding = null
     }
 

@@ -10,11 +10,11 @@
 此史詩專注於提供更多便利工具，並擴展 App 的保護網，提升整體使用價值。
 
 ### v1.5.0: 韌體空中升級 (OTA)
-- [ ] **App 端: 韌體空中升級 (OTA)**
+- [x] **App 端: 韌體空中升級 (OTA)**
   - **詳細步驟:**
-    - [ ] 實作選擇 `.bin` 韌體檔案的邏輯。
-    - [ ] 在 `BluetoothLeManager` 新增 `startOtaUpdate(firmware: ByteArray)` 方法，將韌體分塊寫入 ESP32。
-    - [ ] 實作 UI 上的進度條來顯示更新進度。
+    - [x] 實作選擇 `.bin` 韌體檔案的邏輯。
+    - [x] 在 `BluetoothLeManager` 新增 `startOtaUpdate(firmware: ByteArray)` 方法，將韌體分塊寫入 ESP32。
+    - [x] 實作 UI 上的進度條來顯示更新進度。
 - [ ] **ESP32 端: 韌體 OTA 功能**
   - **詳細步驟:**
     - [ ] 整合 `ArduinoOTA` 或自訂的 BLE OTA 函式庫。
@@ -54,6 +54,17 @@
     - **詳細步驟:**
       - [ ] 在 `hardware.cpp` 中，實作讀取溫濕度感測器 (DHT) 數據的邏輯。
       - [ ] 透過 `ble_handler.cpp` 中的 `sendSensorDataReport()` 或 `sendRealtimeSensorData()` 函式，將數據定時回報給 App。
+
+## Epic 5: 基礎設施與自動化 (Infrastructure & Automation)
+
+### v1.5.5: 韌體自動化建置 (Firmware CI/CD)
+- [ ] **基礎設施: 韌體自動化建置**
+  - **詳細步驟:**
+    - [ ] 在專案根目錄下建立 `firmware` 資料夾，並將 ESP32 的 `.ino` 專案移入。
+    - [ ] 修改根目錄的 `build.gradle.kts`，新增一個 `compileFirmware` 任務，使用 `platformio-ide` 或類似工具來編譯 `.ino` 檔案。
+    - [ ] 設定 `compileFirmware` 任務，將編譯好的 `.bin` 檔案複製到 App 的 `src/main/assets/` 目錄下。
+    - [ ] 設定 `app/build.gradle.kts`，讓 `assembleRelease` 任務依賴 `compileFirmware` 任務，確保發布時自動建置韌體。
+    - [ ] 在 `UpdateManager.kt` 中新增邏輯，檢查 `assets` 中是否存在新的韌體版本，並在適當的時候提示使用者更新。
 
 ---
 1.2.3
