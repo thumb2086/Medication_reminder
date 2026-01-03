@@ -7,6 +7,8 @@ A smart medication reminder application integrated with an ESP32-based smart pil
 ## Features
 
 *   **Smart Reminders:** customizable medication schedules with frequency and time settings.
+*   **Medication Inventory Management & Refill Reminders:** Track medication stock levels and receive timely notifications when supplies run low, ensuring you never run out.
+*   **Detailed Medication Reports:** Generate comprehensive medication reports with compliance rates, visualized through interactive charts for weekly, monthly, or quarterly periods.
 *   **Hardware Integration:** seamless connection with an ESP32 smart pillbox via Bluetooth Low Energy (BLE).
 *   **Hardware-Confirmed Intake:** When the pillbox alarm rings, confirm your dose simply by pressing the physical button on the box. The signal is sent back to the app via BLE, automatically updating your pill inventory and medication log without touching your phone.
 *   **Smart Pillbox Guidance:** Remotely guide the pillbox to rotate to the correct compartment by selecting a medication in the app. The corresponding LED will light up, providing clear visual guidance for pill retrieval.

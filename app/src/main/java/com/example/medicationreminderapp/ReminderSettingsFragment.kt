@@ -192,6 +192,7 @@ class ReminderSettingsFragment : Fragment() {
 
         cardBinding.medicationNameEditText.setText(med.name)
         cardBinding.dosageSlider.value = med.dosage.toFloat()
+        cardBinding.reminderThresholdEditText.setText(med.reminderThreshold.toString())
 
         cardState.startDate = Calendar.getInstance().apply { timeInMillis = med.startDate }
         cardState.endDate = Calendar.getInstance().apply { timeInMillis = med.endDate }
@@ -488,6 +489,7 @@ class ReminderSettingsFragment : Fragment() {
         val endDate = cardState.endDate
         val times = cardState.times
         val dosage = cardBinding.dosageSlider.value
+        val reminderThreshold = cardBinding.reminderThresholdEditText.text.toString().toIntOrNull() ?: 0
 
         if (name.isBlank() || slot == null || startDate == null || endDate == null) {
             Toast.makeText(requireContext(), getString(R.string.please_fill_all_fields), Toast.LENGTH_LONG).show()
@@ -521,7 +523,8 @@ class ReminderSettingsFragment : Fragment() {
             times = timesMap,
             slotNumber = slot,
             totalPills = totalPills,
-            remainingPills = totalPills
+            remainingPills = totalPills,
+            reminderThreshold = reminderThreshold
         )
     }
 

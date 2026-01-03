@@ -9,7 +9,7 @@ apply(from = "../config.gradle.kts")
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.kapt)
+    alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
 }
 
@@ -288,6 +288,11 @@ android {
 }
 
 dependencies {
+    // Room Database
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+    ksp(libs.room.compiler)
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
@@ -300,12 +305,13 @@ dependencies {
     implementation(libs.calendar.view)
     implementation(libs.mpandroidchart)
     implementation(libs.okhttp)
+    implementation(libs.androidx.work.runtime.ktx)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     implementation(libs.hilt.android)
-    kapt(libs.hilt.compiler)
+    ksp(libs.hilt.compiler)
 }
 
 kotlin {
@@ -313,10 +319,6 @@ kotlin {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
         freeCompilerArgs.add("-Xannotation-default-target=param-property")
     }
-}
-
-kapt {
-    correctErrorTypes = true
 }
 
 tasks.register("printVersionName") {

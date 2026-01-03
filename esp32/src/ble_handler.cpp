@@ -1,5 +1,5 @@
-
 #include "globals.h"
+#include <Update.h> // <--- 新增
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLEUtils.h>
@@ -14,22 +14,21 @@ class MyServerCallbacks: public BLEServerCallbacks {
     void onConnect(BLEServer* pServer) {
         bleDeviceConnected = true;
         Serial.println("DEBUG: BLE Client Connected");
-        Serial.println("BLE Connected");
     }
     void onDisconnect(BLEServer* pServer) {
         bleDeviceConnected = false;
         isRealtimeEnabled = false;
+        isBleOtaInProgress = false; // <--- 新增: 如果中途斷線，終止 OTA
         Serial.println("DEBUG: BLE Client Disconnected");
-        Serial.println("BLE Disconnected");
         BLEDevice::startAdvertising();
     }
 };
 
 class CommandCallbacks: public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) {
-        String value = pCharacteristic->getValue();
+        std::string value = pCharacteristic->getValue();
         if (value.length() > 0) {
-            Serial.printf("DEBUG: BLE command received, length: %d\n", value.length());
+            // Serial.printf("DEBUG: BLE command received, length: %d\n", value.length()); // Can be verbose
             handleCommand((uint8_t*)value.c_str(), value.length());
         }
     }
@@ -50,13 +49,16 @@ void setupBLE() {
     BLEDevice::getAdvertising()->setScanResponse(true);
     BLEDevice::startAdvertising();
     Serial.println("DEBUG: BLE Server started and advertising.");
-    Serial.println("BLE Server started.");
 }
 
 void handleCommand(uint8_t* data, size_t length) {
     if (length == 0) return;
     uint8_t command = data[0];
-    Serial.printf("BLE RX: CMD=0x%02X, Len=%d\n", command, length);
+    
+    // For OTA data, avoid printing every packet to prevent log spam
+    if (command != CMD_OTA_DATA) {
+        Serial.printf("BLE RX: CMD=0x%02X, Len=%d\n", command, length);
+    }
 
     switch (command) {
         case CMD_PROTOCOL_VERSION:
@@ -65,7 +67,6 @@ void handleCommand(uint8_t* data, size_t length) {
                 uint8_t packet[2] = {CMD_REPORT_PROTO_VER, 2};
                 pDataEventCharacteristic->setValue(packet, 2);
                 pDataEventCharacteristic->notify();
-                Serial.println("Protocol Version 2 reported.");
             }
             break;
         case CMD_TIME_SYNC:
@@ -79,7 +80,6 @@ void handleCommand(uint8_t* data, size_t length) {
                 settimeofday(&tv, nullptr);
                 syncIconStartTime = millis();
                 sendTimeSyncAck();
-                Serial.println("DEBUG: Time synced from BLE.");
             }
             break;
         case CMD_WIFI_CREDENTIALS:
@@ -134,7 +134,6 @@ void handleCommand(uint8_t* data, size_t length) {
                     preferences.putBool("alarmOn", alarmEnabled);
                     preferences.end();
                     Serial.printf("DEBUG: Alarm set to %02d:%02d, Enabled: %d\n", alarmHour, alarmMinute, alarmEnabled);
-                    Serial.printf("Alarm Set: %02d:%02d, Enabled: %s\n", alarmHour, alarmMinute, alarmEnabled ? "ON" : "OFF");
                 }
             }
             sendTimeSyncAck();
@@ -166,15 +165,120 @@ void handleCommand(uint8_t* data, size_t length) {
         case CMD_ENABLE_REALTIME:
             Serial.println("DEBUG: CMD_ENABLE_REALTIME received.");
             isRealtimeEnabled = true;
-            Serial.println("Real-time data enabled.");
             sendTimeSyncAck();
             break;
         case CMD_DISABLE_REALTIME:
             Serial.println("DEBUG: CMD_DISABLE_REALTIME received.");
             isRealtimeEnabled = false;
-            Serial.println("Real-time data disabled.");
             sendTimeSyncAck();
             break;
+
+        // =======================================
+        // ===== 新增的 BLE OTA 處理邏輯 Start =====
+        // =======================================
+        case CMD_OTA_START: {
+            if (length < 5) {
+                Serial.println("ERROR: CMD_OTA_START packet too short!");
+                sendErrorReport(0x05); // Length error
+                break;
+            }
+            // 從封包中解析韌體總大小 (4 bytes, little-endian)
+            otaTotalSize = (data[4] << 24) | (data[3] << 16) | (data[2] << 8) | data[1];
+            otaBytesReceived = 0;
+            
+            Serial.printf("DEBUG: CMD_OTA_START received. Total size: %u bytes\n", otaTotalSize);
+
+            // Display OTA message on screen
+            u8g2.clearBuffer();
+            u8g2.setFont(u8g2_font_ncenB10_tr);
+            u8g2.drawStr((128 - u8g2.getStrWidth("BLE OTA"))/2, 20, "BLE OTA");
+            u8g2.setFont(u8g2_font_ncenB08_tr);
+            u8g2.drawStr((128 - u8g2.getStrWidth("Receiving..."))/2, 40, "Receiving...");
+            u8g2.sendBuffer();
+
+            if (Update.begin(otaTotalSize)) {
+                isBleOtaInProgress = true;
+                otaStartTime = millis();
+                Serial.println("DEBUG: OTA Update process started.");
+            } else {
+                Serial.println("ERROR: Not enough space to begin OTA");
+                Update.printError(Serial);
+                sendErrorReport(0x04); // Access error / insufficient space
+            }
+            break;
+        }
+
+        case CMD_OTA_DATA: {
+            if (!isBleOtaInProgress) {
+                Serial.println("ERROR: CMD_OTA_DATA received without START.");
+                sendErrorReport(0x03); // Unknown command / wrong sequence
+                break;
+            }
+            
+            size_t chunkSize = length - 1;
+            
+            if (chunkSize > 0) {
+                size_t bytesWritten = Update.write(&data[1], chunkSize);
+                if (bytesWritten == chunkSize) {
+                    otaBytesReceived += bytesWritten;
+                    // Update progress on screen
+                    int progress = (int)((otaBytesReceived * 100) / otaTotalSize);
+                    u8g2.drawBox(0, 50, 128, 10);
+                    u8g2.setDrawColor(0); // color 0 for the text
+                    char progressStr[5];
+                    sprintf(progressStr, "%d%%", progress);
+                    u8g2.drawStr((128 - u8g2.getStrWidth(progressStr))/2, 60, progressStr);
+                    u8g2.setDrawColor(1); // Back to default
+                    u8g2.drawBox(2, 52, (124 * progress) / 100, 6);
+                    u8g2.sendBuffer();
+
+                } else {
+                    Serial.println("ERROR: OTA data write failed!");
+                    Update.printError(Serial);
+                    isBleOtaInProgress = false;
+                    sendErrorReport(0x04); // Access error
+                }
+            }
+            break;
+        }
+
+        case CMD_OTA_END: {
+            if (!isBleOtaInProgress) {
+                Serial.println("ERROR: CMD_OTA_END received without START.");
+                sendErrorReport(0x03); // Unknown command / wrong sequence
+                break;
+            }
+            
+            Serial.printf("DEBUG: CMD_OTA_END received. Total bytes received: %u\n", otaBytesReceived);
+
+            if (Update.end(true)) { 
+                Serial.printf("SUCCESS: OTA Update successful in %lu ms. Rebooting...\n", millis() - otaStartTime);
+                u8g2.clearBuffer();
+                u8g2.setFont(u8g2_font_ncenB08_tr);
+                u8g2.drawStr((128 - u8g2.getStrWidth("Update OK!"))/2, 20, "Update OK!");
+                u8g2.drawStr((128 - u8g2.getStrWidth("Rebooting..."))/2, 40, "Rebooting...");
+                u8g2.sendBuffer();
+                delay(2000);
+                ESP.restart();
+            } else {
+                Serial.println("ERROR: OTA Update failed!");
+                Update.printError(Serial);
+                isBleOtaInProgress = false;
+                u8g2.clearBuffer();
+                u8g2.setFont(u8g2_font_ncenB08_tr);
+                u8g2.drawStr((128 - u8g2.getStrWidth("Update Failed!"))/2, 38, "Update Failed!");
+                u8g2.sendBuffer();
+                delay(3000);
+                // Optionally restart or return to main screen
+                // ESP.restart(); 
+                sendErrorReport(0x04); 
+            }
+            break;
+        }
+        // =======================================
+        // ===== 新增的 BLE OTA 處理邏輯 End =======
+        // =======================================
+
         default:
             Serial.printf("Error: Unknown Command 0x%02X\n", command);
             sendErrorReport(0x03);
@@ -184,7 +288,7 @@ void handleCommand(uint8_t* data, size_t length) {
 
 void sendBoxStatus() {
     if (!bleDeviceConnected) return;
-    Serial.println("DEBUG: Sending box status.");
+    // Serial.println("DEBUG: Sending box status.");
     uint8_t packet[2] = {CMD_REPORT_STATUS, 0b00001111};
     pDataEventCharacteristic->setValue(packet, 2);
     pDataEventCharacteristic->notify();
@@ -205,15 +309,13 @@ void sendSensorDataReport() {
         sendErrorReport(0x02);
         return;
     }
-    Serial.println("DEBUG: Sending sensor data report.");
+    // Serial.println("DEBUG: Sending sensor data report.");
     int16_t t_val = (int16_t)(cachedTemp * 100);
     int16_t h_val = (int16_t)(cachedHum * 100);
     uint8_t packet[5];
     packet[0] = CMD_REPORT_ENV;
-    packet[1] = t_val & 0xFF;
-    packet[2] = (t_val >> 8) & 0xFF;
-    packet[3] = h_val & 0xFF;
-    packet[4] = (h_val >> 8) & 0xFF;
+    memcpy(&packet[1], &t_val, 2);
+    memcpy(&packet[3], &h_val, 2);
     pDataEventCharacteristic->setValue(packet, 5);
     pDataEventCharacteristic->notify();
 }
@@ -221,16 +323,12 @@ void sendSensorDataReport() {
 void sendRealtimeSensorData() {
     if (!bleDeviceConnected || !isRealtimeEnabled) return;
     if (!sensorDataValid) return;
-    // This function is called frequently, so debug message is commented out.
-    // Serial.println("DEBUG: Sending real-time sensor data."); 
     int16_t t_val = (int16_t)(cachedTemp * 100);
     int16_t h_val = (int16_t)(cachedHum * 100);
     uint8_t packet[5];
     packet[0] = CMD_REPORT_ENV;
-    packet[1] = t_val & 0xFF;
-    packet[2] = (t_val >> 8) & 0xFF;
-    packet[3] = h_val & 0xFF;
-    packet[4] = (h_val >> 8) & 0xFF;
+    memcpy(&packet[1], &t_val, 2);
+    memcpy(&packet[3], &h_val, 2);
     pDataEventCharacteristic->setValue(packet, 5);
     pDataEventCharacteristic->notify();
 }
@@ -245,7 +343,6 @@ void sendHistoricDataEnd() {
 
 void handleHistoricDataTransfer() {
     if (!isSendingHistoricData) return;
-    // Serial.println("DEBUG: handleHistoricDataTransfer");
     if (historicDataIndexToSend == 0) {
         historyFile = SPIFFS.open("/history.dat", "r");
         if (!historyFile) {
@@ -261,10 +358,10 @@ void handleHistoricDataTransfer() {
         Serial.println("BLE disconnected during transfer. Aborting.");
         return;
     }
-    const int MAX_POINTS_PER_PACKET = 5;
-    uint8_t batchPacket[2 + MAX_POINTS_PER_PACKET * 8];
+    const int MAX_POINTS_PER_PACKET = 2; // Reduced for MTU size safety
+    uint8_t batchPacket[1 + MAX_POINTS_PER_PACKET * 8];
     uint8_t pointsInBatch = 0;
-    int packetWriteIndex = 2;
+    int packetWriteIndex = 1;
     while (pointsInBatch < MAX_POINTS_PER_PACKET && historicDataIndexToSend < historyCount) {
         DataPoint dp;
         int startIdx = (historyIndex - historyCount + MAX_HISTORY) % MAX_HISTORY;
@@ -272,24 +369,24 @@ void handleHistoricDataTransfer() {
         historyFile.seek(currentReadIdx * sizeof(DataPoint));
         historyFile.read((uint8_t*)&dp, sizeof(DataPoint));
         time_t timestamp = time(nullptr) - (historyCount - 1 - historicDataIndexToSend) * (historyRecordInterval / 1000);
-        batchPacket[packetWriteIndex++] = timestamp & 0xFF;
-        batchPacket[packetWriteIndex++] = (timestamp >> 8) & 0xFF;
-        batchPacket[packetWriteIndex++] = (timestamp >> 16) & 0xFF;
-        batchPacket[packetWriteIndex++] = (timestamp >> 24) & 0xFF;
+        
+        memcpy(&batchPacket[packetWriteIndex], &timestamp, 4);
+        packetWriteIndex += 4;
+        
         int16_t t_val = (int16_t)(dp.temp * 100);
         int16_t h_val = (int16_t)(dp.hum * 100);
-        batchPacket[packetWriteIndex++] = t_val & 0xFF;
-        batchPacket[packetWriteIndex++] = (t_val >> 8) & 0xFF;
-        batchPacket[packetWriteIndex++] = h_val & 0xFF;
-        batchPacket[packetWriteIndex++] = (h_val >> 8) & 0xFF;
+        
+        memcpy(&batchPacket[packetWriteIndex], &t_val, 2);
+        packetWriteIndex += 2;
+        memcpy(&batchPacket[packetWriteIndex], &h_val, 2);
+        packetWriteIndex += 2;
+        
         pointsInBatch++;
         historicDataIndexToSend++;
     }
     if (pointsInBatch > 0) {
-        // Serial.printf("DEBUG: Sending batch of %d historic data points.\n", pointsInBatch);
         batchPacket[0] = CMD_REPORT_HISTORIC_POINT;
-        batchPacket[1] = pointsInBatch;
-        pDataEventCharacteristic->setValue(batchPacket, 2 + pointsInBatch * 8);
+        pDataEventCharacteristic->setValue(batchPacket, 1 + pointsInBatch * 8);
         pDataEventCharacteristic->notify();
     }
     if (historicDataIndexToSend >= historyCount) {
@@ -301,9 +398,10 @@ void handleHistoricDataTransfer() {
     }
 }
 
+
 void sendTimeSyncAck() {
     if (!bleDeviceConnected) return;
-    Serial.println("DEBUG: Sending Time Sync ACK.");
+    // Serial.println("DEBUG: Sending Time Sync ACK.");
     uint8_t packet[1] = {CMD_TIME_SYNC_ACK};
     pDataEventCharacteristic->setValue(packet, 1);
     pDataEventCharacteristic->notify();

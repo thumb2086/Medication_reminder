@@ -137,6 +137,19 @@
                 android:valueTo="10"
                 android:stepSize="1" />
 
+            <!-- Reminder Threshold -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:hint="@string/reminder_threshold">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/reminderThresholdEditText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
             <!-- Notes -->
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"

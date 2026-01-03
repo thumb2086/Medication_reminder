@@ -50,6 +50,7 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
         fun onHistoricDataComplete()
         fun onWifiStatusUpdate(status: Int)
         fun onError(errorCode: Int)
+        fun onOtaProgressUpdate(progress: Int)
     }
 
     private val bluetoothAdapter: BluetoothAdapter? by lazy(LazyThreadSafetyMode.NONE) {
@@ -478,7 +479,30 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
         sendCommand(byteArrayOf(0x14.toByte()))
     }
 
+    fun startOtaUpdate(firmware: ByteArray) {
+        val chunkSize = 16
+        val totalSize = firmware.size
 
+        // 發送開始指令，並附帶 4 字節的韌體總大小 (Little Endian)
+        val startCommand = ByteBuffer.allocate(5).order(ByteOrder.LITTLE_ENDIAN)
+            .put(0x50.toByte())
+            .putInt(totalSize)
+            .array()
+        sendCommand(startCommand)
+
+        val chunks = firmware.asSequence().chunked(chunkSize).toList()
+        val totalChunks = chunks.size
+
+        chunks.forEachIndexed { index, chunk ->
+            val command = byteArrayOf(0x51.toByte()) + chunk.toByteArray()
+            sendCommand(command)
+
+            val progress = ((index + 1) * 100) / totalChunks
+            handler.post { listener?.onOtaProgressUpdate(progress) }
+        }
+
+        sendCommand(byteArrayOf(0x52.toByte())) // End OTA command
+    }
 
     fun requestStatus() {
         sendCommand(byteArrayOf(0x20.toByte()))

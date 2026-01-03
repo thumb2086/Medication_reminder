@@ -46,7 +46,7 @@ import java.util.*
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class MainActivity : BaseActivity(), BluetoothLeManager.BleListener {
+ class MainActivity : BaseActivity(), BluetoothLeManager.BleListener {
 
     internal lateinit var binding: ActivityMainBinding
     private val viewModel: MainViewModel by viewModels()
@@ -378,6 +378,13 @@ class MainActivity : BaseActivity(), BluetoothLeManager.BleListener {
              runOnUiThread {
                 Log.d("MainActivity", "Slot $slotNumber filled confirmation received.")
             }
+        }
+    }
+
+    override fun onOtaProgressUpdate(progress: Int) {
+        val currentFragment = supportFragmentManager.findFragmentById(R.id.fragment_container)
+        if (currentFragment is FirmwareUpdateFragment) {
+            currentFragment.onOtaProgressUpdate(progress)
         }
     }
 
