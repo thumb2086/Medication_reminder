@@ -143,7 +143,7 @@ class HistoryFragment : Fragment() {
         }
 
         val dataSet = BarDataSet(data, "Compliance Rate").apply {
-            color = ContextCompat.getColor(requireContext(), R.color.colorPrimary)
+            color = ContextCompat.getColor(requireContext(), R.color.primary_light)
             valueTextColor = Color.BLACK
             valueTextSize = 12f
         }

@@ -1,5 +1,13 @@
 # 更新日誌
 
+### v1.5.1: 穩定性修正 (Hotfix)
+*   **UI/邏輯修正:** 
+    *   **根源分析:** 在 `HistoryFragment.kt` 中，將一個不存在的顏色資源 `R.color.purple_500` 替換為 `R.color.colorPrimary`，但 `colorPrimary` 是主題屬性 (attribute)，並非顏色資源，導致了 `Unresolved reference 'colorPrimary'` 的編譯錯誤。
+    *   **解決方案:** 查閱 `colors.xml` 後，將顏色值修正為實際存在的 `R.color.primary_light`，確保圖表能正確載入顏色。
+*   **程式碼品質:**
+    *   **根源分析:** `ReportGenerator.kt` 中的 `generateCsv` 函式因其參數 `timeframe` 與 `data` 未被使用而產生編譯器警告。
+    *   **解決方案:** 為 `generateCsv` 函式加上 `@Suppress("UNUSED_PARAMETER")` 註解，在保留函式簽章以待未來實作的同時，消除了警告。
+
 ### v1.5.0: 韌體空中升級 (OTA) - (進度 1)
 *   **UI/UX:**
     *   在 `preferences.xml` 中新增了「韌體更新」選項，並為其建立了對應的字串資源。
