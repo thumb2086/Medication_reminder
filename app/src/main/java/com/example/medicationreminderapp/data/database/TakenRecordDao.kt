@@ -14,7 +14,4 @@ interface TakenRecordDao {
 
     @Query("SELECT * FROM taken_records WHERE medication_id = :medicationId")
     fun getRecordsForMedication(medicationId: Int): Flow<List<TakenRecordEntity>>
-
-    @Query("SELECT * FROM taken_records WHERE taken_timestamp >= :startDate AND taken_timestamp < :endDate")
-    suspend fun getRecordsForDateRange(startDate: Long, endDate: Long): List<TakenRecordEntity>
 }
