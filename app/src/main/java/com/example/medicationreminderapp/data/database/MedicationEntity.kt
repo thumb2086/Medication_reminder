@@ -31,5 +31,8 @@ data class MedicationEntity(
     var totalPills: Int,
 
     @ColumnInfo(name = "remaining_pills")
-    var remainingPills: Int
+    var remainingPills: Int,
+
+    @ColumnInfo(name = "reminder_threshold")
+    val reminderThreshold: Int
 )

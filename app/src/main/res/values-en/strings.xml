@@ -168,6 +168,7 @@
     <string name="medications_added_successfully">Medications added successfully</string>
     <string name="medication_history">Medication History</string>
     <string name="environment_monitor">Environment Monitor</string>
+    <string name="reminder_threshold">Reminder Threshold (pills)</string>
 
     <!-- Settings -->
     <string name="title_settings">Settings</string>

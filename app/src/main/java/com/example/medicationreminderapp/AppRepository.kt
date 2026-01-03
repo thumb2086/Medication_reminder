@@ -1,8 +1,13 @@
 package com.example.medicationreminderapp
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import android.content.SharedPreferences
+import android.media.AudioAttributes
+import android.media.RingtoneManager
 import android.util.Log
+import androidx.core.app.NotificationCompat
 import androidx.core.content.edit
 import com.example.medicationreminderapp.data.database.MedicationDao
 import com.example.medicationreminderapp.data.database.MedicationEntity
@@ -82,7 +87,8 @@ class AppRepository @Inject constructor(
             times = timesMap,
             slotNumber = this.slotNumber,
             totalPills = this.totalPills,
-            remainingPills = this.remainingPills
+            remainingPills = this.remainingPills,
+            reminderThreshold = this.reminderThreshold
         )
     }
 
@@ -96,7 +102,8 @@ class AppRepository @Inject constructor(
             times = gson.toJson(this.times),
             slotNumber = this.slotNumber,
             totalPills = this.totalPills,
-            remainingPills = this.remainingPills
+            remainingPills = this.remainingPills,
+            reminderThreshold = this.reminderThreshold
         )
     }
 
@@ -131,11 +138,41 @@ class AppRepository @Inject constructor(
                     val updatedMed = it.copy(remainingPills = it.remainingPills - 1)
                     medicationDao.updateMedication(updatedMed.toEntity())
                     takenRecordDao.insertTakenRecord(TakenRecordEntity(medicationId = it.id, takenTimestamp = System.currentTimeMillis()))
+
+                    if (updatedMed.remainingPills <= updatedMed.reminderThreshold) {
+                        sendLowStockNotification(updatedMed)
+                    }
+
                     // Refresh taken records manually after adding a new one
                     loadTakenRecordsForDateRange(it.id)
                 }
             }
         }
+    }
+
+    private fun sendLowStockNotification(medication: Medication) {
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channelId = "low_stock_channel"
+
+        val channel = NotificationChannel(channelId, "Low Stock Warnings", NotificationManager.IMPORTANCE_HIGH).apply {
+            description = "Notifications for when medication stock is running low"
+            enableVibration(true)
+            val audioAttributes = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).build()
+            setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION), audioAttributes)
+        }
+        notificationManager.createNotificationChannel(channel)
+
+        val title = context.getString(R.string.low_stock_warning_title)
+        val message = context.getString(R.string.low_stock_warning_message, medication.name, medication.remainingPills)
+
+        val notification = NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(R.drawable.ic_warning)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .build()
+
+        notificationManager.notify(medication.id, notification)
     }
     
     private suspend fun loadTakenRecordsForDateRange(medicationId: Int) {

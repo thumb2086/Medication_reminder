@@ -18,12 +18,12 @@
     - [x] 實作一個一次性的資料遷移邏輯，將舊的 SharedPreferences 數據寫入 Room。
 
 ### v1.4.1: 數據管理 - 庫存提醒
-- [ ] **核心功能: 藥物庫存管理與補充提醒**
+- [x] **核心功能: 藥物庫存管理與補充提醒**
   - **詳細步驟:**
-    - [ ] 在 `MedicationEntity` 中新增 `reminderThreshold: Int` 欄位，並更新資料庫。
-    - [ ] 在新增/編輯藥物的介面中，增加設定提醒閾值的輸入框。
-    - [ ] 在 `AppRepository` 的 `processMedicationTaken` 方法中，增加檢查庫存是否低於閾值的邏輯。
-    - [ ] 若低於閾值，觸發一個本地通知提醒使用者。
+    - [x] 在 `MedicationEntity` 中新增 `reminderThreshold: Int` 欄位，並更新資料庫。
+    - [x] 在新增/編輯藥物的介面中，增加設定提醒閾值的輸入框。
+    - [x] 在 `AppRepository` 的 `processMedicationTaken` 方法中，增加檢查庫存是否低於閾值的邏輯。
+    - [x] 若低於閾值，觸發一個本地通知提醒使用者。
 
 ### v1.4.2: 數據洞察 - 服藥報告
 - [ ] **數據呈現: 詳細服藥報告 & 匯出與分享**
