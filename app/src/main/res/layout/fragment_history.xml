@@ -30,20 +30,20 @@
             android:id="@+id/weekly_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="週" />
+            android:text="@string/timeframe_week" />
 
         <RadioButton
             android:id="@+id/monthly_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="月"
+            android:text="@string/timeframe_month"
             android:checked="true" />
 
         <RadioButton
             android:id="@+id/quarterly_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="季度" />
+            android:text="@string/timeframe_quarter" />
     </RadioGroup>
 
     <com.kizitonwose.calendar.view.CalendarView
@@ -73,6 +73,6 @@
         android:layout_height="wrap_content"
         android:layout_gravity="end"
         android:layout_marginTop="16dp"
-        android:text="分享報告" />
+        android:text="@string/share_report" />
 
 </LinearLayout>

@@ -27,10 +27,9 @@ import com.kizitonwose.calendar.core.DayPosition
 import com.kizitonwose.calendar.view.MonthDayBinder
 import com.kizitonwose.calendar.view.ViewContainer
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
-import java.util.*
+import java.util.Locale
 
 class HistoryFragment : Fragment() {
 
@@ -47,7 +46,7 @@ class HistoryFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentHistoryBinding.inflate(inflater, container, false)
-        reportGenerator = ReportGenerator(requireContext())
+        reportGenerator = ReportGenerator()
         return binding.root
     }
 
@@ -144,7 +143,7 @@ class HistoryFragment : Fragment() {
         }
 
         val dataSet = BarDataSet(data, "Compliance Rate").apply {
-            color = ContextCompat.getColor(requireContext(), R.color.purple_500)
+            color = ContextCompat.getColor(requireContext(), R.color.colorPrimary)
             valueTextColor = Color.BLACK
             valueTextSize = 12f
         }

@@ -10,14 +10,14 @@
         android:id="@+id/select_firmware_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="選擇韌體 (.bin)" />
+        android:text="@string/firmware_select" />
 
     <TextView
         android:id="@+id/firmware_file_name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="未選擇檔案" />
+        android:text="@string/firmware_file_not_selected" />
 
     <ProgressBar
         android:id="@+id/update_progress_bar"
@@ -32,7 +32,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="開始更新"
+        android:text="@string/firmware_start_update"
         android:enabled="false" />
 
 </LinearLayout>

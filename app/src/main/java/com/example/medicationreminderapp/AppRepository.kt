@@ -193,29 +193,6 @@ class AppRepository @Inject constructor(
         return results
     }
 
-    private fun getTimeframeRange(timeframe: Timeframe): Pair<Long, Long> {
-        val calendar = Calendar.getInstance()
-        calendar.set(Calendar.HOUR_OF_DAY, 23)
-        calendar.set(Calendar.MINUTE, 59)
-        calendar.set(Calendar.SECOND, 59)
-        calendar.set(Calendar.MILLISECOND, 999)
-        val endTime = calendar.timeInMillis
-
-        when (timeframe) {
-            Timeframe.WEEKLY -> calendar.add(Calendar.WEEK_OF_YEAR, -1)
-            Timeframe.MONTHLY -> calendar.add(Calendar.MONTH, -1)
-            Timeframe.QUARTERLY -> calendar.add(Calendar.MONTH, -3)
-        }
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-        val startTime = calendar.timeInMillis
-
-        return Pair(startTime, endTime)
-    }
-
-
     private fun MedicationEntity.toDomainModel(): Medication {
         val type = object : TypeToken<Map<Int, Long>>() {}.type
         val timesMap: Map<Int, Long> = gson.fromJson(this.times, type)
