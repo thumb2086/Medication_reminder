@@ -6,22 +6,12 @@
 ## Epic 3: 架構與數據 (Architecture & Data)
 此史詩專注於升級 App 的底層架構，並基於新的資料庫結構提供更豐富的數據管理與洞察功能。
 
-### v1.4.2: 數據洞察 - 服藥報告
-- [x] **數據呈現: 詳細服藥報告 & 匯出與分享**
-  - **詳細步驟:**
-    - [x] 在 `HistoryFragment` 中新增「週/月/季度」的切換按鈕。
-    - [x] 在 `ViewModel`/`Repository` 新增方法，根據時間範圍從 Room 查詢聚合數據。
-    - [x] 使用圖表庫將數據視覺化。
-    - [x] 建立 `ReportGenerator` 類別，將數據格式化成 PDF 或 CSV。
-    - [x] 新增「分享」按鈕，使用 `Intent.ACTION_SEND` 分享報告。
-
 ## Epic 4: 便利性與擴展 (Convenience & Expansion)
 此史詩專注於提供更多便利工具，並擴展 App 的保護網，提升整體使用價值。
 
 ### v1.5.0: 韌體空中升級 (OTA)
-- [x] **App 端: 韌體空中升級 (OTA)**
+- [ ] **App 端: 韌體空中升級 (OTA)**
   - **詳細步驟:**
-    - [x] 在設定中建立新的韌體更新頁面。
     - [ ] 實作選擇 `.bin` 韌體檔案的邏輯。
     - [ ] 在 `BluetoothLeManager` 新增 `startOtaUpdate(firmware: ByteArray)` 方法，將韌體分塊寫入 ESP32。
     - [ ] 實作 UI 上的進度條來顯示更新進度。
@@ -91,7 +81,7 @@
 ### 生態系整合 & 擴充
 - [ ] **醫療院所系統串接 (Healthcare Provider Integration - via FHIR):** 串接電子病歷，自動同步處方與服藥紀錄。
 - [ ] **藥局合作與自動補充 (Pharmacy Integration & Automated Refills):** 與藥局 API 合作，一鍵自動補充藥物。
-- [- [ ] **語音互動整合 (Voice Integration):** 整合 Google 助理，用語音查詢或回報服藥狀態。
+- [ ] [- [ ] **語音互動整合 (Voice Integration):** 整合 Google 助理，用語音查詢或回報服藥狀態。
 - [ ] **智慧家庭場景連動 (Smart Home Routine Integration):** 融入 Google Home 的日常安排，自動觸發提醒。
 - [ ] **Wear OS 副應用 (Wear OS Companion App):** 在手錶上顯示下次服藥提醒，並可直接標記為已服用。
 - [ ] **健身追蹤器數據整合 (Fitness Tracker Integration):** 串接 Fitbit、Garmin 等裝置，交叉比對健康數據。

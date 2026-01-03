@@ -9,14 +9,16 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import com.example.medicationreminderapp.databinding.FragmentFirmwareUpdateBinding
 
-class FirmwareUpdateFragment : Fragment() {
+class FirmwareUpdateFragment : Fragment(), BluetoothLeManager.BleListener {
 
     private var _binding: FragmentFirmwareUpdateBinding? = null
     private val binding get() = _binding!!
 
     private var selectedFirmwareUri: Uri? = null
+    private val viewModel: MainViewModel by activityViewModels()
 
     private val selectFirmwareLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
@@ -38,6 +40,7 @@ class FirmwareUpdateFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        viewModel.bluetoothLeManager.listener = this
 
         binding.selectFirmwareButton.setOnClickListener {
             val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
@@ -47,14 +50,52 @@ class FirmwareUpdateFragment : Fragment() {
         }
 
         binding.startUpdateButton.setOnClickListener {
-            selectedFirmwareUri?.let {
-                // TODO: Implement firmware update logic
+            selectedFirmwareUri?.let { uri ->
+                val firmwareBytes = requireContext().contentResolver.openInputStream(uri)?.readBytes()
+                firmwareBytes?.let {
+                    viewModel.bluetoothLeManager.startOtaUpdate(it)
+                }
             }
         }
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
+        viewModel.bluetoothLeManager.listener = null
         _binding = null
+    }
+
+    override fun onStatusUpdate(messageResId: Int, vararg formatArgs: Any) {}
+
+    override fun onDeviceConnected() {}
+
+    override fun onDeviceDisconnected() {}
+
+    override fun onReconnectStarted() {}
+
+    override fun onReconnectFailed() {}
+
+    override fun onProtocolVersionReported(version: Int) {}
+
+    override fun onMedicationTaken(slotNumber: Int) {}
+
+    override fun onBoxStatusUpdate(slotMask: Byte) {}
+
+    override fun onTimeSyncAcknowledged() {}
+
+    override fun onEngineeringModeUpdate(isEngineeringMode: Boolean) {}
+
+    override fun onSensorData(temperature: Float, humidity: Float) {}
+
+    override fun onHistoricSensorData(timestamp: Long, temperature: Float, humidity: Float) {}
+
+    override fun onHistoricDataComplete() {}
+
+    override fun onWifiStatusUpdate(status: Int) {}
+
+    override fun onError(errorCode: Int) {}
+
+    override fun onOtaProgressUpdate(progress: Int) {
+        binding.updateProgressBar.progress = progress
     }
 }
