@@ -1,16 +1,29 @@
 # 更新日誌
 
-### v1.4.2: 數據洞察 - 服藥報告 (進度 1)
+### v1.5.0: 韌體空中升級 (OTA) - (進度 1)
 *   **UI/UX:**
-    *   在 `fragment_history.xml` 中新增了一個 `RadioGroup`，包含「週」、「月」、「季度」三個選項，用於切換不同的時間範圍報告。
+    *   在 `preferences.xml` 中新增了「韌體更新」選項，並為其建立了對應的字串資源。
+    *   建立了 `FirmwareUpdateFragment` 和其佈局 `fragment_firmware_update.xml`，其中包含選擇檔案按鈕、進度條和開始更新按鈕。
 *   **架構:**
-    *   **DAO:** 在 `TakenRecordDao.kt` 中新增了 `getRecordsBetween(startTime: Long, endTime: Long)` 方法，用於從資料庫查詢指定時間範圍內的服藥記錄。
-    *   **Repository:** 
-        *   在 `AppRepository.kt` 中新增了 `getComplianceRateForTimeframe(timeframe: Timeframe)` 方法，此方法會根據所選的時間範圍（週/月/季度），計算出總應服藥劑量與實際服藥劑量的比例。
-        *   新增了 `Timeframe.kt` enum 類別。
-    *   **ViewModel:** 在 `MainViewModel.kt` 中新增了 `calculateComplianceRateForTimeframe(timeframe: Timeframe)` 方法，該方法會呼叫 Repository 的方法並更新一個新的 `StateFlow` (`reportComplianceRate`)。
-*   **Fragment 連接:**
-    *   更新了 `HistoryFragment.kt`，使其在 `RadioGroup` 的選項變更時，能夠呼叫 `MainViewModel` 的新方法，並觀察 `reportComplianceRate` 來更新 `complianceRateTextView` 的顯示。
+    *   在 `SettingsFragment.kt` 中加入了導航邏輯，當使用者點擊「韌體更新」時，會導航至 `FirmwareUpdateFragment`。
+
+### v1.4.2: 數據洞察 - 服藥報告
+*   **核心功能: 詳細服藥報告與圖表分析**
+    *   **UI/UX:** 
+        *   在「歷史記錄」頁面 (`fragment_history.xml`) 新增了 `RadioGroup`，讓使用者可以在「週」、「月」、「季度」三種時間範圍之間切換。
+        *   加入了 `MPAndroidChart` 圖表庫，並在頁面中新增了一個 `BarChart`，用於將服藥依從率數據視覺化。
+        *   新增「分享報告」按鈕，讓使用者可以匯出數據。
+    *   **架構與數據流:**
+        *   **DAO:** 在 `TakenRecordDao.kt` 中新增了 `getRecordsBetween(startTime: Long, endTime: Long)` 方法，以支援按時間區間查詢服藥記錄。
+        *   **Repository:** 
+            *   新增了 `ComplianceDataPoint` 資料類別，用於封裝圖表的數據點 (標籤與值)。
+            *   重構了 `getComplianceRateForTimeframe` 方法 (現為 `getComplianceDataForTimeframe`)，使其能夠根據不同的時間範圍 (週/月/季度) 計算並返回一組 `ComplianceDataPoint` 數據，為圖表提供精細的數據來源。
+        *   **ViewModel:** 
+            *   在 `MainViewModel.kt` 中，將 `reportComplianceRate` `StateFlow` 的類型從單一 `Float` 升級為 `List<ComplianceDataPoint>`。
+            *   更新了 `calculateComplianceRateForTimeframe` 方法，以獲取並更新詳細的圖表數據。
+    *   **報告與分享:**
+        *   在 `util` 包下建立了 `ReportGenerator.kt` 類別，為未來生成 CSV 或 PDF 報告奠定基礎。
+        *   在 `HistoryFragment.kt` 中實現了分享邏輯：點擊「分享」按鈕後，會使用 `Intent.ACTION_SEND` 將目前的報告數據 (暫以 CSV 格式) 分享出去。
 
 ### v1.4.1: 數據管理 - 庫存提醒
 *   **核心功能: 藥物庫存管理與補充提醒**
@@ -18,7 +31,6 @@
     *   **UI 更新:** 在新增/編輯藥物的介面中，增加了設定提醒閾值的輸入框。
     *   **邏輯實現:** 在 `AppRepository` 的 `processMedicationTaken` 方法中，加入了檢查藥物庫存是否低於設定閾值的邏輯。
     *   **通知機制:** 若藥物庫存低於閾值，將觸發一個本地通知，提醒使用者及時補充。
-
 
 ### v1.4.0: 架構升級 - 資料庫遷移 (Room)
 *   **架構核心重構 (Core Architecture Refactor):**

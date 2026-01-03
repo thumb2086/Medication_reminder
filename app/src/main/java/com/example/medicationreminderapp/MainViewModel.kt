@@ -33,11 +33,21 @@ class MainViewModel @Inject constructor(
     val dailyStatusMap: StateFlow<Map<String, Int>> = repository.dailyStatusMap
     val complianceRate: StateFlow<Float> = repository.complianceRate
 
+    private val _reportComplianceData = MutableStateFlow<List<ComplianceDataPoint>>(emptyList())
+    val reportComplianceData: StateFlow<List<ComplianceDataPoint>> = _reportComplianceData.asStateFlow()
+
     // Event for triggering BLE actions in Activity/Fragment
     val requestBleAction = SingleLiveEvent<BleAction>()
 
     init {
         // Data loading is handled by Repository's init
+    }
+
+    fun calculateComplianceRateForTimeframe(timeframe: Timeframe) {
+        viewModelScope.launch {
+            val data = repository.getComplianceDataForTimeframe(timeframe)
+            _reportComplianceData.value = data
+        }
     }
 
     // --- Helper to get build-time constants ---

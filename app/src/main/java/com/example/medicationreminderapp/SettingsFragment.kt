@@ -202,6 +202,13 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                 }
                 true
             }
+            "firmware_update" -> {
+                parentFragmentManager.commit {
+                    replace(R.id.fragment_container, FirmwareUpdateFragment())
+                    addToBackStack(null)
+                }
+                true
+            }
             "check_for_updates" -> {
                 checkForUpdates()
                 true

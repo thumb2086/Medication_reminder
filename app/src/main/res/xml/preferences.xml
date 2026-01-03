@@ -74,6 +74,12 @@
             app:defaultValue="false"
             app:icon="@drawable/ic_developer_mode" />
 
+        <Preference
+            app:key="firmware_update"
+            app:title="@string/firmware_update_title"
+            app:summary="@string/firmware_update_summary"
+            app:icon="@drawable/ic_update" />
+
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/about_category">

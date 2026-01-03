@@ -28,6 +28,8 @@ import javax.inject.Singleton
 
 data class MedicationTakenRecord(val timestamp: Long)
 
+data class ComplianceDataPoint(val label: String, val complianceRate: Float)
+
 @Singleton
 class AppRepository @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -74,6 +76,145 @@ class AppRepository @Inject constructor(
         // This part needs adjustment based on how records are fetched.
         // For simplicity, we'll manually refresh records when needed for now.
     }
+
+    suspend fun getComplianceDataForTimeframe(timeframe: Timeframe): List<ComplianceDataPoint> {
+        val allMedications = medicationDao.getAllMedications().first().map { it.toDomainModel() }
+        val results = mutableListOf<ComplianceDataPoint>()
+
+        val calendar = Calendar.getInstance()
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val todayStart = calendar.timeInMillis
+
+        when (timeframe) {
+            Timeframe.WEEKLY -> {
+                // Last 7 days, including today
+                for (i in 6 downTo 0) { // 6 = 7 days ago, 0 = today
+                    calendar.timeInMillis = todayStart
+                    calendar.add(Calendar.DAY_OF_YEAR, -i)
+                    val dayStart = calendar.timeInMillis
+                    calendar.add(Calendar.DAY_OF_YEAR, 1)
+                    calendar.add(Calendar.MILLISECOND, -1)
+                    val dayEnd = calendar.timeInMillis
+
+                    val dayTakenRecords = takenRecordDao.getRecordsBetween(dayStart, dayEnd)
+                    var totalExpectedDoses = 0
+                    allMedications.forEach { med ->
+                        if (dayStart >= med.startDate && dayEnd <= med.endDate) {
+                            totalExpectedDoses += med.times.size
+                        }
+                    }
+
+                    val compliance = if (totalExpectedDoses > 0) {
+                        dayTakenRecords.size.toFloat() / totalExpectedDoses.toFloat()
+                    } else {
+                        0f
+                    }
+                    val label = SimpleDateFormat("EEE", Locale.getDefault()).format(Date(dayStart))
+                    results.add(ComplianceDataPoint(label, compliance * 100)) // Percentage
+                }
+            }
+            Timeframe.MONTHLY -> {
+                // Last 4 weeks
+                for (i in 3 downTo 0) { // 3 = 4 weeks ago, 0 = last week
+                    calendar.timeInMillis = todayStart
+                    calendar.add(Calendar.WEEK_OF_YEAR, -i)
+                    calendar.set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY)
+                    val weekStart = calendar.timeInMillis
+                    calendar.add(Calendar.WEEK_OF_YEAR, 1)
+                    calendar.add(Calendar.MILLISECOND, -1)
+                    val weekEnd = calendar.timeInMillis
+
+                    val weekTakenRecords = takenRecordDao.getRecordsBetween(weekStart, weekEnd)
+                    var totalExpectedDoses = 0
+                    // Iterate through each day of the week to calculate expected doses
+                    val tempCal = Calendar.getInstance()
+                    var currentDay = weekStart
+                    while (currentDay <= weekEnd) {
+                        tempCal.timeInMillis = currentDay
+                        allMedications.forEach { med ->
+                            if (currentDay >= med.startDate && currentDay <= med.endDate) {
+                                totalExpectedDoses += med.times.size
+                            }
+                        }
+                        tempCal.add(Calendar.DAY_OF_YEAR, 1)
+                        currentDay = tempCal.timeInMillis
+                    }
+
+                    val compliance = if (totalExpectedDoses > 0) {
+                        weekTakenRecords.size.toFloat() / totalExpectedDoses.toFloat()
+                    } else {
+                        0f
+                    }
+                    val label = "Week ${4 - i}"
+                    results.add(ComplianceDataPoint(label, compliance * 100)) // Percentage
+                }
+            }
+            Timeframe.QUARTERLY -> {
+                // Last 3 months
+                for (i in 2 downTo 0) { // 2 = 3 months ago, 0 = last month
+                    calendar.timeInMillis = todayStart
+                    calendar.add(Calendar.MONTH, -i)
+                    calendar.set(Calendar.DAY_OF_MONTH, 1)
+                    val monthStart = calendar.timeInMillis
+                    calendar.add(Calendar.MONTH, 1)
+                    calendar.add(Calendar.MILLISECOND, -1)
+                    val monthEnd = calendar.timeInMillis
+
+                    val monthTakenRecords = takenRecordDao.getRecordsBetween(monthStart, monthEnd)
+                    var totalExpectedDoses = 0
+                    // Iterate through each day of the month to calculate expected doses
+                    val tempCal = Calendar.getInstance()
+                    var currentDay = monthStart
+                    while (currentDay <= monthEnd) {
+                        tempCal.timeInMillis = currentDay
+                        allMedications.forEach { med ->
+                            if (currentDay >= med.startDate && currentDay <= med.endDate) {
+                                totalExpectedDoses += med.times.size
+                            }
+                        }
+                        tempCal.add(Calendar.DAY_OF_YEAR, 1)
+                        currentDay = tempCal.timeInMillis
+                    }
+
+                    val compliance = if (totalExpectedDoses > 0) {
+                        monthTakenRecords.size.toFloat() / totalExpectedDoses.toFloat()
+                    } else {
+                        0f
+                    }
+                    val label = SimpleDateFormat("MMM", Locale.getDefault()).format(Date(monthStart))
+                    results.add(ComplianceDataPoint(label, compliance * 100)) // Percentage
+                }
+            }
+        }
+
+        return results
+    }
+
+    private fun getTimeframeRange(timeframe: Timeframe): Pair<Long, Long> {
+        val calendar = Calendar.getInstance()
+        calendar.set(Calendar.HOUR_OF_DAY, 23)
+        calendar.set(Calendar.MINUTE, 59)
+        calendar.set(Calendar.SECOND, 59)
+        calendar.set(Calendar.MILLISECOND, 999)
+        val endTime = calendar.timeInMillis
+
+        when (timeframe) {
+            Timeframe.WEEKLY -> calendar.add(Calendar.WEEK_OF_YEAR, -1)
+            Timeframe.MONTHLY -> calendar.add(Calendar.MONTH, -1)
+            Timeframe.QUARTERLY -> calendar.add(Calendar.MONTH, -3)
+        }
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val startTime = calendar.timeInMillis
+
+        return Pair(startTime, endTime)
+    }
+
 
     private fun MedicationEntity.toDomainModel(): Medication {
         val type = object : TypeToken<Map<Int, Long>>() {}.type
