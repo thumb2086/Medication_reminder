@@ -1,5 +1,10 @@
 # 更新日誌
 
+### v1.4.1: refactor(database): Improve code style in migration
+*   **程式碼風格重構 (Code Style Refactor):**
+    *   **原因:** 在 Room 資料庫從版本 1 到 2 的遷移程式碼中，`migrate` 函數的 `SupportSQLiteDatabase` 參數使用了 `database` 這個名稱。
+    *   **解決方案:** 為了與 Android 開發的普遍慣例保持一致，將參數名稱更改為 `db`。此舉提高了程式碼的可讀性，但未改變任何實際功能。
+
 ### v1.4.0: 架構升級 - 資料庫遷移 (Room)
 *   **架構核心重構 (Core Architecture Refactor):**
     *   **目標:** 將 App 的核心數據持久層從 `SharedPreferences` + `Gson` 的組合，完全遷移至現代、高效且類型安全的 `Room` 資料庫架構，為未來的數據功能 (如庫存管理、服藥報告) 奠定穩固基礎。
