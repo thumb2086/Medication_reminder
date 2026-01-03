@@ -481,10 +481,17 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
 
     fun startOtaUpdate(firmware: ByteArray) {
         val chunkSize = 16
+        val totalSize = firmware.size
+
+        // 發送開始指令，並附帶 4 字節的韌體總大小 (Little Endian)
+        val startCommand = ByteBuffer.allocate(5).order(ByteOrder.LITTLE_ENDIAN)
+            .put(0x50.toByte())
+            .putInt(totalSize)
+            .array()
+        sendCommand(startCommand)
+
         val chunks = firmware.asSequence().chunked(chunkSize).toList()
         val totalChunks = chunks.size
-
-        sendCommand(byteArrayOf(0x50.toByte())) // Start OTA command
 
         chunks.forEachIndexed { index, chunk ->
             val command = byteArrayOf(0x51.toByte()) + chunk.toByteArray()

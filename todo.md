@@ -15,11 +15,11 @@
     - [x] 實作選擇 `.bin` 韌體檔案的邏輯。
     - [x] 在 `BluetoothLeManager` 新增 `startOtaUpdate(firmware: ByteArray)` 方法，將韌體分塊寫入 ESP32。
     - [x] 實作 UI 上的進度條來顯示更新進度。
-- [ ] **ESP32 端: 韌體 OTA 功能**
+- [x] **ESP32 端: 韌體 OTA 功能**
   - **詳細步驟:**
-    - [ ] 整合 `ArduinoOTA` 或自訂的 BLE OTA 函式庫。
-    - [ ] 建立一個 BLE 特徵，用於接收韌體檔案的分塊數據。
-    - [ ] 實作韌體驗證與寫入 Flash 的安全邏輯。
+    - [x] 整合 `Update.h` 函式庫以處理 BLE OTA。
+    - [x] 建立一個 BLE 指令集 (`0x50`-`0x52`)，用於控制 OTA 流程。
+    - [x] 實作韌體驗證與寫入 Flash 的安全邏輯。
 
 ### v1.5.1: 便利工具 - 桌面小工具
 - [ ] **便利工具: 桌面小工具 (Widget)**

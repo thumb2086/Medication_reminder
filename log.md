@@ -1,5 +1,15 @@
 # 更新日誌
 
+### v1.5.0: 韌體空中升級 (OTA) - App 端實作
+*   **核心功能 (App-Side OTA):** 實作了 App 端的韌體 OTA 更新功能，允許使用者從手機選擇 `.bin` 檔案並傳輸至智慧藥盒。
+    *   **技術細節:**
+        *   **檔案選擇:** `FirmwareUpdateFragment` 現在使用 `ActivityResultContracts` 讓使用者選擇韌體檔案。
+        *   **BLE 傳輸:** `BluetoothLeManager` 中新增了 `startOtaUpdate(firmware: ByteArray)` 方法。此方法會將韌體分塊，並透過新增的 BLE 指令 (`0x50` 開始, `0x51` 傳輸, `0x52` 結束) 逐塊發送。
+        *   **進度回饋:** `BluetoothLeManager` 新增 `onOtaProgressUpdate(progress: Int)` 回調，`FirmwareUpdateFragment` 實作此介面以更新 UI 上的進度條，提供即時視覺回饋。
+*   **UI/邏輯修正:**
+    *   **根源分析 (Root Cause Analysis):** 在 `FirmwareUpdateFragment.kt` 的初版實作中，錯誤地試圖從 `MainViewModel` 存取 `bluetoothLeManager` (`viewModel.bluetoothLeManager`)。然而 `bluetoothLeManager` 的實例是由 Hilt 注入並由 `MainActivity` 所持有，ViewModel 中並不存在其參考，導致了 `Unresolved reference 'bluetoothLeManager'` 的編譯錯誤。
+    *   **解決方案 (Solution):** 修正了 `FirmwareUpdateFragment.kt` 中的存取邏輯，改為透過 `(activity as? MainActivity)?.bluetoothLeManager` 來安全地從其所屬的 `MainActivity` 中取得 `bluetoothLeManager` 的實例，徹底解決了編譯錯誤。
+
 ### v1.5.1: 穩定性修正 (Hotfix)
 *   **UI/邏輯修正:** 
     *   **根源分析:** 在 `HistoryFragment.kt` 中，將一個不存在的顏色資源 `R.color.purple_500` 替換為 `R.color.colorPrimary`，但 `colorPrimary` 是主題屬性 (attribute)，並非顏色資源，導致了 `Unresolved reference 'colorPrimary'` 的編譯錯誤。
