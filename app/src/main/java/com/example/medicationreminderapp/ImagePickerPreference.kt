@@ -17,7 +17,7 @@ import com.example.medicationreminderapp.model.CharacterPack
 class ImagePickerPreference(context: Context, attrs: AttributeSet?) : ListPreference(context, attrs) {
 
     private val characterManager = CharacterManager(context)
-    private val characters: List<CharacterPack> = characterManager.getCharacters()
+    private val characters: List<CharacterPack> = characterManager.characters
 
     init {
         entries = characters.map { it.name }.toTypedArray()
