@@ -23,7 +23,6 @@ import android.util.Log
 import android.widget.Toast
 import androidx.annotation.StringRes
 import androidx.core.app.NotificationCompat
-import com.example.medicationreminderapp.data.database.MedicationEntity
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -160,15 +159,7 @@ class BluetoothLeManager @Inject constructor(
                     g.setCharacteristicNotification(char, true)
                     val descriptor = char.getDescriptor(CCCD_UUID)
                     descriptor?.let {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            g.writeDescriptor(it, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
-                        } else {
-                            @Suppress("DEPRECATION")
-                            run {
-                                it.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-                                g.writeDescriptor(it)
-                            }
-                        }
+                        g.writeDescriptor(it, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
                     }
                 }
             }
@@ -425,16 +416,7 @@ class BluetoothLeManager @Inject constructor(
         val command = commandQueue.poll()
         if (command != null) {
             isCommandInProgress = true
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                gatt?.writeCharacteristic(writeCharacteristic!!, command, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT)
-            } else {
-                @Suppress("DEPRECATION")
-                run {
-                    writeCharacteristic?.value = command
-                    writeCharacteristic?.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-                    gatt?.writeCharacteristic(writeCharacteristic!!)
-                }
-            }
+            gatt?.writeCharacteristic(writeCharacteristic!!, command, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT)
         } else {
              isCommandInProgress = false
         }
