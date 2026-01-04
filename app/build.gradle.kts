@@ -311,7 +311,7 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
-    implementation("com.google.code.gson:gson:2.13.2")
+    implementation(libs.gson)
 }
 
 kotlin {

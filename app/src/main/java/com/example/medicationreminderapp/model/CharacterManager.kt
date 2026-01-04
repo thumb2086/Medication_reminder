@@ -1,7 +1,6 @@
 package com.example.medicationreminderapp.model
 
 import android.content.Context
-import com.example.medicationreminderapp.R
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.io.IOException
@@ -31,10 +30,6 @@ class CharacterManager(private val context: Context) {
 
     fun getCharacters(): List<CharacterPack> {
         return characters
-    }
-
-    fun findCharacterById(id: String): CharacterPack? {
-        return characters.find { it.id == id }
     }
 
     private data class CharacterData(val id: String, val name: String, val imageResName: String)
