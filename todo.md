@@ -9,25 +9,19 @@
 ## Epic 4: 便利性與擴展 (Convenience & Expansion)
 此史詩專注於提供更多便利工具，並擴展 App 的保護網，提升整體使用價值。
 
-### v1.5.3: 核心功能強化 (Core Feature Enhancement)
-- [x] **藥物穩定性警報 (Medication Stability Alert):**
+### v1.5.5: 設定擴充與自動化 (Settings Expansion & Automation) 
+-  [ ] **角色設定檔匯入功能 (Character Profile Import):**
   - **詳細步驟:**
-    - [x] **App 端:** 建立一個可擴充的藥物儲存條件資料庫。
-    - [x] **App 端:** 在新增/編輯藥物時，允許使用者選擇特定藥物並連結到其儲存條件。
-    - [x] **App 端:** 在 `BluetoothLeManager` 中新增邏輯，當收到溫濕度數據時，檢查是否超出安全範圍。
-    - [x] **App 端:** 若超出範圍，觸發一個高優先級的本地通知警告使用者。
-  - [x] **ESP32 端: 環境回報**
-    - **詳細步驟:**
-      - [x] 在 `hardware.cpp` 中，實作讀取溫濕度感測器 (DHT) 數據的邏輯。
-      - [x] 透過 `ble_handler.cpp` 定時回報溫濕度數據給 App。
-
-### v1.5.4: 架構重構 (Architecture Refactoring)
-- [x] **架構重構: 角色功能整合與擴充準備**
+    - [ ] **UI/UX:** 在設定頁面新增「匯入角色設定」的按鈕。
+    - [ ] **檔案存取:** 使用儲存存取框架 (Storage Access Framework) 讓使用者能選取裝置上的 JSON 設定檔。
+    - [ ] **資料夾管理:** 建立一個應用程式專用的 `characters_config` 資料夾，用來存放所有匯入的設定檔。
+    - [ ] **邏輯修改:** 重構 `CharacterManager`，使其能同時讀取並整合 `assets` 中的預設角色與 `characters_config` 資料夾中的自訂角色。
+- [ ] **自動化發布流程 (Automated Release Workflow):**
   - **詳細步驟:**
-    - [x] 分析現有角色主題的靜態資源 (strings.xml, drawables)。
-    - [x] 建立一個 `CharacterManager` 或類似的管理器，用於動態載入與管理角色主題。
-    - [x] 將現有的角色 (酷洛米、櫻桃小丸子等) 重構為統一的資料結構 (如 `CharacterPack`)。
-    - [x] 設計一個 JSON 或其他格式的清單 (manifest)，為未來從網路下載擴充包做準備。
+    - [ ] **CI/CD:** 建立 GitHub Actions 工作流程 (`.github/workflows/android-release.yml`)。
+    - [ ] **觸發條件:** 設定工作流程在 Git 儲存庫收到 `v*.*.*` 格式的標籤 (tag) 推送時自動觸發。
+    - [ ] **流程實作:** 執行 `assembleRelease` 指令以建置已簽署的 APK，並利用現有的動態版本命名邏輯。
+    - [ ] **產出:** 建立一個新的 GitHub Release，並將產生的 APK 作為附件 (Asset) 上傳。
 
 ## 未來規劃 (Future Considerations)
 - [ ] **藥物照片對照 (Medication Photo ID):** 允許使用者為每種藥物拍攝並儲存一張實際照片，在服藥提醒時顯示以供視覺核對。
