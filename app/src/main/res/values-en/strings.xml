@@ -347,4 +347,14 @@
 
     <string name="update_channel_stable">Stable (Main)</string>
     <string name="widget_next_medication_time">Next Medication Time</string>
+    
+    <!-- Medication Stability -->
+    <string name="min_temp">Min Temperature (°C)</string>
+    <string name="max_temp">Max Temperature (°C)</string>
+    <string name="min_humidity">Min Humidity (%)</string>
+    <string name="max_humidity">Max Humidity (%)</string>
+    <string name="medication_stability_alert_channel_name">Medication Stability Alert</string>
+    <string name="medication_stability_alert_channel_description">Alerts when medication storage conditions are out of the safe range</string>
+    <string name="medication_stability_alert_title">Medication Stability Alert: %s</string>
+    <string name="medication_stability_alert_text">%s: Current value is %.1f</string>
 </resources>

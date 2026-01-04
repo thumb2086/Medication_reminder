@@ -34,5 +34,17 @@ data class MedicationEntity(
     var remainingPills: Int,
 
     @ColumnInfo(name = "reminder_threshold")
-    val reminderThreshold: Int
+    val reminderThreshold: Int,
+
+    @ColumnInfo(name = "min_temp")
+    val minTemp: Float? = null,
+
+    @ColumnInfo(name = "max_temp")
+    val maxTemp: Float? = null,
+
+    @ColumnInfo(name = "min_humidity")
+    val minHumidity: Float? = null,
+
+    @ColumnInfo(name = "max_humidity")
+    val maxHumidity: Float? = null
 )

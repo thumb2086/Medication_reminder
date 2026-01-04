@@ -348,4 +348,14 @@
 
     <string name="update_channel_stable">正式版 (Main)</string>
     <string name="widget_next_medication_time">下次服藥時間</string>
+
+    <!-- Medication Stability -->
+    <string name="min_temp">最低溫度 (°C)</string>
+    <string name="max_temp">最高溫度 (°C)</string>
+    <string name="min_humidity">最低濕度 (%)</string>
+    <string name="max_humidity">最高濕度 (%)</string>
+    <string name="medication_stability_alert_channel_name">藥物穩定性警報</string>
+    <string name="medication_stability_alert_channel_description">當藥物儲存條件超出安全範圍時發出警報</string>
+    <string name="medication_stability_alert_title">藥物穩定性警報: %s</string>
+    <string name="medication_stability_alert_text">%s: 目前數值為 %.1f</string>
 </resources>

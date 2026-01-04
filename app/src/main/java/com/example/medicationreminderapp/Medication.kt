@@ -10,5 +10,9 @@ data class Medication(
     val slotNumber: Int,
     var totalPills: Int,
     var remainingPills: Int,
-    val reminderThreshold: Int
+    val reminderThreshold: Int,
+    val minTemp: Float? = null,
+    val maxTemp: Float? = null,
+    val minHumidity: Float? = null,
+    val maxHumidity: Float? = null
 )
