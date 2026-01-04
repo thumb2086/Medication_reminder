@@ -22,11 +22,13 @@ object DatabaseModule {
     }
 
     @Provides
+    @Singleton
     fun provideMedicationDao(appDatabase: AppDatabase): MedicationDao {
         return appDatabase.medicationDao()
     }
 
     @Provides
+    @Singleton
     fun provideTakenRecordDao(appDatabase: AppDatabase): TakenRecordDao {
         return appDatabase.takenRecordDao()
     }

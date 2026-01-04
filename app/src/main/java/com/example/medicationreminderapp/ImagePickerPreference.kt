@@ -11,27 +11,21 @@ import android.widget.ImageView
 import android.widget.RadioButton
 import android.widget.TextView
 import androidx.preference.ListPreference
+import com.example.medicationreminderapp.model.CharacterManager
+import com.example.medicationreminderapp.model.CharacterPack
 
 class ImagePickerPreference(context: Context, attrs: AttributeSet?) : ListPreference(context, attrs) {
 
-    private val imageResources: Array<Int> by lazy {
-        entries?.map {
-            when (it) {
-                "酷洛米" -> R.drawable.kuromi
-                "櫻桃小丸子" -> R.drawable.chibi_maruko_chan
-                "蠟筆小新" -> R.drawable.crayon_shin_chan
-                "哆啦A夢" -> R.drawable.doraemon
-                else -> R.drawable.ic_face // A default icon
-            }
-        }?.toTypedArray() ?: emptyArray()
+    private val characterManager = CharacterManager(context)
+    private val characters: List<CharacterPack> = characterManager.characters
+
+    init {
+        entries = characters.map { it.name }.toTypedArray()
+        entryValues = characters.map { it.id }.toTypedArray()
     }
 
     override fun onClick() {
-        if (entries == null || entryValues == null) {
-            return
-        }
-
-        val adapter = ImageListAdapter(context, R.layout.preference_image_picker_item, entries, entryValues)
+        val adapter = ImageListAdapter(context, R.layout.preference_image_picker_item, entries)
 
         AlertDialog.Builder(context)
             .setTitle(title)
@@ -49,7 +43,6 @@ class ImagePickerPreference(context: Context, attrs: AttributeSet?) : ListPrefer
         context: Context,
         private val itemLayoutId: Int,
         items: Array<CharSequence>,
-        private val preferenceEntryValues: Array<CharSequence>
     ) : ArrayAdapter<CharSequence>(context, itemLayoutId, items) {
 
         private val inflater = LayoutInflater.from(context)
@@ -61,13 +54,12 @@ class ImagePickerPreference(context: Context, attrs: AttributeSet?) : ListPrefer
             val textView = view.findViewById<TextView>(R.id.text)
             val radioButton = view.findViewById<RadioButton>(R.id.radio_button)
 
-            if (position < imageResources.size) {
-                imageView.setImageResource(imageResources[position])
-            }
-            textView.text = getItem(position)
+            val character = characters[position]
 
-            // Safely access entryValues and check if the current item is the selected one.
-            radioButton.isChecked = (value == preferenceEntryValues[position].toString())
+            imageView.setImageResource(character.imageResId)
+            textView.text = character.name
+
+            radioButton.isChecked = (value == character.id)
 
             return view
         }
