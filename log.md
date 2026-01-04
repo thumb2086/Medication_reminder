@@ -1,3 +1,11 @@
+### v1.5.2: 智慧安全網路 (Smart Safety Net) - 隱私合規重構
+*   **隱私權限優化 (Privacy Compliance):**
+    *   **根源分析:** `AndroidManifest.xml` 中宣告的 `READ_CONTACTS` 權限會觸發 Google Play 的高風險權限警告，且直接使用 `SmsManager` 在背景發送簡訊也不符合最新政策。
+    *   **解決方案:**
+        1.  **移除權限:** 從 `AndroidManifest.xml` 中完全移除 `READ_CONTACTS` 與 `SEND_SMS` 權限，從根本上解決了 Google Play 的警告。
+        2.  **實作聯絡人選擇器:** 重構 `SettingsFragment.kt`，將原本需要權限的聯絡人讀取邏輯，改為使用 `ActivityResultContracts.PickContact`。這讓使用者可以透過系統介面安全地選擇聯絡人，而 App 無需取得讀取所有聯絡人的權限。
+        3.  **改用 Intent 發送:** 重構 `MissedDoseCheckReceiver.kt`，將背景發送 SMS 的邏輯，改為使用 `Intent.ACTION_SENDTO`。當需要發送提醒時，App 會啟動使用者預設的簡訊應用程式，並將號碼與訊息預先填好，由使用者親自確認並發送，確保了使用者的知情權與控制權。
+
 ### v1.5.1: 便利工具 - 桌面小工具
 *   **核心功能 (Widget):** 實作了桌面小工具，讓使用者可以在主畫面快速查看下一次的服藥時間。
     *   **技術細節:**
