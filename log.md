@@ -1,3 +1,13 @@
+### v1.5.3: Android 修正與穩定性提升
+*   **Android 修正:**
+    *   **檔案:** `app/src/main/java/com/example/medicationreminderapp/BluetoothLeManager.kt`
+    *   **修正:**
+        *   **API 等級錯誤:** 已在 `processNextCommand()` 方法中加入了 `Build.VERSION.SDK_INT` 的版本判斷，確保在 Android 13 (API 33) 以下的裝置呼叫舊版的 `writeCharacteristic` 方法，解決了 `Call requires API level 33` 的錯誤。
+        *   **多餘警告:** 已移除 `sendStabilityWarningNotification()` 方法中不必要的 `SDK_INT` 版本檢查，提升了程式碼品質。
+*   **文件同步:**
+    *   `todo.md`: 本次任務對應的項目已完成。
+    *   `log.md`: 已更新。
+
 ### v1.5.2: 智慧安全網路 (Smart Safety Net) - 隱私合規重構
 *   **隱私權限優化 (Privacy Compliance):**
     *   **根源分析:** `AndroidManifest.xml` 中宣告的 `READ_CONTACTS` 權限會觸發 Google Play 的高風險權限警告，且直接使用 `SmsManager` 在背景發送簡訊也不符合最新政策。

@@ -9,25 +9,17 @@
 ## Epic 4: 便利性與擴展 (Convenience & Expansion)
 此史詩專注於提供更多便利工具，並擴展 App 的保護網，提升整體使用價值。
 
-### v1.5.2: 全自動漏服藥提醒 (Fully Automatic Missed Dose Alerts)
-- [x] **恢復權限宣告:**
-  - [x] 在 `AndroidManifest.xml` 中重新加入 `SEND_SMS` 與 `READ_CONTACTS` 權限。
-- [x] **恢復聯絡人選擇邏輯:**
-  - [x] 還原 `SettingsFragment.kt` 的程式碼，恢復使用傳統方式讀取聯絡人資訊。
-- [x] **恢復背景自動簡訊功能:**
-  - [x] 還原 `MissedDoseCheckReceiver.kt` 的程式碼，使用 `SmsManager` 在背景自動發送提醒簡訊給家人。
-
 ### v1.5.3: 核心功能強化 (Core Feature Enhancement)
-- [ ] **藥物穩定性警報 (Medication Stability Alert):**
+- [x] **藥物穩定性警報 (Medication Stability Alert):**
   - **詳細步驟:**
-    - [ ] **App 端:** 建立一個可擴充的藥物儲存條件資料庫。
-    - [ ] **App 端:** 在新增/編輯藥物時，允許使用者選擇特定藥物並連結到其儲存條件。
-    - [ ] **App 端:** 在 `BluetoothLeManager` 中新增邏輯，當收到溫濕度數據時，檢查是否超出安全範圍。
-    - [ ] **App 端:** 若超出範圍，觸發一個高優先級的本地通知警告使用者。
-  - [ ] **ESP32 端: 環境回報**
+    - [x] **App 端:** 建立一個可擴充的藥物儲存條件資料庫。
+    - [x] **App 端:** 在新增/編輯藥物時，允許使用者選擇特定藥物並連結到其儲存條件。
+    - [x] **App 端:** 在 `BluetoothLeManager` 中新增邏輯，當收到溫濕度數據時，檢查是否超出安全範圍。
+    - [x] **App 端:** 若超出範圍，觸發一個高優先級的本地通知警告使用者。
+  - [x] **ESP32 端: 環境回報**
     - **詳細步驟:**
-      - [ ] 在 `hardware.cpp` 中，實作讀取溫濕度感測器 (DHT) 數據的邏輯。
-      - [ ] 透過 `ble_handler.cpp` 定時回報溫濕度數據給 App。
+      - [x] 在 `hardware.cpp` 中，實作讀取溫濕度感測器 (DHT) 數據的邏輯。
+      - [x] 透過 `ble_handler.cpp` 定時回報溫濕度數據給 App。
 
 ### v1.5.4: 架構重構 (Architecture Refactoring)
 - [ ] **架構重構: 角色功能整合與擴充準備**

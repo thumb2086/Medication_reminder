@@ -206,7 +206,11 @@ class AppRepository @Inject constructor(
             slotNumber = this.slotNumber,
             totalPills = this.totalPills,
             remainingPills = this.remainingPills,
-            reminderThreshold = this.reminderThreshold
+            reminderThreshold = this.reminderThreshold,
+            minTemp = this.minTemp,
+            maxTemp = this.maxTemp,
+            minHumidity = this.minHumidity,
+            maxHumidity = this.maxHumidity
         )
     }
 
@@ -221,7 +225,11 @@ class AppRepository @Inject constructor(
             slotNumber = this.slotNumber,
             totalPills = this.totalPills,
             remainingPills = this.remainingPills,
-            reminderThreshold = this.reminderThreshold
+            reminderThreshold = this.reminderThreshold,
+            minTemp = this.minTemp,
+            maxTemp = this.maxTemp,
+            minHumidity = this.minHumidity,
+            maxHumidity = this.maxHumidity
         )
     }
 
