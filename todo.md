@@ -22,12 +22,12 @@
       - [x] 透過 `ble_handler.cpp` 定時回報溫濕度數據給 App。
 
 ### v1.5.4: 架構重構 (Architecture Refactoring)
-- [ ] **架構重構: 角色功能整合與擴充準備**
+- [x] **架構重構: 角色功能整合與擴充準備**
   - **詳細步驟:**
-    - [ ] 分析現有角色主題的靜態資源 (strings.xml, drawables)。
-    - [ ] 建立一個 `CharacterManager` 或類似的管理器，用於動態載入與管理角色主題。
-    - [ ] 將現有的角色 (酷洛米、櫻桃小丸子等) 重構為統一的資料結構 (如 `CharacterPack`)。
-    - [ ] 設計一個 JSON 或其他格式的清單 (manifest)，為未來從網路下載擴充包做準備。
+    - [x] 分析現有角色主題的靜態資源 (strings.xml, drawables)。
+    - [x] 建立一個 `CharacterManager` 或類似的管理器，用於動態載入與管理角色主題。
+    - [x] 將現有的角色 (酷洛米、櫻桃小丸子等) 重構為統一的資料結構 (如 `CharacterPack`)。
+    - [x] 設計一個 JSON 或其他格式的清單 (manifest)，為未來從網路下載擴充包做準備。
 
 ## 未來規劃 (Future Considerations)
 - [ ] **藥物照片對照 (Medication Photo ID):** 允許使用者為每種藥物拍攝並儲存一張實際照片，在服藥提醒時顯示以供視覺核對。
