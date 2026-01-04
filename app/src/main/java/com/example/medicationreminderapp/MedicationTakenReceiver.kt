@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import androidx.core.content.edit
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -33,7 +34,9 @@ class MedicationTakenReceiver : BroadcastReceiver() {
 
         // 1. Mark medication as taken in SharedPreferences
         val prefs = context.getSharedPreferences("medication_prefs", Context.MODE_PRIVATE)
-        prefs.edit().putBoolean("medication_taken_$notificationId", true).apply()
+        prefs.edit {
+            putBoolean("medication_taken_$notificationId", true)
+        }
 
         // 2. Process local data update
         repository.processMedicationTaken(notificationId)
