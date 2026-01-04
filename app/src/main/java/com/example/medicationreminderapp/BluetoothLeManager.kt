@@ -23,18 +23,17 @@ import android.util.Log
 import android.widget.Toast
 import androidx.annotation.StringRes
 import androidx.core.app.NotificationCompat
-import com.example.medicationreminderapp.data.database.MedicationEntity
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.UUID
 import java.util.concurrent.ConcurrentLinkedQueue
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 
 @SuppressLint("MissingPermission")
 @Singleton
@@ -451,7 +450,7 @@ class BluetoothLeManager @Inject constructor(
                     Log.i(TAG, "Attempting to reconnect to ${device.address} (Attempt $reconnectAttempts/$maxReconnectAttempts)")
                     gatt = device.connectGatt(context, false, gattCallback)
                 } ?: run {
-                    Log.e("Cannot reconnect, no last connected device.")
+                    Log.e(TAG, "Cannot reconnect, no last connected device.")
                     handler.post { listener?.onReconnectFailed() }
                 }
             }, reconnectDelayMillis)
