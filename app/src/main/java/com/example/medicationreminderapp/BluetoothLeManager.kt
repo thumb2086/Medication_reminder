@@ -23,6 +23,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.annotation.StringRes
 import androidx.core.app.NotificationCompat
+import com.example.medicationreminderapp.data.database.MedicationEntity
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -336,11 +337,9 @@ class BluetoothLeManager @Inject constructor(
         val channelName = context.getString(R.string.medication_stability_alert_channel_name)
         val notificationId = med.id + 1000 // Offset to avoid collision with other notifications
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_HIGH)
-            channel.description = context.getString(R.string.medication_stability_alert_channel_description)
-            notificationManager.createNotificationChannel(channel)
-        }
+        val channel = NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_HIGH)
+        channel.description = context.getString(R.string.medication_stability_alert_channel_description)
+        notificationManager.createNotificationChannel(channel)
 
         val title = context.getString(R.string.medication_stability_alert_title, med.name)
         val text = context.getString(R.string.medication_stability_alert_text, reason, value)
@@ -424,7 +423,16 @@ class BluetoothLeManager @Inject constructor(
         val command = commandQueue.poll()
         if (command != null) {
             isCommandInProgress = true
-            gatt?.writeCharacteristic(writeCharacteristic!!, command, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                gatt?.writeCharacteristic(writeCharacteristic!!, command, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT)
+            } else {
+                @Suppress("DEPRECATION")
+                run {
+                    writeCharacteristic?.value = command
+                    writeCharacteristic?.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+                    gatt?.writeCharacteristic(writeCharacteristic!!)
+                }
+            }
         } else {
              isCommandInProgress = false
         }
@@ -443,7 +451,7 @@ class BluetoothLeManager @Inject constructor(
                     Log.i(TAG, "Attempting to reconnect to ${device.address} (Attempt $reconnectAttempts/$maxReconnectAttempts)")
                     gatt = device.connectGatt(context, false, gattCallback)
                 } ?: run {
-                    Log.e(TAG, "Cannot reconnect, no last connected device.")
+                    Log.e("Cannot reconnect, no last connected device.")
                     handler.post { listener?.onReconnectFailed() }
                 }
             }, reconnectDelayMillis)
