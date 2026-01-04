@@ -10,12 +10,12 @@
 此史詩專注於提供更多便利工具，並擴展 App 的保護網，提升整體使用價值。
 
 ### v1.5.2: 智慧安全網路 (Smart Safety Net)
-- [ ] **漏服藥轉發通知 (Missed Dose Alerts):**
+- [x] **漏服藥轉發通知 (Missed Dose Alerts):**
   - **詳細步驟:**
-    - [ ] 在設定中新增介面，讓使用者可以選擇一位聯絡人。
-    - [ ] 實作一個 `AlarmReceiver` 或 `Worker`，在用藥時間過後的一段時間觸發檢查。
-    - [ ] 如果藥還沒吃，使用 `SmsManager` 或 `Intent.ACTION_SEND` 發送 SMS。
-    - [ ] 確保在發送前取得使用者同意及必要的權限 (`SEND_SMS`)。
+    - [x] 在設定中新增介面，讓使用者可以選擇一位聯絡人。
+    - [x] 實作一個 `AlarmReceiver` 或 `Worker`，在用藥時間過後的一段時間觸發檢查。
+    - [x] 如果藥還沒吃，使用 `SmsManager` 或 `Intent.ACTION_SEND` 發送 SMS。
+    - [x] 確保在發送前取得使用者同意及必要的權限 (`SEND_SMS`)。
 
 ### v1.5.3: 核心功能強化 (Core Feature Enhancement)
 - [ ] **藥物穩定性警報 (Medication Stability Alert):**

@@ -9,6 +9,14 @@
             app:icon="@drawable/ic_wifi" />
     </PreferenceCategory>
 
+    <PreferenceCategory app:title="@string/notification_settings">
+        <Preference
+            app:key="forwarding_contact"
+            app:title="@string/forwarding_contact_title"
+            app:summary="@string/forwarding_contact_summary"
+            app:icon="@drawable/ic_contact_phone" />
+    </PreferenceCategory>
+
     <PreferenceCategory app:title="@string/appearance_settings">
 
         <ListPreference

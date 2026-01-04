@@ -1,15 +1,21 @@
 package com.example.medicationreminderapp
 
+import android.Manifest
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.provider.ContactsContract
 import android.util.Log
 import android.util.TypedValue
 import android.view.View
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.core.view.ViewCompat
@@ -41,6 +47,46 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         private var hasShownInvalidChannelWarning = false
     }
 
+    private val requestSmsPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+        if (!isGranted) {
+            Toast.makeText(requireContext(), "SMS permission is required for forwarding missed dose alerts.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private val pickContact = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val contactUri = result.data?.data ?: return@registerForActivityResult
+            val projection = arrayOf(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME, ContactsContract.CommonDataKinds.Phone.NUMBER)
+            requireContext().contentResolver.query(contactUri, projection, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val nameIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+                    val numberIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                    val name = cursor.getString(nameIndex)
+                    val number = cursor.getString(numberIndex)
+
+                    preferenceManager.sharedPreferences?.edit {
+                        putString("forwarding_contact_name", name)
+                        putString("forwarding_contact_number", number)
+                    }
+                    findPreference<Preference>("forwarding_contact")?.summary = name
+
+                    // After setting the contact, request SMS permission
+                    if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
+                        requestSmsPermissionLauncher.launch(Manifest.permission.SEND_SMS)
+                    }
+                }
+            }
+        }
+    }
+
+    private val requestReadContactsPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+        if (isGranted) {
+            launchContactPicker()
+        } else {
+            Toast.makeText(requireContext(), "Permission denied to read contacts", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.preferences, rootKey)
 
@@ -48,7 +94,10 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         findPreference<ListPreference>("language")?.let { it.summary = it.entry }
         findPreference<ListPreference>("font_size")?.let { it.summary = it.entry }
         findPreference<ListPreference>("character")?.let { it.summary = it.entry }
-        
+
+        val contactName = preferenceManager.sharedPreferences?.getString("forwarding_contact_name", null)
+        findPreference<Preference>("forwarding_contact")?.summary = contactName ?: getString(R.string.forwarding_contact_summary)
+
         setupUpdateChannelPreference()
 
         // Dynamically set version info
@@ -225,8 +274,27 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                 openUrl("https://github.com/thumb2086/Medication_reminder/releases")
                 true
             }
+            "forwarding_contact" -> {
+                when {
+                    ContextCompat.checkSelfPermission(
+                        requireContext(),
+                        Manifest.permission.READ_CONTACTS
+                    ) == PackageManager.PERMISSION_GRANTED -> {
+                        launchContactPicker()
+                    }
+                    else -> {
+                        requestReadContactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+                    }
+                }
+                true
+            }
             else -> super.onPreferenceTreeClick(preference)
         }
+    }
+
+    private fun launchContactPicker() {
+        val intent = Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI)
+        pickContact.launch(intent)
     }
 
     private fun openUrl(url: String) {
