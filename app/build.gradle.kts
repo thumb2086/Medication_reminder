@@ -301,7 +301,6 @@ dependencies {
     implementation(libs.androidx.fragment.ktx)
     implementation(libs.androidx.preference.ktx)
     implementation(libs.androidx.swiperefreshlayout)
-    implementation(libs.gson)
     implementation(libs.calendar.view)
     implementation(libs.mpandroidchart)
     implementation(libs.okhttp)
@@ -312,6 +311,7 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+    implementation("com.google.code.gson:gson:2.13.2")
 }
 
 kotlin {
