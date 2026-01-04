@@ -7,8 +7,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.content.edit
 import java.util.Calendar
 
 class AlarmReceiver : BroadcastReceiver() {
@@ -75,7 +75,9 @@ class AlarmReceiver : BroadcastReceiver() {
 
         // Mark as pending
         val prefs = context.getSharedPreferences("medication_prefs", Context.MODE_PRIVATE)
-        prefs.edit().putBoolean("medication_taken_$notificationId", false).apply()
+        prefs.edit {
+            putBoolean("medication_taken_$notificationId", false)
+        }
 
         alarmManager.setExactAndAllowWhileIdle(
             AlarmManager.RTC_WAKEUP,
@@ -110,7 +112,7 @@ class AlarmReceiver : BroadcastReceiver() {
                         nextAlarmTime.timeInMillis,
                         nextPendingIntent
                     )
-                } catch (se: SecurityException) {
+                } catch (_: SecurityException) {
                     scheduleInexactAlarm(alarmManager, nextAlarmTime.timeInMillis, nextPendingIntent)
                 }
             } else {

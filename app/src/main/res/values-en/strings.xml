@@ -346,4 +346,5 @@
     <string name="about_version">Version</string>
 
     <string name="update_channel_stable">Stable (Main)</string>
+    <string name="widget_next_medication_time">Next Medication Time</string>
 </resources>

@@ -1,15 +1,13 @@
 package com.example.medicationreminderapp
 
 import android.Manifest
-import android.app.AlarmManager
-import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.telephony.SmsManager
-import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 
 class MissedDoseCheckReceiver : BroadcastReceiver() {
 
@@ -28,10 +26,10 @@ class MissedDoseCheckReceiver : BroadcastReceiver() {
             if (forwardingNumber != null) {
                 if (ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED) {
                     try {
-                        val smsManager = SmsManager.getDefault()
+                        val smsManager = context.getSystemService(SmsManager::class.java)
                         val message = "[Medication Reminder] The user may have missed their dose of $medicationName."
                         smsManager.sendTextMessage(forwardingNumber, null, message, null, null)
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         // Handle exception
                     }
                 } else {
@@ -41,6 +39,8 @@ class MissedDoseCheckReceiver : BroadcastReceiver() {
         }
 
         // Clean up the preference
-        prefs.edit().remove("medication_taken_$notificationId").apply()
+        prefs.edit {
+            remove("medication_taken_$notificationId")
+        }
     }
 }
