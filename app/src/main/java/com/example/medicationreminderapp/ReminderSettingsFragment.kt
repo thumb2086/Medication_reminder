@@ -194,6 +194,11 @@ class ReminderSettingsFragment : Fragment() {
         cardBinding.dosageSlider.value = med.dosage.toFloat()
         cardBinding.reminderThresholdEditText.setText(med.reminderThreshold.toString())
 
+        cardBinding.minTempEditText.setText(med.minTemp?.toString() ?: "")
+        cardBinding.maxTempEditText.setText(med.maxTemp?.toString() ?: "")
+        cardBinding.minHumidityEditText.setText(med.minHumidity?.toString() ?: "")
+        cardBinding.maxHumidityEditText.setText(med.maxHumidity?.toString() ?: "")
+
         cardState.startDate = Calendar.getInstance().apply { timeInMillis = med.startDate }
         cardState.endDate = Calendar.getInstance().apply { timeInMillis = med.endDate }
         cardBinding.startDateEditText.setText(dateFormat.format(cardState.startDate!!.time))
@@ -491,6 +496,11 @@ class ReminderSettingsFragment : Fragment() {
         val dosage = cardBinding.dosageSlider.value
         val reminderThreshold = cardBinding.reminderThresholdEditText.text.toString().toIntOrNull() ?: 0
 
+        val minTemp = cardBinding.minTempEditText.text.toString().toFloatOrNull()
+        val maxTemp = cardBinding.maxTempEditText.text.toString().toFloatOrNull()
+        val minHumidity = cardBinding.minHumidityEditText.text.toString().toFloatOrNull()
+        val maxHumidity = cardBinding.maxHumidityEditText.text.toString().toFloatOrNull()
+
         if (name.isBlank() || slot == null || startDate == null || endDate == null) {
             Toast.makeText(requireContext(), getString(R.string.please_fill_all_fields), Toast.LENGTH_LONG).show()
             return null
@@ -524,7 +534,11 @@ class ReminderSettingsFragment : Fragment() {
             slotNumber = slot,
             totalPills = totalPills,
             remainingPills = totalPills,
-            reminderThreshold = reminderThreshold
+            reminderThreshold = reminderThreshold,
+            minTemp = minTemp,
+            maxTemp = maxTemp,
+            minHumidity = minHumidity,
+            maxHumidity = maxHumidity
         )
     }
 

@@ -2,6 +2,8 @@
 package com.example.medicationreminderapp
 
 import android.annotation.SuppressLint
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
@@ -20,6 +22,8 @@ import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import androidx.annotation.StringRes
+import androidx.core.app.NotificationCompat
+import com.example.medicationreminderapp.data.database.MedicationEntity
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -27,10 +31,17 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentLinkedQueue
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 @SuppressLint("MissingPermission")
 @Singleton
-class BluetoothLeManager @Inject constructor(@ApplicationContext private val context: Context) {
+class BluetoothLeManager @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val repository: AppRepository
+) {
 
     var listener: BleListener? = null
 
@@ -81,6 +92,8 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
         private val WRITE_CHARACTERISTIC_UUID = UUID.fromString("beb5483e-36e1-4688-b7f5-ea07361b26a8")
         private val NOTIFY_CHARACTERISTIC_UUID = UUID.fromString("c8c7c599-809c-43a5-b825-1038aa349e5d")
         private val CCCD_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+        private const val STABILITY_NOTIFICATION_CHANNEL_ID = "medication_stability_channel"
+
     }
 
     private val gattCallback = object : BluetoothGattCallback() {
@@ -235,6 +248,7 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
                         val humidity = buffer.getShort(3) / 100.0f
                         Log.d(TAG, "Realtime Sensor (V2): T=$temperature, H=$humidity")
                         handler.post { listener?.onSensorData(temperature, humidity) }
+                        checkMedicationStability(temperature, humidity)
                     }
                 }
                 0x91 -> {
@@ -254,6 +268,7 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
                             val hum = buffer.getShort(offset + 6) / 100.0f
                             Log.d(TAG, "Historic(V2) [$i]: TS=$timestamp, T=$temp, H=$hum")
                             handler.post { listener?.onHistoricSensorData(timestamp, temp, hum) }
+                            checkMedicationStability(temp, hum)
                         }
                     } else {
                         if (data.size < 9) {
@@ -266,6 +281,7 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
                         val hum = buffer.getShort(7) / 100.0f
                         Log.d(TAG, "Historic(V1): TS=$timestamp, T=$temp, H=$hum")
                         handler.post { listener?.onHistoricSensorData(timestamp, temp, hum) }
+                        checkMedicationStability(temp, hum)
                     }
                 }
                 0x92 -> {
@@ -291,6 +307,53 @@ class BluetoothLeManager @Inject constructor(@ApplicationContext private val con
                 }
             }
         }
+    }
+
+    private fun checkMedicationStability(temperature: Float, humidity: Float) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val medications = repository.medicationList.first()
+            for (med in medications) {
+                val minTemp = med.minTemp
+                val maxTemp = med.maxTemp
+                val minHumidity = med.minHumidity
+                val maxHumidity = med.maxHumidity
+
+                if (minTemp != null && temperature < minTemp) {
+                    sendStabilityWarningNotification(med, "Temperature too low", temperature)
+                } else if (maxTemp != null && temperature > maxTemp) {
+                    sendStabilityWarningNotification(med, "Temperature too high", temperature)
+                } else if (minHumidity != null && humidity < minHumidity) {
+                    sendStabilityWarningNotification(med, "Humidity too low", humidity)
+                } else if (maxHumidity != null && humidity > maxHumidity) {
+                    sendStabilityWarningNotification(med, "Humidity too high", humidity)
+                }
+            }
+        }
+    }
+
+    private fun sendStabilityWarningNotification(med: Medication, reason: String, value: Float) {
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channelId = STABILITY_NOTIFICATION_CHANNEL_ID
+        val channelName = "Medication Stability Alerts"
+        val notificationId = med.id + 1000 // Offset to avoid collision with other notifications
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_HIGH)
+            channel.description = "Alerts for when medication storage conditions are not met."
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        val title = "Medication Stability Alert: ${med.name}"
+        val text = "$reason: Current value is $value"
+
+        val notification = NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(R.drawable.ic_warning)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .build()
+
+        notificationManager.notify(notificationId, notification)
     }
 
     private val scanCallback = object : ScanCallback() {
