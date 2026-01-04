@@ -9,13 +9,13 @@
 ## Epic 4: 便利性與擴展 (Convenience & Expansion)
 此史詩專注於提供更多便利工具，並擴展 App 的保護網，提升整體使用價值。
 
-### v1.5.2: 智慧安全網路 (Smart Safety Net)
-- [x] **漏服藥轉發通知 (Missed Dose Alerts):**
-  - **詳細步驟:**
-    - [x] 在設定中新增介面，讓使用者可以選擇一位聯絡人。
-    - [x] 實作一個 `AlarmReceiver` 或 `Worker`，在用藥時間過後的一段時間觸發檢查。
-    - [x] 如果藥還沒吃，使用 `SmsManager` 或 `Intent.ACTION_SEND` 發送 SMS。
-    - [x] 確保在發送前取得使用者同意及必要的權限 (`SEND_SMS`)。
+### v1.5.2: 全自動漏服藥提醒 (Fully Automatic Missed Dose Alerts)
+- [x] **恢復權限宣告:**
+  - [x] 在 `AndroidManifest.xml` 中重新加入 `SEND_SMS` 與 `READ_CONTACTS` 權限。
+- [x] **恢復聯絡人選擇邏輯:**
+  - [x] 還原 `SettingsFragment.kt` 的程式碼，恢復使用傳統方式讀取聯絡人資訊。
+- [x] **恢復背景自動簡訊功能:**
+  - [x] 還原 `MissedDoseCheckReceiver.kt` 的程式碼，使用 `SmsManager` 在背景自動發送提醒簡訊給家人。
 
 ### v1.5.3: 核心功能強化 (Core Feature Enhancement)
 - [ ] **藥物穩定性警報 (Medication Stability Alert):**
