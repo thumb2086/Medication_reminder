@@ -173,6 +173,9 @@
 
     <!-- Settings -->
     <string name="title_settings">設定</string>
+    <string name="notification_settings">通知設定</string>
+    <string name="forwarding_contact_title">轉發聯絡人</string>
+    <string name="forwarding_contact_summary">設定漏服藥時的轉發聯絡人</string>
     <string name="appearance_settings">外觀設定</string>
     <string name="theme">主題</string>
     <string-array name="theme_entries">
