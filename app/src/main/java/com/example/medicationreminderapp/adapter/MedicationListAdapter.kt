@@ -1,5 +1,6 @@
 package com.example.medicationreminderapp.adapter
 
+import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
@@ -33,6 +34,7 @@ class MedicationListAdapter : ListAdapter<Medication, MedicationListAdapter.Medi
             val times = medication.times.values.sorted().joinToString { timeFormat.format(Date(it)) }
             val context = binding.root.context
             binding.medicationDetailsTextView.text = context.getString(R.string.medication_list_item_details, medication.slotNumber, times)
+            binding.colorIndicator.setBackgroundColor(Color.parseColor(medication.color))
         }
     }
 }

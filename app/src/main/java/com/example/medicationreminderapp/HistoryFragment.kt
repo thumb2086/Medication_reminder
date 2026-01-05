@@ -1,6 +1,7 @@
 package com.example.medicationreminderapp
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -36,11 +37,13 @@ class HistoryFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentHistoryBinding.inflate(inflater, container, false)
+        Log.d(TAG, "onCreateView: HistoryFragment view created")
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        Log.d(TAG, "onViewCreated: Setting up calendar and observers")
         setupCalendar()
         setupObservers()
     }
@@ -55,7 +58,8 @@ class HistoryFragment : Fragment() {
         binding.monthTitle.text = monthTitleFormatter.format(currentMonth)
 
         binding.calendarView.monthScrollListener = { month ->
-             binding.monthTitle.text = monthTitleFormatter.format(month.yearMonth)
+            Log.d(TAG, "Calendar scrolled to month: ${month.yearMonth}")
+            binding.monthTitle.text = monthTitleFormatter.format(month.yearMonth)
         }
     }
 
@@ -64,6 +68,7 @@ class HistoryFragment : Fragment() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     viewModel.dailyStatusMap.collect { statusMap ->
+                        Log.d(TAG, "Observer: Received ${statusMap.size} daily status updates")
                         binding.calendarView.dayBinder = object : MonthDayBinder<DayViewContainer> {
                             override fun create(view: View) = DayViewContainer(view)
                             override fun bind(container: DayViewContainer, data: CalendarDay) {
@@ -100,9 +105,9 @@ class HistoryFragment : Fragment() {
 
                 // Observe the compliance rate for the text view
                 launch {
-                    viewModel.complianceRate.collect { rate ->
-                        val percentage = (rate * 100).toInt()
-                        binding.complianceRateTextView.text = getString(R.string.compliance_rate_format, percentage)
+                    viewModel.complianceRateText.collect { text ->
+                        Log.d(TAG, "Observer: Compliance rate text updated to $text")
+                        binding.complianceRateTextView.text = text
                     }
                 }
             }
@@ -112,6 +117,11 @@ class HistoryFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+        Log.d(TAG, "onDestroyView: HistoryFragment view destroyed")
+    }
+
+    companion object {
+        private const val TAG = "HistoryFragment"
     }
 }
 

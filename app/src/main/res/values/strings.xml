@@ -171,6 +171,7 @@
     <string name="medication_history">服藥紀錄</string>
     <string name="environment_monitor">環境監測</string>
     <string name="reminder_threshold">提醒閾值 (顆)</string>
+    <string name="color_picker_desc">選擇顏色</string>
 
     <!-- Settings -->
     <string name="title_settings">設定</string>

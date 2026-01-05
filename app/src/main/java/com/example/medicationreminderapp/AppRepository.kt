@@ -210,7 +210,8 @@ class AppRepository @Inject constructor(
             minTemp = this.minTemp,
             maxTemp = this.maxTemp,
             minHumidity = this.minHumidity,
-            maxHumidity = this.maxHumidity
+            maxHumidity = this.maxHumidity,
+            color = this.color
         )
     }
 
@@ -229,7 +230,8 @@ class AppRepository @Inject constructor(
             minTemp = this.minTemp,
             maxTemp = this.maxTemp,
             minHumidity = this.minHumidity,
-            maxHumidity = this.maxHumidity
+            maxHumidity = this.maxHumidity,
+            color = this.color
         )
     }
 

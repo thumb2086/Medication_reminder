@@ -8,6 +8,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -31,16 +32,31 @@ class MainViewModel @Inject constructor(
     val historicSensorData: StateFlow<List<SensorDataPoint>> = repository.historicSensorData
     val medicationList: StateFlow<List<Medication>> = repository.medicationList
     val dailyStatusMap: StateFlow<Map<String, Int>> = repository.dailyStatusMap
-    val complianceRate: StateFlow<Float> = repository.complianceRate
 
     private val _reportComplianceData = MutableStateFlow<List<ComplianceDataPoint>>(emptyList())
     val reportComplianceData: StateFlow<List<ComplianceDataPoint>> = _reportComplianceData.asStateFlow()
+
+    private val _complianceRateText = MutableStateFlow("")
+    val complianceRateText: StateFlow<String> = _complianceRateText.asStateFlow()
+
 
     // Event for triggering BLE actions in Activity/Fragment
     val requestBleAction = SingleLiveEvent<BleAction>()
 
     init {
         // Data loading is handled by Repository's init
+        viewModelScope.launch {
+            repository.medicationList.combine(repository.complianceRate) { meds, rate ->
+                if (meds.isEmpty()) {
+                    "無紀錄"
+                } else {
+                    val percentage = (rate * 100).toInt()
+                    "服藥正確率${percentage}%"
+                }
+            }.collect {
+                _complianceRateText.value = it
+            }
+        }
     }
 
     fun calculateComplianceRateForTimeframe(timeframe: Timeframe) {

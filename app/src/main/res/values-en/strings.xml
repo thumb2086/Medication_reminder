@@ -128,6 +128,7 @@
     <!-- Tabs -->
     <string name="tab_reminders">Reminders</string>
     <string name="tab_log">History</string>
+    <string name="tab_report">Report</string>
     <string name="tab_environment">Environment</string>
     <string name="tab_medication_list">Medication List</string>
 

@@ -3,6 +3,7 @@ package com.example.medicationreminderapp
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -35,11 +36,13 @@ class ReportFragment : Fragment() {
     ): View {
         _binding = FragmentReportBinding.inflate(inflater, container, false)
         reportGenerator = ReportGenerator()
+        Log.d(TAG, "onCreateView: ReportFragment view created")
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        Log.d(TAG, "onViewCreated: Setting up chart and observers")
         setupChart()
         setupObservers()
 
@@ -50,14 +53,19 @@ class ReportFragment : Fragment() {
                 R.id.quarterly_button -> Timeframe.QUARTERLY
                 else -> null
             }
-            timeframe?.let { viewModel.calculateComplianceRateForTimeframe(it) }
+            timeframe?.let {
+                Log.d(TAG, "Timeframe changed to: $it")
+                viewModel.calculateComplianceRateForTimeframe(it)
+            }
         }
 
         binding.shareReportButton.setOnClickListener {
+            Log.d(TAG, "Share report button clicked")
             shareReport()
         }
 
         // Set initial calculation
+        Log.d(TAG, "Setting initial timeframe to MONTHLY")
         viewModel.calculateComplianceRateForTimeframe(Timeframe.MONTHLY)
     }
 
@@ -70,6 +78,7 @@ class ReportFragment : Fragment() {
             else -> Timeframe.MONTHLY // Default
         }
         val data = viewModel.reportComplianceData.value
+        Log.d(TAG, "Generating CSV for timeframe: $timeframe with data size: ${data.size}")
 
         val csvData = reportGenerator.generateCsv(timeframe, data)
 
@@ -105,14 +114,17 @@ class ReportFragment : Fragment() {
 
             axisRight.isEnabled = false
         }
+        Log.d(TAG, "Chart setup complete")
     }
 
     private fun updateChart(data: List<BarEntry>, labels: List<String>) {
         if (data.isEmpty()) {
+            Log.d(TAG, "updateChart: Data is empty, clearing chart")
             binding.complianceChart.clear()
             binding.complianceChart.invalidate()
             return
         }
+        Log.d(TAG, "updateChart: Updating chart with ${data.size} entries")
 
         val dataSet = BarDataSet(data, "Compliance Rate").apply {
             color = ContextCompat.getColor(requireContext(), R.color.primary_light)
@@ -132,6 +144,7 @@ class ReportFragment : Fragment() {
                 // Observe the compliance data for the chart
                 launch {
                     viewModel.reportComplianceData.collect { dataPoints ->
+                        Log.d(TAG, "Observer: Received ${dataPoints.size} data points for report")
                         val entries = dataPoints.mapIndexed { index, dataPoint ->
                             BarEntry(index.toFloat(), dataPoint.complianceRate)
                         }
@@ -146,5 +159,10 @@ class ReportFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+        Log.d(TAG, "onDestroyView: ReportFragment view destroyed")
+    }
+
+    companion object {
+        private const val TAG = "ReportFragment"
     }
 }

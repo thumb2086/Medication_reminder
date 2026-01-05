@@ -4,11 +4,14 @@ import android.app.AlertDialog
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.SharedPreferences
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
+import android.widget.GridLayout
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -30,7 +33,8 @@ data class MedicationCardState(
     var startDate: Calendar? = null,
     var endDate: Calendar? = null,
     val times: MutableMap<Int, Calendar> = mutableMapOf(), // Map of chip ID to time
-    var selectedSlot: Int? = null
+    var selectedSlot: Int? = null,
+    var color: String = "#FFFFFF" // Default color
 )
 
 class ReminderSettingsFragment : Fragment() {
@@ -84,8 +88,6 @@ class ReminderSettingsFragment : Fragment() {
     private fun updateCharacterImage() {
         val imageRes = getCharacterImageRes()
         
-        // Hide image if medication cards are being displayed (i.e., user is adding/editing)
-        // Check if medication cards are visible/present
         if (medicationCards.isNotEmpty()) {
              binding.kuromiImage.visibility = View.GONE
         } else {
@@ -93,7 +95,6 @@ class ReminderSettingsFragment : Fragment() {
         }
         binding.kuromiImage.setImageResource(imageRes)
 
-        // Update images in dynamic forms
         medicationCards.forEach { (cardBinding, _) ->
              cardBinding.kuromiImageView.setImageResource(imageRes)
         }
@@ -151,7 +152,6 @@ class ReminderSettingsFragment : Fragment() {
             updateMedicationCards(selectedCount.toInt())
             editingMedication = null
             binding.addReminderButton.text = getString(R.string.add_medication_reminder)
-            // Hide image when form is active
             binding.kuromiImage.visibility = View.GONE
         }
     }
@@ -181,11 +181,9 @@ class ReminderSettingsFragment : Fragment() {
 
     private fun populateFormForEdit(med: Medication) {
         editingMedication = med
-        // Ensure clean state for edit
-        updateMedicationCards(0) 
+        updateMedicationCards(0)
         updateMedicationCards(1)
         
-        // Hide image when editing
         binding.kuromiImage.visibility = View.GONE
 
         val (cardBinding, cardState) = medicationCards.first()
@@ -207,6 +205,9 @@ class ReminderSettingsFragment : Fragment() {
         cardState.selectedSlot = med.slotNumber
         updateAllSlotSpinners()
 
+        cardState.color = med.color
+        cardBinding.colorPickerButton.background = ColorDrawable(Color.parseColor(med.color))
+
         cardBinding.timeChipGroup.removeAllViews()
         cardState.times.clear()
         med.times.values.forEach { timeInMillis ->
@@ -225,7 +226,6 @@ class ReminderSettingsFragment : Fragment() {
             .setMessage(getString(R.string.confirm_delete_message, med.name))
             .setPositiveButton(R.string.delete) { _, _ ->
                 alarmScheduler.cancel(med)
-                // Sync with ESP32: Disable alarm for this slot
                 syncAlarmToEsp32(med.slotNumber, 0, 0, false)
                 
                 viewModel.deleteMedication(med)
@@ -263,7 +263,6 @@ class ReminderSettingsFragment : Fragment() {
         val currentCount = medicationCards.size
 
         if (count > currentCount) {
-            // Add new cards
             repeat(count - currentCount) {
                 val cardBinding = MedicationInputItemBinding.inflate(layoutInflater, binding.medicationCardsContainer, false)
                 val cardState = MedicationCardState()
@@ -273,7 +272,6 @@ class ReminderSettingsFragment : Fragment() {
                 setupCard(cardBinding, cardState)
             }
         } else if (count < currentCount) {
-            // Remove excess cards from the end
             val diff = currentCount - count
             repeat(diff) {
                 val lastIndex = medicationCards.lastIndex
@@ -290,6 +288,7 @@ class ReminderSettingsFragment : Fragment() {
         cardBinding.startDateEditText.setOnClickListener { showDatePickerDialog(cardBinding, cardState, isStartDate = true) }
         cardBinding.endDateEditText.setOnClickListener { showDatePickerDialog(cardBinding, cardState, isStartDate = false) }
         cardBinding.timePickerButton.setOnClickListener { showTimePickerDialog(cardBinding, cardState) }
+        cardBinding.colorPickerButton.setOnClickListener { showColorPickerDialog(cardBinding, cardState) }
         
         cardBinding.guideButton.setOnClickListener {
             sendGuideCommand(cardState)
@@ -309,8 +308,37 @@ class ReminderSettingsFragment : Fragment() {
             cardBinding.dosageLabelTextView.text = getString(R.string.dosage_pills, value.toInt())
         }
 
-        // Initialize character image for the new card
         cardBinding.kuromiImageView.setImageResource(getCharacterImageRes())
+    }
+
+    private fun showColorPickerDialog(cardBinding: MedicationInputItemBinding, cardState: MedicationCardState) {
+        val colors = arrayOf("#FFFFFF", "#FFEB3B", "#FFC107", "#FF9800", "#FF5722", "#F44336", "#E91E63", "#9C27B0", "#673AB7", "#3F51B5", "#2196F3", "#03A9F4", "#00BCD4", "#009688", "#4CAF50", "#8BC34A", "#CDDC39", "#795548", "#9E9E9E", "#607D8B")
+
+        val gridView = GridLayout(requireContext()).apply {
+            columnCount = 5
+            alignmentMode = GridLayout.ALIGN_BOUNDS
+        }
+
+        val dialog = AlertDialog.Builder(requireContext())
+            .setTitle("Select a color")
+            .setView(gridView)
+            .setNegativeButton("Cancel", null)
+            .create()
+
+        for (color in colors) {
+            val colorView = View(requireContext()).apply {
+                layoutParams = ViewGroup.LayoutParams(100, 100)
+                background = ColorDrawable(Color.parseColor(color))
+                setOnClickListener { 
+                    cardState.color = color
+                    cardBinding.colorPickerButton.background = ColorDrawable(Color.parseColor(color))
+                    dialog.dismiss()
+                }
+            }
+            gridView.addView(colorView)
+        }
+
+        dialog.show()
     }
 
     private fun sendGuideCommand(cardState: MedicationCardState) {
@@ -420,19 +448,13 @@ class ReminderSettingsFragment : Fragment() {
         val (cardBinding, cardState) = medicationCards.firstOrNull() ?: return
         val medToUpdate = editingMedication ?: return
 
-        // First, cancel the old alarms
         alarmScheduler.cancel(medToUpdate)
 
         val updatedMed = createMedicationFromInput(cardBinding, cardState, medToUpdate.id)
         if (updatedMed != null) {
             viewModel.updateMedication(updatedMed)
-            alarmScheduler.schedule(updatedMed) // Schedule new alarms
+            alarmScheduler.schedule(updatedMed)
             
-            // Sync with ESP32: Set alarm for this slot
-            // Note: We only sync the FIRST time for simplicity, assuming one medication per slot usually has one primary time
-            // or ESP32 handles only one alarm per slot in this simple protocol.
-            // For better support, we'd need to iterate all times or ESP32 needs to support multiple alarms per slot.
-            // Based on "setupCard", times are stored in a map. Let's pick the first one.
             val firstTimeInMillis = updatedMed.times.values.firstOrNull()
             if (firstTimeInMillis != null) {
                 val cal = Calendar.getInstance().apply { timeInMillis = firstTimeInMillis }
@@ -467,7 +489,6 @@ class ReminderSettingsFragment : Fragment() {
             newMedications.forEach { med -> 
                 alarmScheduler.schedule(med)
                 
-                // Sync with ESP32
                 val firstTimeInMillis = med.times.values.firstOrNull()
                 if (firstTimeInMillis != null) {
                     val cal = Calendar.getInstance().apply { timeInMillis = firstTimeInMillis }
@@ -481,7 +502,6 @@ class ReminderSettingsFragment : Fragment() {
 
     private fun syncAlarmToEsp32(slot: Int, hour: Int, minute: Int, enable: Boolean) {
         val activity = activity as? MainActivity
-        // Safe call fix: check connectivity before safe call
         if (activity?.bluetoothLeManager?.isConnected() == true) {
             activity.bluetoothLeManager.setAlarm(slot, hour, minute, enable)
         }
@@ -538,7 +558,8 @@ class ReminderSettingsFragment : Fragment() {
             minTemp = minTemp,
             maxTemp = maxTemp,
             minHumidity = minHumidity,
-            maxHumidity = maxHumidity
+            maxHumidity = maxHumidity,
+            color = cardState.color
         )
     }
 
@@ -550,7 +571,6 @@ class ReminderSettingsFragment : Fragment() {
         binding.addReminderButton.text = getString(R.string.add_medication_reminder)
         setupMedicationCountSpinner()
         
-        // Show image again after form reset
         binding.kuromiImage.visibility = View.VISIBLE
     }
 
