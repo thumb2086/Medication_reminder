@@ -10,6 +10,7 @@ import com.example.medicationreminderapp.R
 import com.example.medicationreminderapp.databinding.MedicationListItemBinding
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.core.graphics.toColorInt
 
 class MedicationListAdapter : ListAdapter<Medication, MedicationListAdapter.MedicationViewHolder>(MedicationDiffCallback()) {
 
@@ -33,6 +34,7 @@ class MedicationListAdapter : ListAdapter<Medication, MedicationListAdapter.Medi
             val times = medication.times.values.sorted().joinToString { timeFormat.format(Date(it)) }
             val context = binding.root.context
             binding.medicationDetailsTextView.text = context.getString(R.string.medication_list_item_details, medication.slotNumber, times)
+            binding.colorIndicator.setBackgroundColor(medication.color.toColorInt())
         }
     }
 }
