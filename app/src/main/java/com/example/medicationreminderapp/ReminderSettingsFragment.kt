@@ -27,6 +27,8 @@ import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
+import androidx.core.graphics.toColorInt
+import androidx.core.graphics.drawable.toDrawable
 
 // Data class to hold the state for each dynamically created medication card
 data class MedicationCardState(
@@ -206,7 +208,7 @@ class ReminderSettingsFragment : Fragment() {
         updateAllSlotSpinners()
 
         cardState.color = med.color
-        cardBinding.colorPickerButton.background = ColorDrawable(Color.parseColor(med.color))
+        cardBinding.colorPickerButton.background = med.color.toColorInt().toDrawable(requireContext())
 
         cardBinding.timeChipGroup.removeAllViews()
         cardState.times.clear()
@@ -328,10 +330,10 @@ class ReminderSettingsFragment : Fragment() {
         for (color in colors) {
             val colorView = View(requireContext()).apply {
                 layoutParams = ViewGroup.LayoutParams(100, 100)
-                background = ColorDrawable(Color.parseColor(color))
+                background = color.toColorInt().toDrawable(requireContext())
                 setOnClickListener { 
                     cardState.color = color
-                    cardBinding.colorPickerButton.background = ColorDrawable(Color.parseColor(color))
+                    cardBinding.colorPickerButton.background = color.toColorInt().toDrawable(requireContext())
                     dialog.dismiss()
                 }
             }
@@ -439,8 +441,6 @@ class ReminderSettingsFragment : Fragment() {
     private fun collectAndSaveMedications() {
         if (editingMedication != null) {
             collectAndUpdateSingleMedication()
-        } else {
-            collectAndAddNewMedications()
         }
     }
 

@@ -170,6 +170,7 @@
     <string name="medication_history">Medication History</string>
     <string name="environment_monitor">Environment Monitor</string>
     <string name="reminder_threshold">Reminder Threshold (pills)</string>
+    <string name="color_picker_desc">Choose Color</string>
 
     <!-- Settings -->
     <string name="title_settings">Settings</string>
