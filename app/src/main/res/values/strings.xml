@@ -129,6 +129,7 @@
     <!-- Tabs -->
     <string name="tab_reminders">提醒設定</string>
     <string name="tab_log">服藥紀錄</string>
+    <string name="tab_report">服藥報告</string>
     <string name="tab_environment">環境監測</string>
     <string name="tab_medication_list">藥物列表</string>
 

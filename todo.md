@@ -1,5 +1,16 @@
 # Medication Reminder - Unified Development Roadmap
 
+## v1.6.0: 報告功能重構 (Report Feature Refactoring)
+- [ ] **將藥物報告功能獨立成一個分頁 (Separate Report into its own Tab):**
+    - [ ] **UI/UX:** 建立新的 `fragment_report.xml`，並將報告相關的圖表 (BarChart)、時間範圍選擇器 (RadioGroup) 及分享按鈕 (Button) 從 `fragment_history.xml` 遷移至此。
+    - [ ] **Fragment 邏輯:** 建立 `ReportFragment.kt`，並將 `HistoryFragment.kt` 中與報告圖表、時間範圍計算、分享相關的邏輯遷移至此。
+    - [ ] **導覽更新:** 修改主畫面 ( vermutlich `MainActivity.kt` 或 navigation graph) 的導覽機制，新增一個「報告」分頁，指向新建的 `ReportFragment`。
+- [ ] **優化服藥紀錄顯示 (Optimize Medication Record Display):**
+    - [ ] **無紀錄狀態:** 在 `MainViewModel` 或相關邏輯中，當沒有服藥紀錄時，將遵從率計算結果調整為顯示「無紀錄」字樣，而不是「服藥正確率0%」。
+- [ ] **題型顏色分級 (Medication Color-Coding):**
+    - [ ] **資料模型:** 檢視現有資料庫/資料模型，評估如何新增一個欄位來儲存藥物的顏色或分類。
+    - [ ] **UI/UX:** 設計一套顏色系統，在日曆或列表視圖中，根據藥物或其服用頻次顯示不同的顏色標記。
+
 ## Epic 2: 智慧互動核心 (Smart Interaction Core)
 此史詩專注於實現 App 與智慧藥盒的核心互動，包含連線穩定性、放藥引導與服藥確認，打造無縫的硬體整合體驗。
 

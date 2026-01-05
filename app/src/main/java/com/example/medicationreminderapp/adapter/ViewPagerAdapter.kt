@@ -7,13 +7,14 @@ import com.example.medicationreminderapp.EnvironmentFragment
 import com.example.medicationreminderapp.HistoryFragment
 import com.example.medicationreminderapp.MedicationListFragment
 import com.example.medicationreminderapp.ReminderSettingsFragment
+import com.example.medicationreminderapp.ReportFragment
 
 class ViewPagerAdapter(
     fragmentActivity: FragmentActivity,
     private val isEngineeringMode: Boolean
 ) : FragmentStateAdapter(fragmentActivity) {
 
-    private val baseTabCount = 3
+    private val baseTabCount = 4
 
     override fun getItemCount(): Int = if (isEngineeringMode) baseTabCount + 1 else baseTabCount
 
@@ -22,7 +23,8 @@ class ViewPagerAdapter(
             0 -> ReminderSettingsFragment()
             1 -> MedicationListFragment()
             2 -> HistoryFragment()
-            3 -> {
+            3 -> ReportFragment()
+            4 -> {
                 if (isEngineeringMode) {
                     EnvironmentFragment()
                 } else {
