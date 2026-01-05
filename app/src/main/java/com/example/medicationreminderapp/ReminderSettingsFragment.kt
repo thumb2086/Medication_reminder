@@ -4,8 +4,6 @@ import android.app.AlertDialog
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.SharedPreferences
-import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -13,6 +11,8 @@ import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.GridLayout
 import android.widget.Toast
+import androidx.core.graphics.drawable.toDrawable
+import androidx.core.graphics..toColorInt
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
@@ -27,8 +27,6 @@ import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
-import androidx.core.graphics.toColorInt
-import androidx.core.graphics.drawable.toDrawable
 
 // Data class to hold the state for each dynamically created medication card
 data class MedicationCardState(
@@ -208,7 +206,7 @@ class ReminderSettingsFragment : Fragment() {
         updateAllSlotSpinners()
 
         cardState.color = med.color
-        cardBinding.colorPickerButton.background = med.color.toColorInt().toDrawable(requireContext())
+        cardBinding.colorPickerButton.background = med.color.toColorInt().toDrawable()
 
         cardBinding.timeChipGroup.removeAllViews()
         cardState.times.clear()
@@ -330,10 +328,10 @@ class ReminderSettingsFragment : Fragment() {
         for (color in colors) {
             val colorView = View(requireContext()).apply {
                 layoutParams = ViewGroup.LayoutParams(100, 100)
-                background = color.toColorInt().toDrawable(requireContext())
+                background = color.toColorInt().toDrawable()
                 setOnClickListener { 
                     cardState.color = color
-                    cardBinding.colorPickerButton.background = color.toColorInt().toDrawable(requireContext())
+                    cardBinding.colorPickerButton.background = color.toColorInt().toDrawable()
                     dialog.dismiss()
                 }
             }
@@ -441,6 +439,8 @@ class ReminderSettingsFragment : Fragment() {
     private fun collectAndSaveMedications() {
         if (editingMedication != null) {
             collectAndUpdateSingleMedication()
+        } else {
+            collectAndAddNewMedications()
         }
     }
 
@@ -492,7 +492,7 @@ class ReminderSettingsFragment : Fragment() {
                 val firstTimeInMillis = med.times.values.firstOrNull()
                 if (firstTimeInMillis != null) {
                     val cal = Calendar.getInstance().apply { timeInMillis = firstTimeInMillis }
-                    syncAlarmToEsp32(med.slotNumber, cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), true)
+                    syncAlarmToEsp32(med.slotNumber, cal.get(Calendar.HOUR_OF_DAY), cal.get(Pillbox.MINUTE), true)
                 }
             }
             Toast.makeText(requireContext(), getString(R.string.medications_added_successfully), Toast.LENGTH_SHORT).show()
