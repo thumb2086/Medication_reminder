@@ -12,7 +12,7 @@ import android.widget.ArrayAdapter
 import android.widget.GridLayout
 import android.widget.Toast
 import androidx.core.graphics.drawable.toDrawable
-import androidx.core.graphics..toColorInt
+import androidx.core.graphics.toColorInt
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
@@ -492,7 +492,7 @@ class ReminderSettingsFragment : Fragment() {
                 val firstTimeInMillis = med.times.values.firstOrNull()
                 if (firstTimeInMillis != null) {
                     val cal = Calendar.getInstance().apply { timeInMillis = firstTimeInMillis }
-                    syncAlarmToEsp32(med.slotNumber, cal.get(Calendar.HOUR_OF_DAY), cal.get(Pillbox.MINUTE), true)
+                    syncAlarmToEsp32(med.slotNumber, cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), true)
                 }
             }
             Toast.makeText(requireContext(), getString(R.string.medications_added_successfully), Toast.LENGTH_SHORT).show()
