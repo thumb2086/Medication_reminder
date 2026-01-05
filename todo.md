@@ -1,27 +1,24 @@
 # Medication Reminder - Unified Development Roadmap
 
-## v1.6.0: 報告功能重構 (Report Feature Refactoring)
+## v1.5.5: 報告功能重構 (Report Feature Refactoring)
 - [x] **將藥物報告功能獨立成一個分頁 (Separate Report into its own Tab):**
     - [x] **UI/UX:** 建立新的 `fragment_report.xml`，並將報告相關的圖表 (BarChart)、時間範圍選擇器 (RadioGroup) 及分享按鈕 (Button) 從 `fragment_history.xml` 遷移至此。
     - [x] **Fragment 邏輯:** 建立 `ReportFragment.kt`，並將 `HistoryFragment.kt` 中與報告圖表、時間範圍計算、分享相關的邏輯遷移至此。
     - [x] **導覽更新:** 修改主畫面 ( vermutlich `MainActivity.kt` 或 navigation graph) 的導覽機制，新增一個「報告」分頁，指向新建的 `ReportFragment`。
-- [ ] **加入 Log**
-- [ ] **優化服藥紀錄顯示 (Optimize Medication Record Display):**
-    - [ ] **無紀錄狀態:** 在 `MainViewModel` 或相關邏輯中，當沒有服藥紀錄時，將遵從率計算結果調整為顯示「無紀錄」字樣，而不是「服藥正確率0%」。
-- [ ] **題型顏色分級 (Medication Color-Coding):**
-    - [ ] **資料模型:** 檢視現有資料庫/資料模型，評估如何新增一個欄位來儲存藥物的顏色或分類。
-    - [ ] **UI/UX:** 設計一套顏色系統，在日曆或列表視圖中，根據藥物或其服用頻次顯示不同的顏色標記。
+- [x] **加入 Log**
+- [x] **優化服藥紀錄顯示 (Optimize Medication Record Display):**
+    - [x] **無紀錄狀態:** 在 `MainViewModel` 或相關邏輯中，當沒有服藥紀錄時，將遵從率計算結果調整為顯示「無紀錄」字樣，而不是「服藥正確率0%」。
+- [x] **題型顏色分級 (Medication Color-Coding):**
+    - [x] **資料模型:** 檢視現有資料庫/資料模型，評估如何新增一個欄位來儲存藥物的顏色或分類。
+    - [x] **UI/UX:** 設計一套顏色系統，在日曆或列表視圖中，根據藥物或其服用頻次顯示不同的顏色標記。
+- [x] **medication_input_item.xml: 在 LinearLayout 的 orientation 屬性中，已將 android.orientation 修正為 android:orientation (第 82 行)。**
+- [x] **app/src/main/res/values-en/strings.xml: 已在 app/src/main/res/values-en/strings.xml 中新增了 "color_picker_desc" 的英文翻譯。**
+- [x] **MedicationListAdapter.kt: 已將 Color.parseColor(medication.color) 替換為使用 KTX 擴充函數 medication.color.toColorInt()，並新增了 import androidx.core.graphics.toColorInt。**
+- [x] **ReminderSettingsFragment.kt: 已將所有 Color.parseColor(color) 替換為 color.toColorInt()，並將 ColorDrawable(colorInt) 替換為 colorInt.toDrawable(requireContext())。同時新增了 import androidx.core.graphics.toColorInt 和 import androidx.core.graphics.drawable.toDrawable。**
+- [x] **修正1.5.5相關紀錄檔案更新所附上的問題**
+- [x] **修正 `ReminderSettingsFragment.kt` 中的 import 錯誤與變數參考錯誤**
 
-## Epic 2: 智慧互動核心 (Smart Interaction Core)
-此史詩專注於實現 App 與智慧藥盒的核心互動，包含連線穩定性、放藥引導與服藥確認，打造無縫的硬體整合體驗。
-
-## Epic 3: 架構與數據 (Architecture & Data)
-此史詩專注於升級 App 的底層架構，並基於新的資料庫結構提供更豐富的數據管理與洞察功能。
-
-## Epic 4: 便利性與擴展 (Convenience & Expansion)
-此史詩專注於提供更多便利工具，並擴展 App 的保護網，提升整體使用價值。
-
-### v1.5.5: 設定擴充與自動化 (Settings Expansion & Automation) 
+## v1.6.0: 設定擴充與自動化 (Settings Expansion & Automation) 
 -  [ ] **角色設定檔匯入功能 (Character Profile Import):**
   - **詳細步驟:**
     - [ ] **UI/UX:** 在設定頁面新增「匯入角色設定」的按鈕。

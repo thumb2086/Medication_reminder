@@ -1,3 +1,13 @@
+### v1.5.5: 文件整理與本地化修正 (Docs & i18n Fix)
+*   **文件整理 (Documentation Cleanup):**
+    *   **檔案:** `todo.md`
+    *   **變更:** 根據開發進度，重新排序了版本規劃，並移除了已完成的 Epic 區塊，使待辦事項更清晰。
+*   **本地化修正 (Localization Fix):**
+    *   **檔案:** `app/src/main/res/values-en/strings.xml`
+    *   **修正:** 補齊了 "tab_report" 的英文翻譯，解決了 Android Lint 報告的 "not translated" 錯誤。
+*   **文件同步:**
+    *   `log.md`: 已更新。
+
 ### v1.5.3: Android 修正與穩定性提升
 *   **Android 修正:**
     *   **檔案:** `app/src/main/java/com/example/medicationreminderapp/BluetoothLeManager.kt`
