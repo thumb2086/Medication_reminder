@@ -1,10 +1,11 @@
 # Medication Reminder - Unified Development Roadmap
 
 ## v1.6.0: 報告功能重構 (Report Feature Refactoring)
-- [ ] **將藥物報告功能獨立成一個分頁 (Separate Report into its own Tab):**
-    - [ ] **UI/UX:** 建立新的 `fragment_report.xml`，並將報告相關的圖表 (BarChart)、時間範圍選擇器 (RadioGroup) 及分享按鈕 (Button) 從 `fragment_history.xml` 遷移至此。
-    - [ ] **Fragment 邏輯:** 建立 `ReportFragment.kt`，並將 `HistoryFragment.kt` 中與報告圖表、時間範圍計算、分享相關的邏輯遷移至此。
-    - [ ] **導覽更新:** 修改主畫面 ( vermutlich `MainActivity.kt` 或 navigation graph) 的導覽機制，新增一個「報告」分頁，指向新建的 `ReportFragment`。
+- [x] **將藥物報告功能獨立成一個分頁 (Separate Report into its own Tab):**
+    - [x] **UI/UX:** 建立新的 `fragment_report.xml`，並將報告相關的圖表 (BarChart)、時間範圍選擇器 (RadioGroup) 及分享按鈕 (Button) 從 `fragment_history.xml` 遷移至此。
+    - [x] **Fragment 邏輯:** 建立 `ReportFragment.kt`，並將 `HistoryFragment.kt` 中與報告圖表、時間範圍計算、分享相關的邏輯遷移至此。
+    - [x] **導覽更新:** 修改主畫面 ( vermutlich `MainActivity.kt` 或 navigation graph) 的導覽機制，新增一個「報告」分頁，指向新建的 `ReportFragment`。
+- [ ] **加入 Log**
 - [ ] **優化服藥紀錄顯示 (Optimize Medication Record Display):**
     - [ ] **無紀錄狀態:** 在 `MainViewModel` 或相關邏輯中，當沒有服藥紀錄時，將遵從率計算結果調整為顯示「無紀錄」字樣，而不是「服藥正確率0%」。
 - [ ] **題型顏色分級 (Medication Color-Coding):**
