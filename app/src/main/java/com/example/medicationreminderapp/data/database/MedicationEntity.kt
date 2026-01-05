@@ -46,5 +46,8 @@ data class MedicationEntity(
     val minHumidity: Float? = null,
 
     @ColumnInfo(name = "max_humidity")
-    val maxHumidity: Float? = null
+    val maxHumidity: Float? = null,
+
+    @ColumnInfo(name = "color", defaultValue = "#FFFFFF")
+    val color: String = "#FFFFFF"
 )

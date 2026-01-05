@@ -14,5 +14,6 @@ data class Medication(
     val minTemp: Float? = null,
     val maxTemp: Float? = null,
     val minHumidity: Float? = null,
-    val maxHumidity: Float? = null
+    val maxHumidity: Float? = null,
+    val color: String = "#FFFFFF"
 )

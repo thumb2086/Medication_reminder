@@ -1,6 +1,6 @@
-# Dynamic Agent Workflow: Context-Aware & Data Integrity (v7)
+# Dynamic Agent Workflow: Context-Aware & Data Integrity (v7.1)
 
-此工作流程核心：**破除工具限制，強制執行全域檔案（包含 ESP32 C++/Header）手動診斷與修改。**
+此工作流程核心：**破除工具限制，強制執行全域檔案手動診斷，並區分「除錯模式」與「實作模式」。**
 
 ## 🛑 數據完整性與檔案範圍 (SCOPE & INTEGRITY)
 
@@ -15,7 +15,7 @@
 
 ## 🔍 自我除錯與路徑修復機制 (Self-Debugging & Path Recovery)
 
-### **當工具回報 "0 file processed" 或 "Nothing to report" 時：**
+### **僅適用於「除錯模式」：當工具回報 "0 file processed" 或 "Nothing to report" 時：**
 **Agent 必須立即啟動「手動深蹲模式 (Manual Deep Scan)」：**
 1.  **路徑重探：** 使用 `ls -R` 或相關工具重新確認 `esp32/` 或 `src/` 資料夾下的真實路徑。
 2.  **源碼直讀：** 不依賴 Static Analysis 工具，直接使用 `read_file` 讀取 `.h` 或 `.cpp` 內容。
@@ -32,27 +32,29 @@
 
 #### **Phase 1: 清理與路徑確認**
 1.  讀取 `todo.md` 並清理舊項。
-2.  **驗證檔案路徑：** 確保目標 `.h` 或 `.cpp` 檔案路徑正確。若路徑不符，立即修正規劃。
+2.  **驗證檔案路徑：** 確保目標檔案路徑正確。
 
-#### **Phase 2: 實作與「硬體-軟體」聯動除錯**
-1.  **修改 C++/Header：**
-    *   確保 `#ifndef`, `#define` 標頭保護正確。
-    *   檢查函數簽名 (Function Signature) 在 `.h` 與 `.cpp` 中是否一致。
-2.  **自我除錯檢查點：**
-    *   **編譯依賴：** 是否漏掉了 `#include`？
-    *   **資源一致：** Android 端發送的 Data 與 ESP32 端接收的 Struct 是否對齊？
-    *   **強制修正：** 若工具回報 0 檔案，Agent 必須**手動分析**代碼邏輯並指出 bug。
+#### **Phase 2: 任務性質判斷 (CRITICAL DECISION)**
+**Agent 必須先判斷當前任務性質，選擇執行路徑：**
+
+*   **路徑 A：修復 Bug (Fixing Bugs)**
+    *   執行 `inspect_code` 或 linter。
+    *   **若回報 0 錯誤：** 立即啟動「手動深蹲模式」，主動尋找邏輯漏洞 (Logical Bugs) 而非語法錯誤。
+*   **路徑 B：新增功能/日誌/重構 (Feature / Logging / Refactor)**
+    *   **❌ 不需要等待錯誤報告：** 忽略 "Nothing to report"。
+    *   **✅ 直接執行：** 根據需求直接修改代碼 (如插入 `Log.d`, `Serial.println` 或新增函數)。
+    *   **檢查依賴：** 確保 Android (`android.util.Log`) 或 ESP32 相關 Header 已 Import，若無則自動補上。
 
 #### **Phase 3: 原子化結案**
 1.  **更新 `log.md` (頂部插入)：**
-    *   格式：`### v1.3.x: ESP32 Firmware Update`
-    *   **必須記錄：** 修改了哪些硬體腳位或邏輯。
+    *   格式：`### v1.3.x: Update Description`
+    *   **必須記錄：** 修改了哪些檔案、硬體腳位或邏輯。
 2.  **更新 `todo.md`：** 打勾完成。
 
 ---
 
-## 🤖 專屬除錯指令：當自動化工具失效時
-**如果 `inspect_code` 沒有回報任何結果，Agent 必須執行以下操作：**
+## 🤖 專屬除錯指令：當自動化工具失效時 (僅限路徑 A)
+**如果 `inspect_code` 沒有回報任何結果，且任務為「除錯」，Agent 必須：**
 1.  **主動懷疑：** 「工具沒報錯不代表沒錯。」
 2.  **讀取關鍵檔案：** 讀取所有在 `todo.md` 中提到的檔案。
 3.  **手動分析：**
@@ -64,16 +66,16 @@
 
 ## 狀態回報範本 (Mode B 完畢)
 
-> "✅ **任務執行完畢 (已繞過工具限制手動修正)**
+> "✅ **任務執行完畢**
 >
-> 1. **ESP32 修正**:
-     >    - 檔案：`src/main.cpp`, `include/config.h`
->    - 修正：手動修正了傳輸協定的 Struct 定義，解決了資料對齊問題。
-> 2. **自我除錯**: 工具掃描回報為 0，但我通過**手動代碼審查**發現並解決了以下問題：
-     >    - `config.h` 中遺漏了腳位定義。
->    - 修正了 `.cpp` 中的函數實作衝突。
+> 1. **執行內容 (路徑 B: Logging)**:
+     >    - 檔案：`MainActivity.kt`
+     >    - 變更：已導入 `android.util.Log` 並在 `onCreate` 方法中添加了除錯日誌。
+> 2. **自我檢查**:
+     >    - Import 檢查：已確認。
+     >    - 語法檢查：已確認無誤。
 > 3. **文件同步**:
      >    - `todo.md`: 本次任務 `[x]`。
->    - `log.md`: 已在頂部追加紀錄，**完整保留舊有歷史**。
+     >    - `log.md`: 已在頂部追加紀錄，**完整保留舊有歷史**。
 >
-> 請檢查 `esp32` 資料夾下的變動。"
+> 請檢查變動。"

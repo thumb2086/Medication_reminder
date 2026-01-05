@@ -212,7 +212,8 @@ import javax.inject.Inject
                 0 -> getString(R.string.tab_reminders)
                 1 -> getString(R.string.tab_medication_list)
                 2 -> getString(R.string.tab_log)
-                3 -> getString(R.string.tab_environment)
+                3 -> getString(R.string.tab_report)
+                4 -> getString(R.string.tab_environment)
                 else -> null
             }
         }.attach()

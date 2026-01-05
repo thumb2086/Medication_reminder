@@ -128,6 +128,7 @@
     <!-- Tabs -->
     <string name="tab_reminders">Reminders</string>
     <string name="tab_log">History</string>
+    <string name="tab_report">Report</string>
     <string name="tab_environment">Environment</string>
     <string name="tab_medication_list">Medication List</string>
 
@@ -169,6 +170,7 @@
     <string name="medication_history">Medication History</string>
     <string name="environment_monitor">Environment Monitor</string>
     <string name="reminder_threshold">Reminder Threshold (pills)</string>
+    <string name="color_picker_desc">Choose Color</string>
 
     <!-- Settings -->
     <string name="title_settings">Settings</string>
