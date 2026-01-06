@@ -139,10 +139,8 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         if (result == null) {
             result = uri.path
             val cut = result?.lastIndexOf('/')
-            if (cut != -1) {
-                if (cut != null) {
-                    result = result?.substring(cut + 1)
-                }
+            if (cut != null && cut != -1) {
+                result = result.substring(cut + 1)
             }
         }
         return result ?: "default_config.json"
