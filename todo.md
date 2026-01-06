@@ -19,18 +19,18 @@
 - [x] **修正 `ReminderSettingsFragment.kt` 中的 import 錯誤與變數參考錯誤**
 
 ## v1.6.0: 設定擴充與自動化 (Settings Expansion & Automation) 
--  [ ] **角色設定檔匯入功能 (Character Profile Import):**
+-  [x] **角色設定檔匯入功能 (Character Profile Import):**
   - **詳細步驟:**
-    - [ ] **UI/UX:** 在設定頁面新增「匯入角色設定」的按鈕。
-    - [ ] **檔案存取:** 使用儲存存取框架 (Storage Access Framework) 讓使用者能選取裝置上的 JSON 設定檔。
-    - [ ] **資料夾管理:** 建立一個應用程式專用的 `characters_config` 資料夾，用來存放所有匯入的設定檔。
-    - [ ] **邏輯修改:** 重構 `CharacterManager`，使其能同時讀取並整合 `assets` 中的預設角色與 `characters_config` 資料夾中的自訂角色。
-- [ ] **自動化發布流程 (Automated Release Workflow):**
+    - [x] **UI/UX:** 在設定頁面新增「匯入角色設定」的按鈕。
+    - [x] **檔案存取:** 使用儲存存取框架 (Storage Access Framework) 讓使用者能選取裝置上的 JSON 設定檔。
+    - [x] **資料夾管理:** 建立一個應用程式專用的 `characters_config` 資料夾，用來存放所有匯入的設定檔。
+    - [x] **邏輯修改:** 重構 `CharacterManager`，使其能同時讀取並整合 `assets` 中的預設角色與 `characters_config` 資料夾中的自訂角色。
+- [x] **自動化發布流程 (Automated Release Workflow):**
   - **詳細步驟:**
-    - [ ] **CI/CD:** 建立 GitHub Actions 工作流程 (`.github/workflows/android-release.yml`)。
-    - [ ] **觸發條件:** 設定工作流程在 Git 儲存庫收到 `v*.*.*` 格式的標籤 (tag) 推送時自動觸發。
-    - [ ] **流程實作:** 執行 `assembleRelease` 指令以建置已簽署的 APK，並利用現有的動態版本命名邏輯。
-    - [ ] **產出:** 建立一個新的 GitHub Release，並將產生的 APK 作為附件 (Asset) 上傳。
+    - [x] **CI/CD:** 建立 GitHub Actions 工作流程 (`.github/workflows/android-release.yml`)。
+    - [x] **觸發條件:** 設定工作流程在 Git 儲存庫收到 `v*.*.*` 格式的標籤 (tag) 推送時自動觸發。
+    - [x] **流程實作:** 執行 `assembleRelease` 指令以建置已簽署的 APK，並利用現有的動態版本命名邏輯。
+    - [x] **產出:** 建立一個新的 GitHub Release，並將產生的 APK 作為附件 (Asset) 上傳。
 
 ## 未來規劃 (Future Considerations)
 - [ ] **藥物照片對照 (Medication Photo ID):** 允許使用者為每種藥物拍攝並儲存一張實際照片，在服藥提醒時顯示以供視覺核對。

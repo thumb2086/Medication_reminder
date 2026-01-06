@@ -340,6 +340,8 @@
     <string name="developer_settings">Developer Settings</string>
     <string name="engineering_mode">Engineering Mode</string>
     <string name="engineering_mode_summary">Enables additional debugging features</string>
+    <string name="import_character_config_title">Import Character Config</string>
+    <string name="import_character_config_summary">Import character settings from a JSON file</string>
 
     <!-- About -->
     <string name="about_category">About</string>

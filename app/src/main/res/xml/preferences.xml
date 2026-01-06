@@ -70,7 +70,7 @@
             app:key="check_for_updates"
             app:title="@string/check_for_updates"
             app:summary="@string/check_for_updates_summary"
-            app:icon="@drawable/ic_update"/>
+            app:icon="@drawable/ic_update" />
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/developer_settings">
@@ -87,6 +87,12 @@
             app:title="@string/firmware_update_title"
             app:summary="@string/firmware_update_summary"
             app:icon="@drawable/ic_update" />
+
+        <Preference
+            app:key="import_character_config"
+            app:title="@string/import_character_config_title"
+            app:summary="@string/import_character_config_summary"
+            app:icon="@drawable/ic_input" />
 
     </PreferenceCategory>
 
