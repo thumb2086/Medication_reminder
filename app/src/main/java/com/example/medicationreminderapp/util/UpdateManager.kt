@@ -105,7 +105,7 @@ class UpdateManager(private val context: Context) {
 
         val response = client.newCall(request).execute()
         if (!response.isSuccessful) {
-            Log.e("UpdateManager", "Failed to fetch channel config: ${response.code}")
+            Log.e("UpdateManager", "Failed to fetch channel config: ${'$'}{response.code}")
             return null
         }
 
@@ -265,7 +265,7 @@ class UpdateManager(private val context: Context) {
                     .setMessage(R.string.install_permission_message)
                     .setPositiveButton(R.string.go_to_settings) { _, _ ->
                         val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
-                        intent.data = "package:${context.packageName}".toUri()
+                        intent.data = "package:${'$'}{context.packageName}".toUri()
                         context.startActivity(intent)
                     }
                     .setNegativeButton(R.string.cancel, null)
@@ -327,7 +327,7 @@ class UpdateManager(private val context: Context) {
                                 }
 
                                 if (downloadedFile.exists()) {
-                                    Log.d("UpdateManager", "Install target found: ${downloadedFile.absolutePath}")
+                                    Log.d("UpdateManager", "Install target found: ${'$'}{downloadedFile.absolutePath}")
                                     installApk(downloadedFile)
                                 } else {
                                     Log.e("UpdateManager", "APK file not found after download success reported.")
@@ -355,7 +355,7 @@ class UpdateManager(private val context: Context) {
             context,
             onComplete,
             IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
-            ContextCompat.RECEIVER_EXPORTED
+            ContextCompat.RECEIVER_NOT_EXPORTED
         )
     }
 
@@ -373,7 +373,7 @@ class UpdateManager(private val context: Context) {
 
             val uri = FileProvider.getUriForFile(
                 context,
-                "${context.packageName}.provider",
+                "${'$'}{context.packageName}.provider",
                 file
             )
 
@@ -385,7 +385,7 @@ class UpdateManager(private val context: Context) {
             context.startActivity(intent)
         } catch (e: Exception) {
             Log.e("UpdateManager", "Failed to install APK", e)
-            Toast.makeText(context, "${context.getString(R.string.install_failed)}: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "${'$'}{context.getString(R.string.install_failed)}: ${'$'}{e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 }
