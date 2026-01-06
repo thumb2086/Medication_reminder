@@ -6,8 +6,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.database.Cursor
+import android.net.Uri
 import android.os.Bundle
 import android.provider.ContactsContract
+import android.provider.OpenableColumns
 import android.util.Log
 import android.util.TypedValue
 import android.view.View
@@ -38,6 +41,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 
 class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedPreferenceChangeListener {
 
@@ -70,13 +76,76 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                     }
                     findPreference<Preference>("forwarding_contact")?.summary = name
 
-                    // After setting the contact, request SMS permission
                     if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
                         requestSmsPermissionLauncher.launch(Manifest.permission.SEND_SMS)
                     }
                 }
             }
         }
+    }
+
+    private val importCharacterLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            result.data?.data?.also { uri ->
+                importCharacterConfig(uri)
+            }
+        }
+    }
+
+    private fun importCharacterConfig(uri: Uri) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val fileName = getFileName(uri)
+                val configDir = File(requireContext().filesDir, "characters_config")
+                if (!configDir.exists()) {
+                    configDir.mkdirs()
+                }
+                val outputFile = File(configDir, fileName)
+
+                requireContext().contentResolver.openInputStream(uri)?.use { inputStream ->
+                    FileOutputStream(outputFile).use { outputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
+                }
+
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(requireContext(), "Character config imported: $fileName", Toast.LENGTH_SHORT).show()
+                    activity?.recreate() // Reload to apply changes
+                }
+            } catch (e: IOException) {
+                Log.e("SettingsFragment", "Failed to import character config", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(requireContext(), "Failed to import character config", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun getFileName(uri: Uri): String {
+        var result: String? = null
+        if (uri.scheme == "content") {
+            val cursor: Cursor? = requireContext().contentResolver.query(uri, null, null, null, null)
+            try {
+                if (cursor != null && cursor.moveToFirst()) {
+                    val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (nameIndex != -1) {
+                        result = cursor.getString(nameIndex)
+                    }
+                }
+            } finally {
+                cursor?.close()
+            }
+        }
+        if (result == null) {
+            result = uri.path
+            val cut = result?.lastIndexOf('/')
+            if (cut != -1) {
+                if (cut != null) {
+                    result = result?.substring(cut + 1)
+                }
+            }
+        }
+        return result ?: "default_config.json"
     }
 
     private val requestReadContactsPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
@@ -100,7 +169,6 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
 
         setupUpdateChannelPreference()
 
-        // Dynamically set version info
         findPreference<Preference>("app_version")?.summary = BuildConfig.VERSION_NAME
     }
 
@@ -288,6 +356,14 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                 }
                 true
             }
+            "import_character_config" -> {
+                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "application/json"
+                }
+                importCharacterLauncher.launch(intent)
+                true
+            }
             else -> super.onPreferenceTreeClick(preference)
         }
     }
@@ -319,7 +395,6 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
 
                 if (updateInfo.isDifferentAppId) {
                     title = getString(R.string.install_different_version_title)
-                    // Add a detailed explanation about signatures
                     sb.append(getString(R.string.install_different_version_message))
                     sb.append("\n\n").append(getString(R.string.signature_mismatch_warning))
                 } else if (updateInfo.isNewer) {
