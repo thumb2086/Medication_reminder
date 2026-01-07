@@ -240,7 +240,6 @@ This app supports dynamic character pack updates (images, themes) from this repo
         "imageResName": "kuromi.png",
         "imageUrl": "https://raw.githubusercontent.com/thumb2086/Medication_reminder/main/app/src/main/res/drawable-nodpi/kuromi.png"
       },
-      // ... other existing characters
       {
         "id": "snoopy",
         "name": "Snoopy",

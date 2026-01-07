@@ -1,3 +1,27 @@
+### v1.6.1: 角色補充包自動更新 (Character Pack Auto-Update)
+*   **移除手動匯入功能 (Manual Import Removal):**
+    *   **UI/UX:** 從設定頁面移除「匯入角色設定」按鈕。
+    *   **檔案存取:** 移除相關的儲存存取框架 (SAF) 邏輯。
+*   **整合角色包至本機儲存庫 (Repo Integration):**
+    *   **資料結構:** 確立 `characters.json` 格式。
+    *   **來源變更:** 角色資源改為直接整合於本專案中，透過 GitHub Raw URL 進行更新。
+*   **更新角色載入與下載邏輯 (Update Logic):**
+    *   **網路邏輯:** 調整網路請求指向新的 GitHub 下載路徑。
+    *   **快取管理:** `CharacterManager` 實作快取、版本比對與整合載入機制。
+*   **文件更新:**
+    *   **檔案:** `README.md`
+    *   **變更:** 詳細說明角色補充包的發布與維護流程。
+
+### v1.6.0: 設定擴充與自動化 (Settings Expansion & Automation)
+*   **角色設定檔匯入功能 (Character Profile Import):**
+    *   **UI/UX:** 在設定頁面新增「匯入角色設定」按鈕。
+    *   **檔案管理:** 使用儲存存取框架 (SAF) 並建立專用 `characters_config` 資料夾。
+    *   **邏輯重構:** `CharacterManager` 支援同時讀取 `assets` 預設角色與外部匯入角色。
+*   **自動化發布流程 (Automated Release Workflow):**
+    *   **CI/CD:** 建立 `.github/workflows/android-release.yml`。
+    *   **觸發機制:** 設定於 `v*.*.*` 格式標籤推送時觸發。
+    *   **產出:** 自動建置已簽署 APK 並上傳至 GitHub Release。
+
 ### v1.5.5: 文件整理與本地化修正 (Docs & i18n Fix)
 *   **文件整理 (Documentation Cleanup):**
     *   **檔案:** `todo.md`

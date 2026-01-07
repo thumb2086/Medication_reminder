@@ -6,11 +6,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
-import android.database.Cursor
-import android.net.Uri
 import android.os.Bundle
 import android.provider.ContactsContract
-import android.provider.OpenableColumns
 import android.util.Log
 import android.util.TypedValue
 import android.view.View
@@ -41,9 +38,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
 
 class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedPreferenceChangeListener {
 
@@ -156,7 +150,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                     val releases = gson.fromJson(jsonStr, JsonArray::class.java)
                     
                     val remoteChannels = mutableSetOf<String>()
-                    val regex = Regex(".*-nightly-(.+)-\\d+")
+                    val regex = Regex(".*-nightly-(.+)-\d+")
                     
                     releases.forEach { element ->
                         val release = element.asJsonObject
