@@ -126,7 +126,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
             if (savedChannel != null) {
                 listPref.value = savedChannel
             } else {
-                listPref.value = currentChannel.ifEmpty { "main" }
+                listPref.value = if (currentChannel.isNotEmpty()) currentChannel else "main"
             }
             
             listPref.summary = listPref.entry ?: getString(R.string.update_channel_summary, listPref.value)
