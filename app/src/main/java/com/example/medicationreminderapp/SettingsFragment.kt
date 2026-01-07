@@ -70,7 +70,6 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                     }
                     findPreference<Preference>("forwarding_contact")?.summary = name
 
-                    // After setting the contact, request SMS permission
                     if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
                         requestSmsPermissionLauncher.launch(Manifest.permission.SEND_SMS)
                     }
@@ -100,7 +99,6 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
 
         setupUpdateChannelPreference()
 
-        // Dynamically set version info
         findPreference<Preference>("app_version")?.summary = BuildConfig.VERSION_NAME
     }
 
@@ -128,7 +126,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
             if (savedChannel != null) {
                 listPref.value = savedChannel
             } else {
-                listPref.value = currentChannel.ifEmpty { "main" }
+                listPref.value = if (currentChannel.isNotEmpty()) currentChannel else "main"
             }
             
             listPref.summary = listPref.entry ?: getString(R.string.update_channel_summary, listPref.value)
@@ -319,7 +317,6 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
 
                 if (updateInfo.isDifferentAppId) {
                     title = getString(R.string.install_different_version_title)
-                    // Add a detailed explanation about signatures
                     sb.append(getString(R.string.install_different_version_message))
                     sb.append("\n\n").append(getString(R.string.signature_mismatch_warning))
                 } else if (updateInfo.isNewer) {

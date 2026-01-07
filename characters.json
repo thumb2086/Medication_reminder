@@ -1,0 +1,32 @@
+[
+    {
+        "id": "kuromi",
+        "name": "酷洛米",
+        "imageResName": "kuromi.png",
+        "imageUrl": "https://raw.githubusercontent.com/thumb2086/Medication_reminder/feat-1.6.1/app/src/main/res/drawable-nodpi/kuromi.png"
+    },
+    {
+        "id": "chibi_maruko_chan",
+        "name": "櫻桃小丸子",
+        "imageResName": "chibi_maruko_chan.png",
+        "imageUrl": "https://raw.githubusercontent.com/thumb2086/Medication_reminder/feat-1.6.1/app/src/main/res/drawable-nodpi/chibi_maruko_chan.png"
+    },
+    {
+        "id": "crayon_shin_chan",
+        "name": "蠟筆小新",
+        "imageResName": "crayon_shin_chan.png",
+        "imageUrl": "https://raw.githubusercontent.com/thumb2086/Medication_reminder/feat-1.6.1/app/src/main/res/drawable-nodpi/crayon_shin_chan.png"
+    },
+    {
+        "id": "doraemon",
+        "name": "哆啦A夢",
+        "imageResName": "doraemon.png",
+        "imageUrl": "https://raw.githubusercontent.com/thumb2086/Medication_reminder/feat-1.6.1/app/src/main/res/drawable-nodpi/doraemon.png"
+    },
+    {
+        "id": "snoopy",
+        "name": "史努比",
+        "imageResName": "snoopy.png",
+        "imageUrl": "https://raw.githubusercontent.com/thumb2086/Medication_reminder/feat-1.6.1/app/src/main/res/drawable-nodpi/snoopy.png"
+    }
+]
