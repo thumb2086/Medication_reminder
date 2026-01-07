@@ -154,17 +154,15 @@ import javax.inject.Inject
 
     private fun applyCharacterTheme() {
         val characterId = prefs.getString("character", "kuromi") ?: "kuromi"
-        val themeName = "Theme_MedicationReminderApp_${characterId.replace("_", "")}"
-        try {
-            val themeResId = resources.getIdentifier(themeName, "style", packageName)
-            if (themeResId != 0) {
-                setTheme(themeResId)
-            } else {
-                setTheme(R.style.Theme_MedicationReminderApp) // Fallback to default theme
-            }
-        } catch (e: Resources.NotFoundException) {
-            setTheme(R.style.Theme_MedicationReminderApp) // Fallback to default theme
+        val themeResId = when (characterId) {
+            "kuromi" -> R.style.Theme_MedicationReminderApp_Kuromi
+            "mymelody" -> R.style.Theme_MedicationReminderApp_MyMelody
+            "cinnamoroll" -> R.style.Theme_MedicationReminderApp_Cinnamoroll
+            "crayon_shin_chan" -> R.style.Theme_MedicationReminderApp_CrayonShinChan
+            "doraemon" -> R.style.Theme_MedicationReminderApp_Doraemon
+            else -> R.style.Theme_MedicationReminderApp
         }
+        setTheme(themeResId)
     }
 
     private fun observeViewModel() {

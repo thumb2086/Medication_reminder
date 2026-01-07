@@ -34,8 +34,8 @@ class CharacterManager(context: Context) {
                 if (!imageFile.exists() && character.imageUrl.isNotBlank()) {
                     try {
                         downloadImage(character.imageUrl, imageFile)
-                    } catch (e: IOException) {
-                        Log.e("CharacterManager", "Image download failed for ${character.id} from ${character.imageUrl}", e)
+                    } catch (_: IOException) {
+                        Log.e("CharacterManager", "Image download failed for ${character.id} from ${character.imageUrl}")
                         if (imageFile.exists()) {
                             imageFile.delete()
                         }
@@ -70,8 +70,8 @@ class CharacterManager(context: Context) {
                     val json = jsonFile.readText()
                     val type = object : TypeToken<List<Character>>() {}.type
                     return@withContext gson.fromJson(json, type)
-                } catch (e: Exception) {
-                    Log.w("CharacterManager", "Local characters.json is corrupt, re-downloading.", e)
+                } catch (_: Exception) {
+                    Log.w("CharacterManager", "Local characters.json is corrupt, re-downloading.")
                 }
             }
             return@withContext downloadCharacters()
@@ -82,8 +82,8 @@ class CharacterManager(context: Context) {
         withContext(Dispatchers.IO) {
             try {
                 downloadCharacters()
-            } catch (e: Exception) {
-                 Log.e("CharacterManager", "Failed to check for character updates.", e)
+            } catch (_: Exception) {
+                 Log.e("CharacterManager", "Failed to check for character updates.")
             }
         }
     }
@@ -102,8 +102,8 @@ class CharacterManager(context: Context) {
                 }
                 return emptyList()
             }
-        } catch (e: Exception) {
-            Log.e("CharacterManager", "Could not download characters.json", e)
+        } catch (_: Exception) {
+            Log.e("CharacterManager", "Could not download characters.json")
             return emptyList()
         }
     }
