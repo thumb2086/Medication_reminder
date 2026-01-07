@@ -11,40 +11,49 @@ import android.widget.ArrayAdapter
 import android.widget.ImageView
 import android.widget.RadioButton
 import android.widget.TextView
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import androidx.preference.ListPreference
+import com.example.medicationreminderapp.model.Character
 import com.example.medicationreminderapp.model.CharacterManager
-import com.example.medicationreminderapp.model.CharacterPack
+import kotlinx.coroutines.launch
 
 class ImagePickerPreference(context: Context, attrs: AttributeSet?) : ListPreference(context, attrs) {
 
     private val characterManager = CharacterManager(context)
-    private val characters: List<CharacterPack> = characterManager.characters
-
-    init {
-        entries = characters.map { it.name }.toTypedArray()
-        entryValues = characters.map { it.id }.toTypedArray()
-    }
 
     override fun onClick() {
-        val adapter = ImageListAdapter(context, R.layout.preference_image_picker_item, characters.toTypedArray())
+        (context as? LifecycleOwner)?.lifecycleScope?.launch {
+            val characters = characterManager.getCharactersWithImages()
 
-        AlertDialog.Builder(context)
-            .setTitle(title)
-            .setAdapter(adapter) { dialog, which ->
-                if (callChangeListener(entryValues[which])) {
-                    value = entryValues[which].toString()
-                }
-                dialog.dismiss()
+            if (characters.isEmpty()) {
+                // Handle case where no characters are available
+                return@launch
             }
-            .setNegativeButton(negativeButtonText, null)
-            .show()
+
+            entries = characters.map { it.name }.toTypedArray()
+            entryValues = characters.map { it.id }.toTypedArray()
+
+            val adapter = ImageListAdapter(context, R.layout.preference_image_picker_item, characters.toTypedArray())
+
+            AlertDialog.Builder(context)
+                .setTitle(title)
+                .setAdapter(adapter) { dialog, which ->
+                    if (callChangeListener(entryValues[which])) {
+                        value = entryValues[which].toString()
+                    }
+                    dialog.dismiss()
+                }
+                .setNegativeButton(negativeButtonText, null)
+                .show()
+        }
     }
 
     private inner class ImageListAdapter(
         context: Context,
         private val itemLayoutId: Int,
-        items: Array<CharacterPack>,
-    ) : ArrayAdapter<CharacterPack>(context, itemLayoutId, items) {
+        items: Array<Character>,
+    ) : ArrayAdapter<Character>(context, itemLayoutId, items) {
 
         private val inflater = LayoutInflater.from(context)
 
@@ -60,8 +69,6 @@ class ImagePickerPreference(context: Context, attrs: AttributeSet?) : ListPrefer
             character.imagePath?.let {
                 val bitmap = BitmapFactory.decodeFile(it)
                 imageView.setImageBitmap(bitmap)
-            } ?: character.imageResId?.let {
-                imageView.setImageResource(it)
             }
 
             textView.text = character.name

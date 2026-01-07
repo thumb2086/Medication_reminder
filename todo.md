@@ -45,7 +45,7 @@
   - [x] **快取與載入:** `CharacterManager` 已具備快取、版本比對與整合載入的邏輯，可重複使用。
 - [x] **文件更新:** 在 `README.md` 中詳細說明角色補充包的發布流程。
 
-## v1.6.2: Code Cleanup
+## v1.6.1: Code Cleanup
 - [x] **Fix warnings in `UpdateManager.kt` and `AndroidManifest.xml`**
 
 ## 未來規劃 (Future Considerations)

@@ -71,8 +71,9 @@ import javax.inject.Inject
 
     override fun onCreate(savedInstanceState: Bundle?) {
         prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
-        super.onCreate(savedInstanceState)
+        characterManager = CharacterManager(this)
         applyCharacterTheme()
+        super.onCreate(savedInstanceState)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
@@ -90,7 +91,6 @@ import javax.inject.Inject
         alarmManager = getSystemService(ALARM_SERVICE) as? AlarmManager
         bluetoothLeManager.listener = this
         updateManager = UpdateManager(this.applicationContext)
-        characterManager = CharacterManager(this)
 
         createNotificationChannel()
         requestAppPermissions()
@@ -152,15 +152,15 @@ import javax.inject.Inject
     }
 
     private fun applyCharacterTheme() {
-        val character = prefs.getString("character", "kuromi")
-        val themeResId = when (character) {
-            "kuromi" -> R.style.Theme_MedicationReminderApp_Kuromi
-            "maruko" -> R.style.Theme_MedicationReminderApp_MyMelody
-            "crayon_shin_chan" -> R.style.Theme_MedicationReminderApp_CrayonShinChan
-            "doraemon" -> R.style.Theme_MedicationReminderApp_Doraemon
-            else -> R.style.Theme_MedicationReminderApp
+        val characterId = prefs.getString("character", "kuromi") ?: "kuromi"
+        val themeName = "Theme_MedicationReminderApp_${characterId.replace("_", "")}"
+        val themeResId = resources.getIdentifier(themeName, "style", packageName)
+        
+        if (themeResId != 0) {
+            setTheme(themeResId)
+        } else {
+            setTheme(R.style.Theme_MedicationReminderApp) // Fallback to default theme
         }
-        setTheme(themeResId)
     }
 
     private fun observeViewModel() {

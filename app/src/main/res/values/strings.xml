@@ -249,17 +249,20 @@
     <string name="character_chibi_maruko_chan">櫻桃小丸子</string>
     <string name="character_crayon_shin_chan">蠟筆小新</string>
     <string name="character_doraemon">哆啦A夢</string>
+    <string name="character_snoopy">史努比</string>
     <string-array name="character_entries">
         <item>@string/character_kuromi</item>
         <item>@string/character_chibi_maruko_chan</item>
         <item>@string/character_crayon_shin_chan</item>
         <item>@string/character_doraemon</item>
+        <item>@string/character_snoopy</item>
     </string-array>
     <string-array name="character_values">
         <item>kuromi</item>
         <item>chibi_maruko_chan</item>
         <item>crayon_shin_chan</item>
         <item>doraemon</item>
+        <item>snoopy</item>
     </string-array>
 
     <string name="kuromi_image_description">酷洛米圖片</string>

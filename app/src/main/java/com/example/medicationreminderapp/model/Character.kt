@@ -1,8 +1,8 @@
 package com.example.medicationreminderapp.model
 
-data class CharacterPack(
+data class Character(
     val id: String,
     val name: String,
-    val imageResId: Int? = null,
+    val imageUrl: String,
     val imagePath: String? = null
 )
