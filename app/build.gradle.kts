@@ -252,6 +252,10 @@ android {
                 logger.warn("Release keystore not found or configuration incomplete. Falling back to debug signing.")
                 signingConfig = signingConfigs.getByName("debug")
             }
+
+            // 🔥 Make non-production release builds debuggable to avoid Finsky/Play Store issues
+            // when installing via APK. Since these are for GitHub Releases, this is safe.
+            isDebuggable = !isProduction
             
             // Fix: Disable Baseline Profile to prevent INSTALL_BASELINE_PROFILE_FAILED on emulators/test devices
             // during manual installation of release APKs.

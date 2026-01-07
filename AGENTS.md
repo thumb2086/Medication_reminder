@@ -45,7 +45,7 @@
     *   **✅ 直接執行：** 根據需求直接修改代碼 (如插入 `Log.d`, `Serial.println` 或新增函數)。
     *   **檢查依賴：** 確保 Android (`android.util.Log`) 或 ESP32 相關 Header 已 Import，若無則自動補上。
 
-#### **Phase 3: 原子化結案**
+#### **Phase 3: 結案**
 1.  **更新 `log.md` (頂部插入)：**
     *   格式：`### v1.3.x: Update Description`
     *   **必須記錄：** 修改了哪些檔案、硬體腳位或邏輯。

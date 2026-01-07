@@ -37,7 +37,6 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.viewpager2.widget.ViewPager2
 import com.example.medicationreminderapp.adapter.ViewPagerAdapter
 import com.example.medicationreminderapp.databinding.ActivityMainBinding
-import com.example.medicationreminderapp.model.CharacterManager
 import com.example.medicationreminderapp.util.UpdateManager
 import com.google.android.material.tabs.TabLayoutMediator
 import dagger.hilt.android.AndroidEntryPoint
@@ -55,7 +54,6 @@ import javax.inject.Inject
     private var alarmManager: AlarmManager? = null
     private lateinit var prefs: SharedPreferences
     private lateinit var updateManager: UpdateManager
-    private lateinit var characterManager: CharacterManager
     private var currentEngineeringModeState: Boolean? = null
 
     private val requestNotificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
@@ -71,8 +69,8 @@ import javax.inject.Inject
 
     override fun onCreate(savedInstanceState: Bundle?) {
         prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
-        super.onCreate(savedInstanceState)
         applyCharacterTheme()
+        super.onCreate(savedInstanceState)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
@@ -90,19 +88,14 @@ import javax.inject.Inject
         alarmManager = getSystemService(ALARM_SERVICE) as? AlarmManager
         bluetoothLeManager.listener = this
         updateManager = UpdateManager(this.applicationContext)
-        characterManager = CharacterManager(this)
 
         createNotificationChannel()
         requestAppPermissions()
         observeViewModel()
         setupFragmentNavigation()
-        checkForUpdates()
-        checkForCharacterUpdates()
-    }
 
-    private fun checkForCharacterUpdates() {
-        lifecycleScope.launch {
-            characterManager.checkForUpdates()
+        if (savedInstanceState == null) {
+            checkForUpdates()
         }
     }
 
@@ -152,10 +145,11 @@ import javax.inject.Inject
     }
 
     private fun applyCharacterTheme() {
-        val character = prefs.getString("character", "kuromi")
-        val themeResId = when (character) {
+        val characterId = prefs.getString("character", "kuromi") ?: "kuromi"
+        val themeResId = when (characterId) {
             "kuromi" -> R.style.Theme_MedicationReminderApp_Kuromi
-            "maruko" -> R.style.Theme_MedicationReminderApp_MyMelody
+            "mymelody" -> R.style.Theme_MedicationReminderApp_MyMelody
+            "cinnamoroll" -> R.style.Theme_MedicationReminderApp_Cinnamoroll
             "crayon_shin_chan" -> R.style.Theme_MedicationReminderApp_CrayonShinChan
             "doraemon" -> R.style.Theme_MedicationReminderApp_Doraemon
             else -> R.style.Theme_MedicationReminderApp

@@ -29,7 +29,7 @@ jobs:
     concurrency:
       group: build-${{ github.ref }}
       cancel-in-progress: true
-      
+
     permissions:
       contents: write
     steps:
@@ -148,7 +148,7 @@ jobs:
           }
           EOF
           cp public/$JSON_FILE .
-          
+
       - name: Deploy Main JSON with Retry
         if: env.IS_OFFICIAL == 'true'
         env:
@@ -173,7 +173,7 @@ jobs:
             echo "No changes to update_main.json"
           else
             git commit -m "Update update_main.json for ${{ github.ref_name }}"
-            
+          
             # 🔥 5. 核心：重試迴圈 (Retry Loop) 🔥
             # 如果 push 失敗，就 pull --rebase 再試一次，最多試 5 次
             n=0
@@ -184,12 +184,12 @@ jobs:
                echo "::warning::Git push failed (race condition), retrying in 5s... ($n/5)"
                sleep 5
             done
-            
+          
             if [ "$n" -ge 5 ]; then
               echo "::error::Failed to push to gh-pages after 5 attempts."
               exit 1
             fi
-            
+          
             echo "✅ Successfully deployed update_main.json"
           fi
 
@@ -249,7 +249,7 @@ jobs:
             echo "No changes to $JSON_FILENAME"
           else
             git commit -m "Update $JSON_FILENAME for ${{ env.CHANNEL_NAME }}"
-            
+          
             # 🔥 5. 核心：重試迴圈 🔥
             n=0
             until [ "$n" -ge 5 ]
@@ -259,12 +259,12 @@ jobs:
                echo "::warning::Git push failed (race condition), retrying in 5s... ($n/5)"
                sleep 5
             done
-            
+          
             if [ "$n" -ge 5 ]; then
               echo "::error::Failed to push to gh-pages after 5 attempts."
               exit 1
             fi
-            
+          
             echo "✅ Successfully deployed $JSON_FILENAME"
           fi
       
@@ -287,12 +287,12 @@ jobs:
           else
             echo "⚠️ Found old releases to delete:"
             echo "$TAGS_TO_DELETE"
-            
+          
             for tag in $TAGS_TO_DELETE; do
               echo "🗑️ Deleting old version: $tag"
               # 刪除 Release 物件
               gh release delete "$tag" --cleanup-tag --yes || echo "::warning::Failed to delete release $tag"
-              
+          
               # 刪除 Git Tag (確保乾淨)
               git push origin --delete "refs/tags/$tag" || echo "::notice::Git tag $tag already gone"
             done
@@ -361,14 +361,14 @@ jobs:
           else
             echo "✅ Found tags to delete:"
             echo "$TAGS_TO_DELETE"
-            
+          
             # 3. 迴圈刪除
             for tag in $TAGS_TO_DELETE; do
               echo "🗑️ Deleting Release & Tag: $tag"
-              
+          
               # 刪除 Release
               gh release delete "$tag" --cleanup-tag --yes || echo "::warning::Failed to delete release $tag via API"
-              
+          
               # 強制刪除 Git Tag (雙重保險)
               git push origin --delete "refs/tags/$tag" || echo "::notice::Git tag $tag already gone."
             done
@@ -379,8 +379,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: gh-pages
-          fetch-depth: 0 
-          
+          fetch-depth: 0
+
       - name: Remove JSON File
         run: |
           # JSON 檔名通常比較固定，還是可以用推測的
