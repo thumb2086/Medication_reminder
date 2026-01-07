@@ -93,7 +93,10 @@ import javax.inject.Inject
         requestAppPermissions()
         observeViewModel()
         setupFragmentNavigation()
-        checkForUpdates()
+
+        if (savedInstanceState == null) {
+            checkForUpdates()
+        }
     }
 
     private fun checkForUpdates() {
