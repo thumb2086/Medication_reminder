@@ -45,6 +45,9 @@
   - [x] **快取與載入:** `CharacterManager` 已具備快取、版本比對與整合載入的邏輯，可重複使用。
 - [x] **文件更新:** 在 `README.md` 中詳細說明角色補充包的發布流程。
 
+## v1.6.2: Code Cleanup
+- [x] **Fix warnings in `UpdateManager.kt` and `AndroidManifest.xml`**
+
 ## 未來規劃 (Future Considerations)
 - [ ] **藥物照片對照 (Medication Photo ID):** 允許使用者為每種藥物拍攝並儲存一張實際照片，在服藥提醒時顯示以供視覺核對。
 - [ ] **雲端備份與還原 (Cloud Backup & Restore):** 跨裝置同步使用者的藥物設定與紀錄。

@@ -16,7 +16,7 @@ class CharacterManager(private val context: Context) {
 
     private val gson = Gson()
     private val characterCacheDir by lazy { File(context.filesDir, "character_packs") }
-    private val remoteCharactersUrl = "https://raw.githubusercontent.com/thumb2086/Medication_reminder/main/characters.json"
+    private val remoteCharactersUrl = "https://raw.githubusercontent.com/thumb2086/Medication_reminder/main/app/src/main/assets/characters.json"
 
     val characters: List<CharacterPack> by lazy {
         loadCharacters()
