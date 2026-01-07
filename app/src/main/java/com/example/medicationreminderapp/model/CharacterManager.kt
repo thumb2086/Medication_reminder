@@ -1,6 +1,7 @@
 package com.example.medicationreminderapp.model
 
 import android.content.Context
+import com.example.medicationreminderapp.R
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.io.IOException
@@ -16,7 +17,8 @@ object CharacterManager {
 
         val jsonString: String
         try {
-            jsonString = context.assets.open("characters.json").bufferedReader().use { it.readText() }
+            val inputStream = context.resources.openRawResource(R.raw.characters)
+            jsonString = inputStream.bufferedReader().use { it.readText() }
         } catch (ioException: IOException) {
             ioException.printStackTrace()
             return emptyList()
