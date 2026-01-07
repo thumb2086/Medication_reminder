@@ -8,7 +8,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
-import android.os.Build
 import android.os.Environment
 import android.provider.Settings
 import android.util.Log
@@ -54,7 +53,7 @@ class UpdateManager(private val context: Context) {
         return withContext(Dispatchers.IO) {
             try {
                 val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-                val buildChannel = if (BuildConfig.UPDATE_CHANNEL.isEmpty()) "main" else BuildConfig.UPDATE_CHANNEL
+                val buildChannel = BuildConfig.UPDATE_CHANNEL.ifEmpty { "main" }
 
                 val channelToCheck: String
                 val force: Boolean
