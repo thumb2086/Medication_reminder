@@ -30,6 +30,7 @@ import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
+import com.example.medicationreminderapp.model.CharacterManager
 import com.example.medicationreminderapp.util.UpdateManager
 import com.google.gson.Gson
 import com.google.gson.JsonArray
@@ -92,14 +93,27 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         findPreference<ListPreference>("theme")?.let { it.summary = it.entry }
         findPreference<ListPreference>("language")?.let { it.summary = it.entry }
         findPreference<ListPreference>("font_size")?.let { it.summary = it.entry }
-        findPreference<ListPreference>("character")?.let { it.summary = it.entry }
 
         val contactName = preferenceManager.sharedPreferences?.getString("forwarding_contact_name", null)
         findPreference<Preference>("forwarding_contact")?.summary = contactName ?: getString(R.string.forwarding_contact_summary)
 
+        setupCharacterPreference()
         setupUpdateChannelPreference()
 
         findPreference<Preference>("app_version")?.summary = BuildConfig.VERSION_NAME
+    }
+
+    private fun setupCharacterPreference() {
+        val characterPref = findPreference<ImagePickerPreference>("character")
+        characterPref?.let {
+            val characters = CharacterManager.getCharacters(requireContext())
+            val entries = characters.map { it.name }.toTypedArray()
+            val entryValues = characters.map { it.id }.toTypedArray()
+
+            it.entries = entries
+            it.entryValues = entryValues
+            it.summary = it.entry
+        }
     }
 
     private fun setupUpdateChannelPreference() {
@@ -404,7 +418,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                 }
             }
             "character" -> {
-                findPreference<ListPreference>(key)?.let { characterPreference ->
+                findPreference<ImagePickerPreference>(key)?.let { characterPreference ->
                     characterPreference.summary = characterPreference.entry
                     activity?.recreate()
                 }
@@ -421,7 +435,8 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                 mainActivity?.bluetoothLeManager?.let { bleManager ->
                     if (bleManager.isConnected()) {
                         bleManager.setEngineeringMode(isEnabled)
-                    } else {
+                    }
+                    else {
                         Toast.makeText(requireContext(), R.string.connect_box_first, Toast.LENGTH_SHORT).show()
                         sharedPreferences.unregisterOnSharedPreferenceChangeListener(this)
                         findPreference<SwitchPreferenceCompat>(key)?.isChecked = !isEnabled

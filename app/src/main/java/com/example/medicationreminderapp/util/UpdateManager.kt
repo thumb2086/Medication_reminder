@@ -46,8 +46,7 @@ class UpdateManager(private val context: Context) {
 
     /**
      * Checks for updates.
-     * @param isManualCheck If true, checks the user's selected channel and allows reinstalling.
-     *                      If false (automatic check), it only checks the app's built-in channel.
+     * @param isManualCheck If true, checks the user's selected channel. If false, it only checks the app's built-in channel.
      */
     suspend fun checkForUpdates(isManualCheck: Boolean = false): UpdateInfo? {
         return withContext(Dispatchers.IO) {
@@ -55,27 +54,19 @@ class UpdateManager(private val context: Context) {
                 val prefs = PreferenceManager.getDefaultSharedPreferences(context)
                 val buildChannel = BuildConfig.UPDATE_CHANNEL.ifEmpty { "main" }
 
-                val channelToCheck: String
-                val force: Boolean
-
-                if (isManualCheck) {
-                    // Manual Check: Respect user's selection, and always allow download.
-                    channelToCheck = prefs.getString("update_channel", buildChannel) ?: buildChannel
-                    force = true
-                    Log.d("UpdateManager", "Starting MANUAL check for channel: '$channelToCheck'")
+                val channelToCheck = if (isManualCheck) {
+                    prefs.getString("update_channel", buildChannel) ?: buildChannel
                 } else {
-                    // Automatic Check: Only check the app's own channel, no forcing.
-                    channelToCheck = buildChannel
-                    force = false
-                    Log.d("UpdateManager", "Starting AUTOMATIC check for channel: '$channelToCheck'")
+                    buildChannel
                 }
+                Log.d("UpdateManager", "Checking for updates on channel: '$channelToCheck' (Manual: $isManualCheck)")
 
                 val isStable = channelToCheck == "main" || channelToCheck == "master" || channelToCheck == "stable"
 
                 if (isStable) {
-                    checkStableUpdates(force)
+                    checkStableUpdates()
                 } else {
-                    checkDynamicChannelUpdates(channelToCheck, force)
+                    checkDynamicChannelUpdates(channelToCheck)
                 }
             } catch (e: Exception) {
                 Log.e("UpdateManager", "Error checking for updates", e)
@@ -84,7 +75,7 @@ class UpdateManager(private val context: Context) {
         }
     }
 
-    private fun checkDynamicChannelUpdates(channel: String, force: Boolean): UpdateInfo? {
+    private fun checkDynamicChannelUpdates(channel: String): UpdateInfo? {
         val jsonUrl = if (channel == BuildConfig.UPDATE_CHANNEL) {
              try {
                  BuildConfig.UPDATE_JSON_URL
@@ -112,33 +103,28 @@ class UpdateManager(private val context: Context) {
         val jsonStr = responseBody.string()
         val json = gson.fromJson(jsonStr, JsonObject::class.java)
 
-        // Parse JSON
         val latestVersionName = json.get("latestVersion").asString
         val downloadUrl = json.get("url").asString
         val releaseNotes = json.get("releaseNotes").asString
 
-        // Use the proper SemVer comparison
         val isStrictlyNewer = isNewerVersion(BuildConfig.VERSION_NAME, latestVersionName)
         
-        // Determine App ID difference
         val currentSuffix = getAppIdSuffix()
         val targetSuffix = when {
             channel == "dev" -> ".dev"
-            channel.isNotEmpty() && channel != "main" -> ".nightly" // Assume non-main/dev is nightly
+            channel.isNotEmpty() && channel != "main" -> ".nightly"
             else -> ""
         }
-        
         val isDifferentId = currentSuffix != targetSuffix
 
-        // Return info if it's newer OR forced (for manual checks)
-        if (isStrictlyNewer || force) {
-            return UpdateInfo(latestVersionName, downloadUrl, releaseNotes, true, isStrictlyNewer, isDifferentId)
+        if (isStrictlyNewer) {
+            return UpdateInfo(latestVersionName, downloadUrl, releaseNotes, true, true, isDifferentId)
         }
         
         return null
     }
 
-    private fun checkStableUpdates(force: Boolean): UpdateInfo? {
+    private fun checkStableUpdates(): UpdateInfo? {
         val url = "https://api.github.com/repos/$repoOwner/$repoName/releases/latest"
         val request = Request.Builder().url(url).build()
 
@@ -172,13 +158,12 @@ class UpdateManager(private val context: Context) {
 
         val isStrictlyNewer = isNewerVersion(currentVersionNormalized, remoteVersion)
 
-        // Stable channel has no suffix
         val currentSuffix = getAppIdSuffix()
         val targetSuffix = ""
         val isDifferentId = currentSuffix != targetSuffix
 
-        if (isStrictlyNewer || force) {
-             return UpdateInfo(remoteVersion, apkUrl, releaseNotes, false, isStrictlyNewer, isDifferentId)
+        if (isStrictlyNewer) {
+             return UpdateInfo(remoteVersion, apkUrl, releaseNotes, false, true, isDifferentId)
         }
         return null
     }

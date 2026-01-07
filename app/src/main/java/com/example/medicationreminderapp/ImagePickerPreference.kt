@@ -2,7 +2,6 @@ package com.example.medicationreminderapp
 
 import android.app.AlertDialog
 import android.content.Context
-import android.graphics.BitmapFactory
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.View
@@ -12,20 +11,21 @@ import android.widget.ImageView
 import android.widget.RadioButton
 import android.widget.TextView
 import androidx.preference.ListPreference
+import com.example.medicationreminderapp.model.Character
 import com.example.medicationreminderapp.model.CharacterManager
-import com.example.medicationreminderapp.model.CharacterPack
 
 class ImagePickerPreference(context: Context, attrs: AttributeSet?) : ListPreference(context, attrs) {
 
-    private val characterManager = CharacterManager(context)
-    private val characters: List<CharacterPack> = characterManager.characters
+    override fun onClick() {
+        val characters = CharacterManager.getCharacters(context)
 
-    init {
+        if (characters.isEmpty()) {
+            return
+        }
+
         entries = characters.map { it.name }.toTypedArray()
         entryValues = characters.map { it.id }.toTypedArray()
-    }
 
-    override fun onClick() {
         val adapter = ImageListAdapter(context, R.layout.preference_image_picker_item, characters.toTypedArray())
 
         AlertDialog.Builder(context)
@@ -43,8 +43,8 @@ class ImagePickerPreference(context: Context, attrs: AttributeSet?) : ListPrefer
     private inner class ImageListAdapter(
         context: Context,
         private val itemLayoutId: Int,
-        items: Array<CharacterPack>,
-    ) : ArrayAdapter<CharacterPack>(context, itemLayoutId, items) {
+        items: Array<Character>,
+    ) : ArrayAdapter<Character>(context, itemLayoutId, items) {
 
         private val inflater = LayoutInflater.from(context)
 
@@ -57,11 +57,12 @@ class ImagePickerPreference(context: Context, attrs: AttributeSet?) : ListPrefer
 
             val character = getItem(position)!!
 
-            character.imagePath?.let {
-                val bitmap = BitmapFactory.decodeFile(it)
-                imageView.setImageBitmap(bitmap)
-            } ?: character.imageResId?.let {
-                imageView.setImageResource(it)
+            val imageResName = character.imageResName
+            val imageResId = context.resources.getIdentifier(imageResName, "drawable", context.packageName)
+            if (imageResId != 0) {
+                imageView.setImageResource(imageResId)
+            } else {
+                imageView.setImageDrawable(null)
             }
 
             textView.text = character.name
