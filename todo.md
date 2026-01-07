@@ -47,6 +47,7 @@
 
 ## v1.6.1: Code Cleanup
 - [x] **Fix warnings in `UpdateManager.kt` and `AndroidManifest.xml`**
+- [ ] **Fix all warnings in `CharacterManager.kt` and `MainActivity.kt`**
 
 ## 未來規劃 (Future Considerations)
 - [ ] **藥物照片對照 (Medication Photo ID):** 允許使用者為每種藥物拍攝並儲存一張實際照片，在服藥提醒時顯示以供視覺核對。

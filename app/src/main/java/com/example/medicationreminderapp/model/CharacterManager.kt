@@ -1,6 +1,7 @@
 package com.example.medicationreminderapp.model
 
 import android.content.Context
+import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
@@ -10,7 +11,7 @@ import okhttp3.Request
 import java.io.File
 import java.io.IOException
 
-class CharacterManager(private val context: Context) {
+class CharacterManager(context: Context) {
 
     private val client = OkHttpClient()
     private val gson = Gson()
@@ -29,14 +30,23 @@ class CharacterManager(private val context: Context) {
             val characters = getCharacters()
             characters.map { character ->
                 val imageFile = File(imagesDir, "${character.id}.png")
-                if (!imageFile.exists()) {
+
+                if (!imageFile.exists() && character.imageUrl.isNotBlank()) {
                     try {
                         downloadImage(character.imageUrl, imageFile)
                     } catch (e: IOException) {
-                        // Handle image download error, maybe return character without image path
+                        Log.e("CharacterManager", "Image download failed for ${character.id} from ${character.imageUrl}", e)
+                        if (imageFile.exists()) {
+                            imageFile.delete()
+                        }
                     }
                 }
-                character.copy(imagePath = imageFile.absolutePath)
+
+                if (imageFile.exists()) {
+                    character.copy(imagePath = imageFile.absolutePath)
+                } else {
+                    character.copy(imagePath = null)
+                }
             }
         }
     }
@@ -45,7 +55,7 @@ class CharacterManager(private val context: Context) {
         val request = Request.Builder().url(url).build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("Unexpected code $response")
-            response.body!!.byteStream().use { input ->
+            response.body?.byteStream()?.use { input ->
                 file.outputStream().use { output ->
                     input.copyTo(output)
                 }
@@ -55,24 +65,26 @@ class CharacterManager(private val context: Context) {
 
     suspend fun getCharacters(): List<Character> {
         return withContext(Dispatchers.IO) {
-            // First, try to load from local cache
             if (jsonFile.exists()) {
                 try {
                     val json = jsonFile.readText()
                     val type = object : TypeToken<List<Character>>() {}.type
                     return@withContext gson.fromJson(json, type)
                 } catch (e: Exception) {
-                    // If local cache is corrupt, proceed to download
+                    Log.w("CharacterManager", "Local characters.json is corrupt, re-downloading.", e)
                 }
             }
-            // If no local cache, download from remote
             return@withContext downloadCharacters()
         }
     }
 
     suspend fun checkForUpdates() {
         withContext(Dispatchers.IO) {
-            downloadCharacters()
+            try {
+                downloadCharacters()
+            } catch (e: Exception) {
+                 Log.e("CharacterManager", "Failed to check for character updates.", e)
+            }
         }
     }
 
@@ -82,14 +94,16 @@ class CharacterManager(private val context: Context) {
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) throw IOException("Unexpected code $response")
 
-                val jsonStr = response.body!!.string()
-                jsonFile.writeText(jsonStr) // Cache the new json
-
-                val type = object : TypeToken<List<Character>>() {}.type
-                return gson.fromJson(jsonStr, type)
+                val jsonStr = response.body?.string()
+                if (jsonStr != null) {
+                    jsonFile.writeText(jsonStr)
+                    val type = object : TypeToken<List<Character>>() {}.type
+                    return gson.fromJson(jsonStr, type)
+                }
+                return emptyList()
             }
         } catch (e: Exception) {
-            // In case of network error, return an empty list or handle error appropriately
+            Log.e("CharacterManager", "Could not download characters.json", e)
             return emptyList()
         }
     }

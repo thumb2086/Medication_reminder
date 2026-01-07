@@ -113,6 +113,9 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         val characterPref = findPreference<ImagePickerPreference>("character")
         characterPref?.let {
             lifecycleScope.launch {
+                // Force a check for remote updates first
+                characterManager.checkForUpdates()
+                // Then get the potentially updated list of characters
                 val characters = characterManager.getCharacters()
                 val entries = characters.map { it.name }.toTypedArray()
                 val entryValues = characters.map { it.id }.toTypedArray()

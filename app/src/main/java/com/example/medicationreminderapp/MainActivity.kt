@@ -8,6 +8,7 @@ import android.app.NotificationManager
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.content.res.Resources
 import android.media.AudioAttributes
 import android.media.RingtoneManager
 import android.os.Build
@@ -154,11 +155,14 @@ import javax.inject.Inject
     private fun applyCharacterTheme() {
         val characterId = prefs.getString("character", "kuromi") ?: "kuromi"
         val themeName = "Theme_MedicationReminderApp_${characterId.replace("_", "")}"
-        val themeResId = resources.getIdentifier(themeName, "style", packageName)
-        
-        if (themeResId != 0) {
-            setTheme(themeResId)
-        } else {
+        try {
+            val themeResId = resources.getIdentifier(themeName, "style", packageName)
+            if (themeResId != 0) {
+                setTheme(themeResId)
+            } else {
+                setTheme(R.style.Theme_MedicationReminderApp) // Fallback to default theme
+            }
+        } catch (e: Resources.NotFoundException) {
             setTheme(R.style.Theme_MedicationReminderApp) // Fallback to default theme
         }
     }
