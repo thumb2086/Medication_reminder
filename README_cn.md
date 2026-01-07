@@ -211,3 +211,45 @@ App 與 ESP32 智慧藥盒之間的通訊基於自訂的二進位協定，透過
     -   **`wifi_ota.cpp/.h`**：管理 Wi-Fi 連接、NTP 同步和無線 (OTA) 更新。
     -   **`config.h`**：用於硬體腳位定義、常數和其他配置的中央標頭檔。
     -   **`globals.h`**：用於全域變數宣告的標頭檔。
+
+## 角色補充包發布流程
+
+此 App 支援從本儲存庫動態更新角色補充包 (圖片、主題)，讓新角色的發布無需更新 App。
+
+1.  **上傳圖片資源**
+    將新的角色圖片 (例如 `snoopy.png`) 上傳至 `app/src/main/res/drawable-nodpi/` 目錄。
+
+2.  **修改 `characters.json`**
+    編輯位於本儲存庫根目錄的 `characters.json` 檔案，為新角色新增一個 JSON 物件。每個物件需包含以下欄位：
+    *   `id`: 角色的唯一識別碼 (字串，僅限英數與底線)。
+    *   `name`: 顯示在 App 中的角色名稱。
+    *   `imageResName`: 圖片的完整檔名 (例如 `snoopy.png`)。
+    *   `imageUrl`: 圖片在 GitHub 上的 **Raw URL**。
+
+    **如何取得 Raw URL:**
+    a. 在 GitHub 儲存庫中點擊您上傳的圖片檔案。
+    b. 點擊 **"Raw"** 按鈕。
+    c. 從瀏覽器的網址列複製完整的 URL。
+
+    **範例：**
+    ```json
+    [
+      {
+        "id": "kuromi",
+        "name": "酷洛米",
+        "imageResName": "kuromi.png",
+        "imageUrl": "https://raw.githubusercontent.com/thumb2086/Medication_reminder/main/app/src/main/res/drawable-nodpi/kuromi.png"
+      },
+      {
+        "id": "snoopy",
+        "name": "史努比",
+        "imageResName": "snoopy.png",
+        "imageUrl": "https://raw.githubusercontent.com/thumb2086/Medication_reminder/main/app/src/main/res/drawable-nodpi/snoopy.png"
+      }
+    ]
+    ```
+
+3.  **Commit & Push**
+    將修改後的 `characters.json` 和新的圖片資源 Commit 並 Push 至 `main` 分支。
+
+完成後，已安裝的 App 將在下次啟動時自動檢查並下載新的角色包，使用者即可在設定中看到並選用新角色。

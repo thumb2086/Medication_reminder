@@ -14,7 +14,7 @@
 - [x] **medication_input_item.xml: 在 LinearLayout 的 orientation 屬性中，已將 android.orientation 修正為 android:orientation (第 82 行)。**
 - [x] **app/src/main/res/values-en/strings.xml: 已在 app/src/main/res/values-en/strings.xml 中新增了 "color_picker_desc" 的英文翻譯。**
 - [x] **MedicationListAdapter.kt: 已將 Color.parseColor(medication.color) 替換為使用 KTX 擴充函數 medication.color.toColorInt()，並新增了 import androidx.core.graphics.toColorInt。**
-- [x] **ReminderSettingsFragment.kt: 已將所有 Color.parseColor(color) 替換為 color.toColorInt()，並將 ColorDrawable(colorInt) 替換為 colorInt.toDrawable(requireContext())。同時新增了 import androidx.core.graphics.toColorInt 和 import androidx.core.graphics.drawable.toDrawable。**
+- [x] **ReminderSettingsFragment.kt: 已將所有 Color.parseColor(color) 替換為 color.toColorInt()，並將 ColorDrawable(colorInt) 替換為 colorInt.toDrawable(requireContext())。同時新增了 import androidx"core.graphics.toColorInt 和 import androidx.core.graphics.drawable.toDrawable。**
 - [x] **修正1.5.5相關紀錄檔案更新所附上的問題**
 - [x] **修正 `ReminderSettingsFragment.kt` 中的 import 錯誤與變數參考錯誤**
 
@@ -32,6 +32,19 @@
     - [x] **流程實作:** 執行 `assembleRelease` 指令以建置已簽署的 APK，並利用現有的動態版本命名邏輯。
     - [x] **產出:** 建立一個新的 GitHub Release，並將產生的 APK 作為附件 (Asset) 上傳。
 
+## v1.6.1: 角色補充包自動更新 (Character Pack Auto-Update)
+- [x] **移除手動匯入功能:**
+  - [x] **UI/UX:** 從設定頁面移除「匯入角色設定」的按鈕。
+  - [x] **檔案存取:** 移除相關的儲存存取框架 (SAF) 邏輯。
+- [x] **整合角色包至本機儲存庫:**
+  - [x] **資料結構:** 已設計 `characters.json` 檔案格式。
+  - [x] **來源變更:** 放棄使用獨立的角色包儲存庫，改為將角色包 (`characters.json` 與相關資源) 直接整合到**本專案**中。
+  - [x] **下載路徑:** App 將直接從本專案的 GitHub 儲存庫 (例如透過 GitHub Raw 的 URL) 下載更新，而非從獨立儲存庫。
+- [x] **更新角色載入與下載邏輯:**
+  - [x] **網路邏輯:** 調整 App 中的網路請求程式碼，使其指向新的下載路徑。
+  - [x] **快取與載入:** `CharacterManager` 已具備快取、版本比對與整合載入的邏輯，可重複使用。
+- [x] **文件更新:** 在 `README.md` 中詳細說明角色補充包的發布流程。
+
 ## 未來規劃 (Future Considerations)
 - [ ] **藥物照片對照 (Medication Photo ID):** 允許使用者為每種藥物拍攝並儲存一張實際照片，在服藥提醒時顯示以供視覺核對。
 - [ ] **雲端備份與還原 (Cloud Backup & Restore):** 跨裝置同步使用者的藥物設定與紀錄。
@@ -44,3 +57,4 @@
 - [ ] **AI 生成服藥報告 (AI-Generated Compliance Reports):** 自動生成自然語言格式的服藥總結報告，方便直接提供給醫師。
 - [ ] **醫療院所系統串接 (Healthcare Provider Integration - via FHIR):** 串接電子病歷，自動同步處方與服藥紀錄。
 - [ ] **照顧者模式 (Caregiver Mode):** 建立獨立的照顧者模式，可遠端監控並協助管理。
+

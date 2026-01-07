@@ -2,6 +2,7 @@ package com.example.medicationreminderapp
 
 import android.app.AlertDialog
 import android.content.Context
+import android.graphics.BitmapFactory
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.View
@@ -25,7 +26,7 @@ class ImagePickerPreference(context: Context, attrs: AttributeSet?) : ListPrefer
     }
 
     override fun onClick() {
-        val adapter = ImageListAdapter(context, R.layout.preference_image_picker_item, entries)
+        val adapter = ImageListAdapter(context, R.layout.preference_image_picker_item, characters.toTypedArray())
 
         AlertDialog.Builder(context)
             .setTitle(title)
@@ -42,8 +43,8 @@ class ImagePickerPreference(context: Context, attrs: AttributeSet?) : ListPrefer
     private inner class ImageListAdapter(
         context: Context,
         private val itemLayoutId: Int,
-        items: Array<CharSequence>,
-    ) : ArrayAdapter<CharSequence>(context, itemLayoutId, items) {
+        items: Array<CharacterPack>,
+    ) : ArrayAdapter<CharacterPack>(context, itemLayoutId, items) {
 
         private val inflater = LayoutInflater.from(context)
 
@@ -54,11 +55,16 @@ class ImagePickerPreference(context: Context, attrs: AttributeSet?) : ListPrefer
             val textView = view.findViewById<TextView>(R.id.text)
             val radioButton = view.findViewById<RadioButton>(R.id.radio_button)
 
-            val character = characters[position]
+            val character = getItem(position)!!
 
-            imageView.setImageResource(character.imageResId)
+            character.imagePath?.let {
+                val bitmap = BitmapFactory.decodeFile(it)
+                imageView.setImageBitmap(bitmap)
+            } ?: character.imageResId?.let {
+                imageView.setImageResource(it)
+            }
+
             textView.text = character.name
-
             radioButton.isChecked = (value == character.id)
 
             return view
