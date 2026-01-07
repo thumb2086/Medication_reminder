@@ -43,7 +43,6 @@ import okhttp3.Request
 class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedPreferenceChangeListener {
 
     private val viewModel: MainViewModel by activityViewModels()
-    private lateinit var characterManager: CharacterManager
 
     companion object {
         private var hasShownInvalidChannelWarning = false
@@ -88,11 +87,6 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         }
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        characterManager = CharacterManager(requireContext())
-        super.onCreate(savedInstanceState)
-    }
-
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.preferences, rootKey)
 
@@ -112,18 +106,13 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
     private fun setupCharacterPreference() {
         val characterPref = findPreference<ImagePickerPreference>("character")
         characterPref?.let {
-            lifecycleScope.launch {
-                // Force a check for remote updates first
-                characterManager.checkForUpdates()
-                // Then get the potentially updated list of characters
-                val characters = characterManager.getCharacters()
-                val entries = characters.map { it.name }.toTypedArray()
-                val entryValues = characters.map { it.id }.toTypedArray()
+            val characters = CharacterManager.getCharacters(requireContext())
+            val entries = characters.map { it.name }.toTypedArray()
+            val entryValues = characters.map { it.id }.toTypedArray()
 
-                it.entries = entries
-                it.entryValues = entryValues
-                it.summary = it.entry
-            }
+            it.entries = entries
+            it.entryValues = entryValues
+            it.summary = it.entry
         }
     }
 

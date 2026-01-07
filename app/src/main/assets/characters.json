@@ -18,5 +18,10 @@
         "id": "doraemon",
         "name": "哆啦A夢",
         "imageResName": "doraemon"
+    },
+    {
+        "id": "snoopy",
+        "name": "史努比",
+        "imageResName": "snoopy"
     }
 ]

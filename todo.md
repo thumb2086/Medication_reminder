@@ -47,7 +47,7 @@
 
 ## v1.6.1: Code Cleanup
 - [x] **Fix warnings in `UpdateManager.kt` and `AndroidManifest.xml`**
-- [ ] **Fix all warnings in `CharacterManager.kt` and `MainActivity.kt`**
+- [x] **Fix all warnings in `CharacterManager.kt` and `MainActivity.kt`**
 
 ## 未來規劃 (Future Considerations)
 - [ ] **藥物照片對照 (Medication Photo ID):** 允許使用者為每種藥物拍攝並儲存一張實際照片，在服藥提醒時顯示以供視覺核對。
@@ -59,6 +59,9 @@
 - [ ] **AR 擴增實境導覽 (Augmented Reality Onboarding):** 以 AR 方式提供更直覺的首次設定體驗。
 - [ ] **旅行模式 (Travel Mode):** 跨時區旅行時，自動調整提醒時間並生成打包清單。
 - [ ] **AI 生成服藥報告 (AI-Generated Compliance Reports):** 自動生成自然語言格式的服藥總結報告，方便直接提供給醫師。
-- [ ] **醫療院所系統串接 (Healthcare Provider Integration - via FHIR):** 串接電子病歷，自動同步處方與服藥紀錄。
+- [- [ ] **醫療院所系統串接 (Healthcare Provider Integration - via FHIR):** 串接電子病歷，自動同步處方與服藥紀錄。
 - [ ] **照顧者模式 (Caregiver Mode):** 建立獨立的照顧者模式，可遠端監控並協助管理。
 
+## v1.6.2: 角色功能修正 (Character Feature Fix)
+- [x] **修正角色資料與圖片不一致問題 (Fix character data and image mismatch)**
+- [x] **優化角色列表載入效能 (Optimize character list loading performance)**
