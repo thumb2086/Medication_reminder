@@ -55,7 +55,7 @@ class CharacterManager(context: Context) {
         val request = Request.Builder().url(url).build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("Unexpected code $response")
-            response.body?.byteStream()?.use { input ->
+            response.body.byteStream().use { input ->
                 file.outputStream().use { output ->
                     input.copyTo(output)
                 }
@@ -94,8 +94,8 @@ class CharacterManager(context: Context) {
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) throw IOException("Unexpected code $response")
 
-                val jsonStr = response.body?.string()
-                if (jsonStr != null) {
+                val jsonStr = response.body.string()
+                if (jsonStr.isNotEmpty()) {
                     jsonFile.writeText(jsonStr)
                     val type = object : TypeToken<List<Character>>() {}.type
                     return gson.fromJson(jsonStr, type)
