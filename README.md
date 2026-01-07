@@ -211,3 +211,46 @@ This project consists of two main parts: the Android application (`app/`) and th
     -   **`wifi_ota.cpp/.h`**: Manages Wi-Fi connectivity, NTP synchronization, and Over-The-Air (OTA) updates.
     -   **`config.h`**: Centralized header for hardware pin definitions, constants, and other configurations.
     -   **`globals.h`**: Header for global variable declarations.
+
+## Character Pack Publishing Workflow
+
+This app supports dynamic character pack updates (images, themes) from this repository, allowing new characters to be released without requiring an app update.
+
+1.  **Upload Image Assets**
+    Upload the new character image (e.g., `snoopy.png`) to the `app/src/main/res/drawable-nodpi/` directory.
+
+2.  **Modify `characters.json`**
+    Edit the `characters.json` file in the root of this repository to add a new JSON object for the new character. Each object must contain the following fields:
+    *   `id`: A unique identifier for the character (string, alphanumeric and underscores only).
+    *   `name`: The display name of the character in the app.
+    *   `imageResName`: The full filename of the image (e.g., `snoopy.png`).
+    *   `imageUrl`: The **Raw URL** of the image on GitHub.
+
+    **How to get the Raw URL:**
+    a. Click on the uploaded image file in the GitHub repository.
+    b. Click the **"Raw"** button.
+    c. Copy the full URL from your browser's address bar.
+
+    **Example:**
+    ```json
+    [
+      {
+        "id": "kuromi",
+        "name": "Kuromi",
+        "imageResName": "kuromi.png",
+        "imageUrl": "https://raw.githubusercontent.com/thumb2086/Medication_reminder/main/app/src/main/res/drawable-nodpi/kuromi.png"
+      },
+      // ... other existing characters
+      {
+        "id": "snoopy",
+        "name": "Snoopy",
+        "imageResName": "snoopy.png",
+        "imageUrl": "https://raw.githubusercontent.com/thumb2086/Medication_reminder/main/app/src/main/res/drawable-nodpi/snoopy.png"
+      }
+    ]
+    ```
+
+3.  **Commit & Push**
+    Commit and push the modified `characters.json` and the new image assets to the `main` branch.
+
+Once completed, installed apps will automatically check for and download the new character pack on their next launch, making the new character available in the settings.

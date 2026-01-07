@@ -37,6 +37,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.viewpager2.widget.ViewPager2
 import com.example.medicationreminderapp.adapter.ViewPagerAdapter
 import com.example.medicationreminderapp.databinding.ActivityMainBinding
+import com.example.medicationreminderapp.model.CharacterManager
 import com.example.medicationreminderapp.util.UpdateManager
 import com.google.android.material.tabs.TabLayoutMediator
 import dagger.hilt.android.AndroidEntryPoint
@@ -54,6 +55,7 @@ import javax.inject.Inject
     private var alarmManager: AlarmManager? = null
     private lateinit var prefs: SharedPreferences
     private lateinit var updateManager: UpdateManager
+    private lateinit var characterManager: CharacterManager
     private var currentEngineeringModeState: Boolean? = null
 
     private val requestNotificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
@@ -88,12 +90,20 @@ import javax.inject.Inject
         alarmManager = getSystemService(ALARM_SERVICE) as? AlarmManager
         bluetoothLeManager.listener = this
         updateManager = UpdateManager(this.applicationContext)
+        characterManager = CharacterManager(this)
 
         createNotificationChannel()
         requestAppPermissions()
         observeViewModel()
         setupFragmentNavigation()
         checkForUpdates()
+        checkForCharacterUpdates()
+    }
+
+    private fun checkForCharacterUpdates() {
+        lifecycleScope.launch {
+            characterManager.checkForUpdates()
+        }
     }
 
     private fun checkForUpdates() {

@@ -88,12 +88,6 @@
             app:summary="@string/firmware_update_summary"
             app:icon="@drawable/ic_update" />
 
-        <Preference
-            app:key="import_character_config"
-            app:title="@string/import_character_config_title"
-            app:summary="@string/import_character_config_summary"
-            app:icon="@drawable/ic_input" />
-
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/about_category">

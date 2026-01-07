@@ -341,8 +341,6 @@
     <string name="developer_settings">開發者設定</string>
     <string name="engineering_mode">工程模式</string>
     <string name="engineering_mode_summary">啟用後將會開啟額外的除錯功能</string>
-    <string name="import_character_config_title">匯入角色設定</string>
-    <string name="import_character_config_summary">從 JSON 檔案匯入角色設定</string>
     
     <!-- About -->
     <string name="about_category">關於</string>
