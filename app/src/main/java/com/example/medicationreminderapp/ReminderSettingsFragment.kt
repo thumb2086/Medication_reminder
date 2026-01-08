@@ -77,12 +77,15 @@ class ReminderSettingsFragment : Fragment() {
 
     private fun getCharacterImageRes(): Int {
         val character = sharedPreferences.getString("character", "kuromi")
-        return when (character) {
-            "chibi_maruko_chan" -> R.drawable.chibi_maruko_chan
-            "crayon_shin_chan" -> R.drawable.crayon_shin_chan
-            "doraemon" -> R.drawable.doraemon
-            else -> R.drawable.kuromi
+        val imageResId = resources.getIdentifier(character, "drawable", requireContext().packageName)
+        if (imageResId != 0) {
+            return imageResId
         }
+        val fallbackImageResId = resources.getIdentifier(character, "drawable-nodpi", requireContext().packageName)
+        if (fallbackImageResId != 0) {
+            return fallbackImageResId
+        }
+        return R.drawable.kuromi // Fallback to kuromi
     }
 
     private fun updateCharacterImage() {

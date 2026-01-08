@@ -58,7 +58,11 @@ class ImagePickerPreference(context: Context, attrs: AttributeSet?) : ListPrefer
             val character = getItem(position)!!
 
             val imageResName = character.imageResName
-            val imageResId = context.resources.getIdentifier(imageResName, "drawable", context.packageName)
+            var imageResId = context.resources.getIdentifier(imageResName, "drawable", context.packageName)
+            if (imageResId == 0) {
+                imageResId = context.resources.getIdentifier(imageResName, "drawable-nodpi", context.packageName)
+            }
+
             if (imageResId != 0) {
                 imageView.setImageResource(imageResId)
             } else {
