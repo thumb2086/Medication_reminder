@@ -8,6 +8,7 @@ import android.app.NotificationManager
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.graphics.drawable.Drawable
 import android.media.AudioAttributes
 import android.media.RingtoneManager
 import android.os.Build
@@ -41,6 +42,7 @@ import com.example.medicationreminderapp.util.UpdateManager
 import com.google.android.material.tabs.TabLayoutMediator
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
@@ -146,15 +148,30 @@ import javax.inject.Inject
 
     private fun applyCharacterTheme() {
         val characterId = prefs.getString("character", "kuromi") ?: "kuromi"
+
         val themeResId = when (characterId) {
             "kuromi" -> R.style.Theme_MedicationReminderApp_Kuromi
-            "mymelody" -> R.style.Theme_MedicationReminderApp_MyMelody
-            "cinnamoroll" -> R.style.Theme_MedicationReminderApp_Cinnamoroll
+            "chibi_maruko_chan" -> R.style.Theme_MedicationReminderApp_ChibiMarukoChan
             "crayon_shin_chan" -> R.style.Theme_MedicationReminderApp_CrayonShinChan
             "doraemon" -> R.style.Theme_MedicationReminderApp_Doraemon
-            else -> R.style.Theme_MedicationReminderApp
+            else -> -1 // Indicates a custom or default theme
         }
-        setTheme(themeResId)
+
+        if (themeResId != -1) {
+            setTheme(themeResId)
+        } else {
+            setTheme(R.style.Theme_MedicationReminderApp) // Fallback to default theme
+            val imageResName = prefs.getString("character_image_res_name", null)
+            if (imageResName != null) {
+                val imageFile = File(filesDir, imageResName)
+                if (imageFile.exists()) {
+                    val drawable = Drawable.createFromPath(imageFile.absolutePath)
+                    window.decorView.background = drawable
+                } else {
+                    Log.w("MainActivity", "Dynamic character image not found: ${imageFile.path}")
+                }
+            }
+        }
     }
 
     private fun observeViewModel() {
