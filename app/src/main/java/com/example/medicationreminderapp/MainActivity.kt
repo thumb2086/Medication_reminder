@@ -151,7 +151,6 @@ import javax.inject.Inject
 
         val themeResId = when (characterId) {
             "kuromi" -> R.style.Theme_MedicationReminderApp_Kuromi
-            "chibi_maruko_chan" -> R.style.Theme_MedicationReminderApp_ChibiMarukoChan
             "crayon_shin_chan" -> R.style.Theme_MedicationReminderApp_CrayonShinChan
             "doraemon" -> R.style.Theme_MedicationReminderApp_Doraemon
             else -> -1 // Indicates a custom or default theme
