@@ -1,3 +1,13 @@
+### v1.6.2: 技術重構：資源 ID 高效快取 (Technical Refactoring: Resource ID Caching)
+
+*   **集中資源解析與快取 (Centralized Resource Resolution):**
+    *   將所有 `Resources.getIdentifier()` 的呼叫集中到 `CharacterManager` 類別中。
+    *   在應用程式載入 `characters.json` 時，立即將圖片資源名稱 (String) 解析為整數 ID (Int) 並儲存在 `Character` 物件的 `imageResId` 欄位中。
+*   **移除反射性資源查找 (Eliminated Reflection Lookup):**
+    *   `ImagePickerPreference` 和 `ReminderSettingsFragment` 不再使用 `getIdentifier()`。
+    *   解決了 IDE 關於反射性資源查找所導致的效能與編譯時期安全警告。
+*   **效能優化:** 後續所有圖片載入直接使用快取的整數 ID，顯著提升 UI 渲染效率。
+
 ### v1.6.1: 角色補充包自動更新 (Character Pack Auto-Update)
 *   **移除手動匯入功能 (Manual Import Removal):**
     *   **UI/UX:** 從設定頁面移除「匯入角色設定」按鈕。

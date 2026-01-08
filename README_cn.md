@@ -212,33 +212,37 @@ App 與 ESP32 智慧藥盒之間的通訊基於自訂的二進位協定，透過
     -   **`config.h`**：用於硬體腳位定義、常數和其他配置的中央標頭檔。
     -   **`globals.h`**：用於全域變數宣告的標頭檔。
 
-## 角色補充包發布流程
+## 新增角色流程
 
-此 App 現已支援從遠端自動更新角色補充包。發布新角色的流程已大幅簡化：
+歸功於重構後的架構，新增角色主題的流程已大幅簡化，無需修改任何 Kotlin 程式碼。
 
-1.  **修改 `characters.json`**
-    編輯位於本儲存庫根目錄的 `characters.json` 檔案，為新角色新增一個 JSON 物件。每個物件需包含以下欄位：
-    *   `id`: 角色的唯一識別碼 (字串，僅限英數與底線，例如 `snoopy`)。
-    *   `name`: 顯示在 App 中的角色名稱 (例如 `史努比`)。
-    *   `imageUrl`: 該角色圖片的 **公開直接下載連結**。
+#### 步驟 1: 新增圖片資源
 
-    **範例：**
-    ```json
-    [
-      {
+將新角色的 `.png` 圖片檔複製到以下目錄：
+`app/src/main/res/drawable/`
+
+#### 步驟 2: 修改角色定義檔
+
+打開位於 `app/src/main/res/raw/characters.json` 的 JSON 檔案，並在陣列中加入新角色的物件。每個物件需包含以下欄位：
+
+*   `id`: 角色的唯一識別碼 (字串，僅限小寫英數與底線，例如 `snoopy`)。
+*   `name`: 顯示在 App 設定中的角色名稱 (例如 `史努比`)。
+*   `imageResName`: 對應的圖片資源檔名 (**不含** `.png` 副檔名)。此名稱必須與步驟 1 中的檔名完全一致。
+
+**範例：**
+```json
+[
+    {
         "id": "kuromi",
         "name": "酷洛米",
-        "imageUrl": "https://raw.githubusercontent.com/thumb2086/Medication_reminder/main/app/src/main/res/drawable-nodpi/kuromi.png"
-      },
-      {
+        "imageResName": "kuromi"
+    },
+    {
         "id": "snoopy",
         "name": "史努比",
-        "imageUrl": "https://example.com/path/to/snoopy.png"
-      }
-    ]
-    ```
+        "imageResName": "snoopy"
+    }
+]
+```
 
-2.  **Commit & Push**
-    將修改後的 `characters.json` Commit 並 Push 至 `main` 分支。
-
-App 將在下次啟動時自動偵測 `characters.json` 的變更，並從 `imageUrl` 下載新的角色圖片。下載的資源會被快取在 App 的內部儲存空間，使用者即可在設定中看到並選用新角色。
+完成以上兩個步驟後，重新建置並執行 App，新角色就會自動出現在主題選擇清單中。
