@@ -21,6 +21,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.preference.PreferenceManager
 import com.example.medicationreminderapp.databinding.FragmentReminderSettingsBinding
 import com.example.medicationreminderapp.databinding.MedicationInputItemBinding
+import com.example.medicationreminderapp.model.CharacterManager
 import com.google.android.material.chip.Chip
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -76,16 +77,9 @@ class ReminderSettingsFragment : Fragment() {
     }
 
     private fun getCharacterImageRes(): Int {
-        val character = sharedPreferences.getString("character", "kuromi")
-        val imageResId = resources.getIdentifier(character, "drawable", requireContext().packageName)
-        if (imageResId != 0) {
-            return imageResId
-        }
-        val fallbackImageResId = resources.getIdentifier(character, "drawable-nodpi", requireContext().packageName)
-        if (fallbackImageResId != 0) {
-            return fallbackImageResId
-        }
-        return R.drawable.kuromi // Fallback to kuromi
+        val characterId = sharedPreferences.getString("character", "kuromi") ?: "kuromi"
+        val character = CharacterManager.findCharacterById(requireContext(), characterId)
+        return character?.imageResId ?: R.drawable.kuromi
     }
 
     private fun updateCharacterImage() {

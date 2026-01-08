@@ -57,17 +57,7 @@ class ImagePickerPreference(context: Context, attrs: AttributeSet?) : ListPrefer
 
             val character = getItem(position)!!
 
-            val imageResName = character.imageResName
-            var imageResId = context.resources.getIdentifier(imageResName, "drawable", context.packageName)
-            if (imageResId == 0) {
-                imageResId = context.resources.getIdentifier(imageResName, "drawable-nodpi", context.packageName)
-            }
-
-            if (imageResId != 0) {
-                imageView.setImageResource(imageResId)
-            } else {
-                imageView.setImageDrawable(null)
-            }
+            imageView.setImageResource(character.imageResId)
 
             textView.text = character.name
             radioButton.isChecked = (value == character.id)
