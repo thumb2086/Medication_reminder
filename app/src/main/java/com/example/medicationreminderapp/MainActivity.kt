@@ -57,6 +57,7 @@ import javax.inject.Inject
     private lateinit var prefs: SharedPreferences
     private lateinit var updateManager: UpdateManager
     private var currentEngineeringModeState: Boolean? = null
+    private var isDynamicBackgroundApplied = false
 
     private val requestNotificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         if (!isGranted) { Toast.makeText(this, getString(R.string.notification_permission_denied), Toast.LENGTH_LONG).show() }
@@ -78,6 +79,7 @@ import javax.inject.Inject
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayShowTitleEnabled(false)
 
@@ -98,6 +100,13 @@ import javax.inject.Inject
 
         if (savedInstanceState == null) {
             checkForUpdates()
+        }
+    }
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus && !isDynamicBackgroundApplied) {
+            applyDynamicCharacterBackground()
+            isDynamicBackgroundApplied = true
         }
     }
 
@@ -148,24 +157,26 @@ import javax.inject.Inject
 
     private fun applyCharacterTheme() {
         val characterId = prefs.getString("character", "kuromi") ?: "kuromi"
-
         val themeResId = when (characterId) {
             "kuromi" -> R.style.Theme_MedicationReminderApp_Kuromi
             "crayon_shin_chan" -> R.style.Theme_MedicationReminderApp_CrayonShinChan
             "doraemon" -> R.style.Theme_MedicationReminderApp_Doraemon
-            else -> -1 // Indicates a custom or default theme
+            else -> R.style.Theme_MedicationReminderApp // Fallback for dynamic themes
         }
+        setTheme(themeResId)
+    }
 
-        if (themeResId != -1) {
-            setTheme(themeResId)
-        } else {
-            setTheme(R.style.Theme_MedicationReminderApp) // Fallback to default theme
+    private fun applyDynamicCharacterBackground() {
+        val characterId = prefs.getString("character", "kuromi") ?: "kuromi"
+        val builtInThemes = listOf("kuromi", "crayon_shin_chan", "doraemon")
+
+        if (characterId !in builtInThemes) {
             val imageResName = prefs.getString("character_image_res_name", null)
             if (imageResName != null) {
                 val imageFile = File(filesDir, imageResName)
                 if (imageFile.exists()) {
                     val drawable = Drawable.createFromPath(imageFile.absolutePath)
-                    window.decorView.background = drawable
+                    binding.root.background = drawable
                 } else {
                     Log.w("MainActivity", "Dynamic character image not found: ${imageFile.path}")
                 }
