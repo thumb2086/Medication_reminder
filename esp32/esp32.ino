@@ -204,8 +204,11 @@ void loop() {
     handleWiFiConnection();
     handleHistoricDataTransfer();
     handleRealtimeData();
+    
+    // 確保感測器讀取與鬧鐘檢查不會阻塞主迴圈
     updateSensorReadings();
     checkAlarm();
+    
     handleEncoder();
     handleEncoderPush();
 
@@ -215,21 +218,29 @@ void loop() {
 
     handleBackButton();
 
-    if (wifiState == WIFI_CONNECTED && millis() - lastNTPResync >= NTP_RESYNC_INTERVAL) {
+    // 優化 NTP 同步檢查頻率
+    if (wifiState == WIFI_CONNECTED && (millis() - lastNTPResync >= NTP_RESYNC_INTERVAL)) {
         Serial.println("DEBUG: NTP resync interval reached, forcing sync.");
+        lastNTPResync = millis(); // 立即更新時間戳記防止重複進入
         syncTimeNTPForce();
     }
+    
+    // 歷史紀錄儲存
     if (millis() - lastHistoryRecord > historyRecordInterval) {
         lastHistoryRecord = millis();
         if (sensorDataValid) {
             addDataToHistory(cachedTemp, cachedHum, WiFi.RSSI());
         }
     }
-    if (wifiState == WIFI_CONNECTED && millis() - lastWeatherUpdate > WEATHER_INTERVAL) {
+    
+    // 天氣更新
+    if (wifiState == WIFI_CONNECTED && (millis() - lastWeatherUpdate > WEATHER_INTERVAL)) {
+        lastWeatherUpdate = millis(); // 立即更新時間戳記
         Serial.println("DEBUG: Weather update interval reached, fetching new data.");
         fetchWeatherData();
-        lastWeatherUpdate = millis();
     }
+    
+    // 顯示更新
     if (millis() - lastDisplayUpdate >= displayInterval) {
         updateDisplay();
     }
