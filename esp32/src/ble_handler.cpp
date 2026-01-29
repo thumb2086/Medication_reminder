@@ -128,12 +128,18 @@ void handleCommand(uint8_t* data, size_t length) {
                     alarmHour = newHour;
                     alarmMinute = newMinute;
                     alarmEnabled = newEnabled;
+                    
+                    // Use a more efficient way to store preferences if this is called frequently
+                    // For now, let's just make sure it's not happening in a loop.
                     preferences.begin("medbox-meta", false);
                     preferences.putUChar("alarmH", alarmHour);
                     preferences.putUChar("alarmM", alarmMinute);
                     preferences.putBool("alarmOn", alarmEnabled);
                     preferences.end();
                     Serial.printf("DEBUG: Alarm set to %02d:%02d, Enabled: %d\n", alarmHour, alarmMinute, alarmEnabled);
+                    
+                    // Mark that settings changed, loop() can handle UI refresh if needed
+                    syncIconStartTime = millis(); 
                 }
             }
             sendTimeSyncAck();
@@ -221,17 +227,20 @@ void handleCommand(uint8_t* data, size_t length) {
                 size_t bytesWritten = Update.write(&data[1], chunkSize);
                 if (bytesWritten == chunkSize) {
                     otaBytesReceived += bytesWritten;
-                    // Update progress on screen
+                    // Update progress on screen only every 5% or so to avoid blocking
+                    static int lastProgressPercent = -1;
                     int progress = (int)((otaBytesReceived * 100) / otaTotalSize);
-                    u8g2.drawBox(0, 50, 128, 10);
-                    u8g2.setDrawColor(0); // color 0 for the text
-                    char progressStr[5];
-                    sprintf(progressStr, "%d%%", progress);
-                    u8g2.drawStr((128 - u8g2.getStrWidth(progressStr))/2, 60, progressStr);
-                    u8g2.setDrawColor(1); // Back to default
-                    u8g2.drawBox(2, 52, (124 * progress) / 100, 6);
-                    u8g2.sendBuffer();
-
+                    if (progress != lastProgressPercent) {
+                        lastProgressPercent = progress;
+                        u8g2.drawBox(0, 50, 128, 10);
+                        u8g2.setDrawColor(0); // color 0 for the text
+                        char progressStr[5];
+                        sprintf(progressStr, "%d%%", progress);
+                        u8g2.drawStr((128 - u8g2.getStrWidth(progressStr))/2, 60, progressStr);
+                        u8g2.setDrawColor(1); // Back to default
+                        u8g2.drawBox(2, 52, (124 * progress) / 100, 6);
+                        u8g2.sendBuffer();
+                    }
                 } else {
                     Serial.println("ERROR: OTA data write failed!");
                     Update.printError(Serial);

@@ -136,14 +136,24 @@ void updateSensorReadings() {
 
 void checkAlarm() {
     if (!alarmEnabled || isAlarmRinging) return;
+    
+    // 檢查時間間隔，避免每毫秒都呼叫 getLocalTime (這在某些 BSP 上可能較慢)
     if (millis() - lastAlarmCheckTime < 1000) return;
     lastAlarmCheckTime = millis();
+    
     struct tm timeinfo;
-    if (!getLocalTime(&timeinfo)) return;
+    // 取得本地時間，如果 NTP 還沒同步，這個函式會失敗
+    if (!getLocalTime(&timeinfo)) {
+        // Serial.println("DEBUG: getLocalTime failed in checkAlarm");
+        return;
+    }
+    
+    // 只在秒數為 0 的那一秒觸發一次
     if (timeinfo.tm_hour == alarmHour && timeinfo.tm_min == alarmMinute && timeinfo.tm_sec == 0) {
-        Serial.println("DEBUG: ALARM TRIGGERED!");
-        Serial.println("ALARM TRIGGERED!");
+        Serial.printf("DEBUG: ALARM TRIGGERED! Current: %02d:%02d:%02d, Target: %02d:%02d\n", 
+                      timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec, alarmHour, alarmMinute);
         isAlarmRinging = true;
+        // 播放確認音效 (這包含 delay(60)，但在 loop 中偶爾一次還好)
         playConfirmSound();
     }
 }
